@@ -1,188 +1,215 @@
 import React, { useState, useEffect, useContext } from 'react';
-import { useParams, Link, useNavigate } from 'react-router-dom';
+import { useParams, Link, useNavigate, useLocation } from 'react-router-dom';
 import { AuthContext } from '../../context/AuthContext';
 import { 
   Clock, MapPin, Calendar, Users, ArrowLeft, 
-  CheckCircle2, ShieldCheck, Zap, Info 
+  Zap, Info, ShieldCheck, CheckCircle2, UserMinus, Sparkles
 } from 'lucide-react';
+import { toast } from 'react-toastify';
 
 const TourDetailsScreen = () => {
   const { id } = useParams();
+  const location = useLocation();
   const [tour, setTour] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [isBooked, setIsBooked] = useState(false);
   const { user } = useContext(AuthContext);
   const navigate = useNavigate();
 
-  useEffect(() => {
-    fetch(`${import.meta.env.VITE_API_URL}/tours/${id}`)
-      .then(res => res.json())
-      .then(data => {
-        setTour(data);
-        setLoading(false);
-      })
-      .catch(err => {
-        console.error(err);
-        setLoading(false);
-      });
-  }, [id]);
+  const fromCalendar = location.state?.from === 'calendar';
 
-  const handleBooking = async () => {
-    if (!user) {
-      alert("A jelentkezéshez előbb be kell jelentkezned!");
-      navigate('/login');
-      return;
-    }
+  const formatHungarianDate = (dateString) => {
+    if (!dateString) return "";
+    const date = new Date(dateString);
+    const months = ["Január", "Február", "Március", "Április", "Május", "Június", "Július", "Augusztus", "Szeptember", "Október", "November", "December"];
+    return `${date.getFullYear()}. ${months[date.getMonth()]} ${String(date.getDate()).padStart(2, '0')}.`;
+  };
 
+  const fetchTourData = async () => {
     try {
-      const res = await fetch(`${import.meta.env.VITE_API_URL}/bookings`, {
-        method: 'POST',
-        headers: { 
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        },
-        body: JSON.stringify({ tour_id: id }),
-      });
-
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/tours/${id}`);
       const data = await res.json();
-      if (res.ok) {
-        alert("🎉 " + data.message);
-      } else {
-        alert(data.message);
+      setTour(data);
+
+      if (user) {
+        const checkRes = await fetch(`${import.meta.env.VITE_API_URL}/bookings/check/${id}`, {
+          headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+        });
+        const checkData = await checkRes.json();
+        setIsBooked(checkData.isBooked);
       }
+      setLoading(false);
     } catch (err) {
-      alert("Hiba történt a jelentkezés során.");
+      console.error(err);
+      setLoading(false);
     }
   };
 
+  useEffect(() => {
+    fetchTourData();
+  }, [id, user]);
+
+  const handleBooking = async () => {
+    if (!user) {
+      toast.info("A jelentkezéshez előbb be kell jelentkezned!");
+      navigate('/login');
+      return;
+    }
+    try {
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/bookings`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${localStorage.getItem('token')}` },
+        body: JSON.stringify({ tour_id: id }),
+      });
+      if (res.ok) {
+        toast.success("🎉 Sikeres jelentkezés!");
+        setIsBooked(true);
+        fetchTourData();
+      }
+    } catch (err) { toast.error("Hiba történt."); }
+  };
+
+  const handleCancelBooking = async () => {
+    if (!window.confirm("Biztosan le szeretnél jelentkezni?")) return;
+    try {
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/bookings/cancel/${id}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+      });
+      if (res.ok) {
+        toast.warn("Lejelentkezve a túráról.");
+        setIsBooked(false);
+        fetchTourData();
+      }
+    } catch (err) { toast.error("Hiba a lejelentkezéskor."); }
+  };
+
   if (loading) return (
-    <div className="min-h-screen flex items-center justify-center">
-      <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-emerald-600"></div>
+    <div className="min-h-screen flex items-center justify-center bg-slate-50">
+      <div className="animate-spin rounded-full h-12 w-12 border-t-4 border-emerald-600"></div>
     </div>
   );
 
-  if (!tour) return <div className="p-10 text-center">Túra nem található.</div>;
+  if (!tour) return <div className="p-20 text-center font-black text-slate-400">Túra nem található.</div>;
 
   return (
-    <div className="bg-white min-h-screen">
-      {/* --- HERO HEADER --- */}
-      <div className="relative h-[50vh] md:h-[65vh] overflow-hidden">
-        <img 
-          src={tour.image_url} 
-          className="w-full h-full object-cover scale-105" 
-          alt={tour.title} 
-        />
-        <div className="absolute inset-0 bg-gradient-to-t from-emerald-950 via-emerald-950/20 to-transparent"></div>
+    <div className="bg-[#fcfdfe] min-h-screen pb-12 font-sans">
+      {/* --- HERO SECTION - Kompaktabb magasság --- */}
+      <div className="relative h-[40vh] md:h-[45vh] w-full overflow-hidden shadow-lg">
+        <img src={tour.image_url} className="w-full h-full object-cover" alt={tour.title} />
+        <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-transparent to-black/20"></div>
         
-        <div className="absolute top-8 left-8">
-          <Link to="/tours" className="flex items-center gap-2 text-white bg-black/20 backdrop-blur-md px-4 py-2 rounded-full hover:bg-black/40 transition">
-            <ArrowLeft size={18} /> Vissza a túrákhoz
+        {/* Navigáció */}
+        <div className="absolute top-6 left-6 z-20">
+          <Link 
+            to={fromCalendar ? "/calendar" : "/tours"} 
+            className="inline-flex items-center gap-2 text-white bg-white/10 backdrop-blur-md border border-white/20 px-4 py-2 rounded-xl hover:bg-emerald-600 transition-all text-xs font-bold uppercase tracking-wider"
+          >
+            <ArrowLeft size={16} /> 
+            {fromCalendar ? "Vissza a naptárhoz" : "Vissza a túrákhoz"}
           </Link>
         </div>
 
-        <div className="absolute bottom-12 left-0 w-full px-6">
-          <div className="max-w-7xl mx-auto">
-            <div className="flex items-center gap-2 text-emerald-400 font-bold uppercase tracking-widest text-sm mb-4">
-              <MapPin size={16} /> {tour.location}
+        {/* Cím */}
+        <div className="absolute bottom-8 left-0 w-full px-6 md:px-12">
+          <div className="max-w-6xl mx-auto">
+            <div className="flex items-center gap-2 text-emerald-400 font-bold uppercase tracking-widest text-[10px] mb-2">
+              <MapPin size={14} /> {tour.location}
             </div>
-            <h1 className="text-4xl md:text-7xl font-black text-white leading-tight max-w-4xl tracking-tighter">
+            <h1 className="text-3xl md:text-5xl font-black text-white leading-tight tracking-tighter uppercase italic">
               {tour.title}
             </h1>
           </div>
         </div>
       </div>
 
-      {/* --- MAIN CONTENT GRID --- */}
-      <div className="max-w-7xl mx-auto px-6 py-16 grid grid-cols-1 lg:grid-cols-3 gap-16">
+      {/* --- TARTALOM - Szűkebb konténer --- */}
+      <div className="max-w-6xl mx-auto px-6 grid grid-cols-1 lg:grid-cols-12 gap-8 mt-8">
         
-        {/* Bal oldal: Részletek */}
-        <div className="lg:col-span-2 space-y-12">
+        {/* Bal oldal - 8 oszlop */}
+        <div className="lg:col-span-8 space-y-8">
           
-          {/* Quick Info Badges */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div className="bg-emerald-50 p-4 rounded-3xl border border-emerald-100">
-              <Clock className="text-emerald-700 mb-2" size={20} />
-              <div className="text-xs text-emerald-600/70 uppercase font-bold">Időtartam</div>
-              <div className="font-black text-emerald-950">{tour.duration} nap</div>
-            </div>
-            <div className="bg-emerald-50 p-4 rounded-3xl border border-emerald-100">
-              <Zap className="text-emerald-700 mb-2" size={20} />
-              <div className="text-xs text-emerald-600/70 uppercase font-bold">Nehézség</div>
-              <div className="font-black text-emerald-950">{tour.difficulty}</div>
-            </div>
-            <div className="bg-emerald-50 p-4 rounded-3xl border border-emerald-100">
-              <Users className="text-emerald-700 mb-2" size={20} />
-              <div className="text-xs text-emerald-600/70 uppercase font-bold">Létszám</div>
-              <div className="font-black text-emerald-950">Max. 12 fő</div>
-            </div>
-            <div className="bg-emerald-50 p-4 rounded-3xl border border-emerald-100">
-              <ShieldCheck className="text-emerald-700 mb-2" size={20} />
-              <div className="text-xs text-emerald-600/70 uppercase font-bold">Biztonság</div>
-              <div className="font-black text-emerald-950">Profi vezetés</div>
-            </div>
+          {/* Info Grid - Kisebb kártyák */}
+          <div className="grid grid-cols-3 gap-3">
+            {[
+              { icon: <Clock size={18}/>, label: 'Idő', val: `${tour.duration} nap` },
+              { icon: <Zap size={18}/>, label: 'Szint', val: tour.difficulty },
+              { icon: <Users size={18}/>, label: 'Helyek', val: `${tour.booked_count || 0}/${tour.max_participants}` }
+            ].map((item, i) => (
+              <div key={i} className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm flex flex-col items-center text-center">
+                <div className="text-emerald-500 mb-1">{item.icon}</div>
+                <div className="text-[9px] text-slate-400 uppercase font-black tracking-tighter">{item.label}</div>
+                <div className="font-bold text-slate-800 text-sm">{item.val}</div>
+              </div>
+            ))}
           </div>
 
-          <div>
-            <h2 className="text-3xl font-black text-emerald-950 mb-6 flex items-center gap-3">
-              Leírás <Info className="text-emerald-600/30" />
-            </h2>
-            <p className="text-gray-600 leading-relaxed text-xl">
-              {tour.description || "Indulj el velünk egy felejthetetlen kalandra, ahol a természet érintetlensége és a profi szervezés találkozik. Ez a túra kifejezetten azoknak szól, akik többre vágynak egy egyszerű sétánál."}
-            </p>
-          </div>
-
-          {/* Amit kínálunk */}
-          <div className="space-y-4">
-            <h3 className="text-xl font-black text-emerald-950 uppercase tracking-tight">Mit tartalmaz az ár?</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              {['Szakképzett hegyi vezetés', 'Speciális felszerelés bérlése', 'Szállás és ellátás', 'Balesetbiztosítás a túra idejére'].map((item, index) => (
-                <div key={index} className="flex items-center gap-3 p-4 bg-white border border-gray-100 rounded-2xl shadow-sm">
-                  <CheckCircle2 className="text-emerald-600" size={22} />
-                  <span className="font-bold text-gray-700">{item}</span>
-                </div>
-              ))}
-            </div>
+          {/* Leírás - Tisztább elrendezés */}
+          <div className="bg-white p-8 rounded-3xl border border-slate-100 shadow-sm">
+             <div className="flex items-center gap-2 mb-4 text-emerald-600">
+                <Info size={20} />
+                <h2 className="text-lg font-black uppercase tracking-tight italic text-slate-900">A túra részletei</h2>
+             </div>
+             <p className="text-slate-600 leading-relaxed text-base font-medium">
+               {tour.description}
+             </p>
           </div>
         </div>
 
-        {/* Jobb oldal: Foglalási Panel (Sticky) */}
-        <div className="lg:col-span-1">
-          <div className="sticky top-28 bg-emerald-950 p-8 rounded-[2.5rem] shadow-2xl text-white overflow-hidden relative">
-            {/* Dekoratív háttér elem */}
-            <div className="absolute -top-24 -right-24 w-48 h-48 bg-emerald-500/20 rounded-full blur-3xl"></div>
-            
-            <div className="relative z-10">
-              <div className="mb-8">
-                <span className="text-emerald-400 font-bold uppercase tracking-widest text-xs">Részvételi díj</span>
-                <div className="text-5xl font-black mt-1">
-                  {tour.price.toLocaleString()} <span className="text-xl">Ft</span>
-                </div>
-              </div>
-
-              <div className="space-y-4 mb-8">
-                <div className="flex justify-between text-sm border-b border-emerald-800 pb-2">
-                  <span className="text-emerald-300">Indulás dátuma:</span>
-                  <span className="font-bold uppercase">Hamarosan...</span>
-                </div>
-                <div className="flex justify-between text-sm border-b border-emerald-800 pb-2">
-                  <span className="text-emerald-300">Szabad helyek:</span>
-                  <span className="font-bold">4 / 12</span>
-                </div>
-              </div>
-
-              <button 
-                onClick={handleBooking}
-                className={`w-full py-5 rounded-2xl font-black text-xl transition-all shadow-xl active:scale-95 flex items-center justify-center gap-3 ${
-                  user 
-                    ? 'bg-emerald-500 hover:bg-emerald-400 text-emerald-950 shadow-emerald-500/20' 
-                    : 'bg-emerald-800/50 text-emerald-600 cursor-not-allowed'
-                }`}
-              >
-                {user ? 'Jelentkezem most' : 'Lépj be a foglaláshoz'}
-              </button>
+        {/* Jobb oldal / Sidebar - 4 oszlop */}
+        <div className="lg:col-span-4">
+          <div className="sticky top-6 space-y-4">
+            <div className="bg-slate-900 p-8 rounded-[2.5rem] shadow-xl text-white relative overflow-hidden">
+              {/* Dekoratív fény */}
+              <div className="absolute -top-10 -right-10 w-32 h-32 bg-emerald-500/10 rounded-full blur-2xl"></div>
               
-              <p className="text-center text-emerald-500/50 text-[10px] mt-6 uppercase font-bold tracking-widest">
-                🔒 Biztonságos foglalás & Garantált élmény
-              </p>
+              <div className="relative z-10">
+                <div className="mb-6">
+                  <div className="text-emerald-400 font-bold uppercase tracking-widest text-[9px] mb-1">Részvételi díj</div>
+                  <div className="text-4xl font-black italic tracking-tighter">
+                    {tour.price?.toLocaleString()} <span className="text-lg not-italic text-emerald-500">Ft</span>
+                  </div>
+                </div>
+
+                <div className="space-y-3 mb-8 text-xs">
+                    <div className="flex justify-between py-2 border-b border-white/5">
+                      <span className="text-slate-400 font-bold uppercase">Indulás</span>
+                      <span className="font-bold">{formatHungarianDate(tour.start_date)}</span>
+                    </div>
+                    <div className="flex justify-between py-2 border-b border-white/5">
+                      <span className="text-slate-400 font-bold uppercase">Zárás</span>
+                      <span className="font-bold">{formatHungarianDate(tour.end_date)}</span>
+                    </div>
+                    <div className="flex justify-between py-2">
+                      <span className="text-slate-400 font-bold uppercase">Jelentkezők</span>
+                      <span className="font-bold text-emerald-400">{tour.booked_count || 0} / {tour.max_participants} fő</span>
+                    </div>
+                </div>
+
+                {isBooked ? (
+                  <button 
+                    onClick={handleCancelBooking}
+                    className="w-full py-4 rounded-2xl font-black text-sm bg-red-500/10 text-red-500 border border-red-500/30 flex items-center justify-center gap-2 uppercase tracking-widest hover:bg-red-500 hover:text-white transition-all"
+                  >
+                    <UserMinus size={18} /> Lejelentkezés
+                  </button>
+                ) : (
+                  <button 
+                    onClick={handleBooking}
+                    className={`w-full py-4 rounded-2xl font-black text-sm transition-all flex items-center justify-center gap-2 uppercase tracking-widest ${
+                      user 
+                        ? 'bg-emerald-500 hover:bg-emerald-400 text-slate-900 shadow-lg shadow-emerald-500/20' 
+                        : 'bg-slate-800 text-slate-500 cursor-not-allowed'
+                    }`}
+                  >
+                    {user ? 'Jelentkezem most' : 'Bejelentkezés szükséges'}
+                  </button>
+                )}
+              </div>
+            </div>
+
+            <div className="flex items-center justify-center gap-2 text-slate-400 font-bold text-[9px] uppercase tracking-widest bg-white py-3 rounded-2xl border border-slate-100 shadow-sm">
+                <ShieldCheck size={14} className="text-emerald-500" /> 100% Biztonságos foglalás
             </div>
           </div>
         </div>

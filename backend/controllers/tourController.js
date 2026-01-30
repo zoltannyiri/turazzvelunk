@@ -13,7 +13,13 @@ exports.getAllTours = async (req, res) => {
 
 exports.getTourById = async (req, res) => {
     try {
-        const [rows] = await db.query('SELECT * FROM tours WHERE id = ?', [req.params.id]);
+        const [rows] = await db.query(`
+            SELECT t.*, 
+            (SELECT COUNT(*) FROM bookings WHERE tour_id = t.id) as booked_count 
+            FROM tours t 
+            WHERE t.id = ?
+        `, [req.params.id]);
+
         if (rows.length === 0) {
             return res.status(404).json({ message: "Túra nem található" });
         }
@@ -26,11 +32,11 @@ exports.getTourById = async (req, res) => {
 };
 
 exports.createTour = async (req, res) => {
-    const { title, location, description, price, duration, difficulty, image_url, start_date, end_date } = req.body;
+    const { title, location, description, price, duration, difficulty, image_url, start_date, end_date, max_participants } = req.body;
     try {
         await db.query(
-            'INSERT INTO tours (title, location, description, price, duration, difficulty, image_url, start_date, end_date) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
-            [title, location, description, price, duration, difficulty, image_url, start_date, end_date]
+            'INSERT INTO tours (title, location, description, price, duration, difficulty, image_url, start_date, end_date, max_participants) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+            [title, location, description, price, duration, difficulty, image_url, start_date, end_date, max_participants]
         );
         res.status(201).json({ message: "Túra sikeresen létrehozva!" });
     } catch (err) {

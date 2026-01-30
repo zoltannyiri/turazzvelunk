@@ -24,7 +24,7 @@ const CalendarScreen = () => {
 
     const initialTourState = {
         title: '', location: '', description: '', price: '', duration: '', 
-        difficulty: 'Könnyű', image_url: '', start_date: '', end_date: ''
+        difficulty: 'Könnyű', image_url: '', start_date: '', end_date: '', max_participants: ''
     };
     const [newTour, setNewTour] = useState(initialTourState);
     const [hoveredEvent, setHoveredEvent] = useState(null);
@@ -53,9 +53,14 @@ const CalendarScreen = () => {
 
     const handleSubmitTour = async (e) => {
         e.preventDefault();
+        const diffTime = Math.abs(newTour.end_date - newTour.start_date);
+        const start = moment(newTour.start_date);
+        const end = moment(newTour.end_date);
+        const calculatedDuration = end.diff(start, 'days') + 1;
         const formatDate = (date) => (date instanceof Date ? moment(date).format('YYYY-MM-DD') : date);
         const payload = {
             ...newTour,
+            duration: calculatedDuration,
             start_date: formatDate(newTour.start_date),
             end_date: formatDate(newTour.end_date),
         };
@@ -123,13 +128,13 @@ const CalendarScreen = () => {
                         }}
                         eventMouseEnter={(info) => setHoveredEvent(info.event.extendedProps)}
                         eventMouseLeave={() => setHoveredEvent(null)}
-                        eventClick={(info) => navigate(`/tours/${info.event.id}`)}
+                        eventClick={(info) => navigate(`/tours/${info.event.id}`, { state: { from: 'calendar' } })}
                         height={740}
                         headerToolbar={false}
                     />
                 </div>
             </div>
-            
+
             {hoveredEvent && (
                 <div className="tour-tooltip-card" style={{ left: mousePos.x + 20, top: mousePos.y > window.innerHeight - 360 ? mousePos.y - 380 : mousePos.y + 20 }}>
                     <img src={hoveredEvent.image_url} className="tooltip-image" alt="" />
@@ -171,10 +176,26 @@ const CalendarScreen = () => {
                                 </div>
                             </div>
                             <div><label className="form-label-premium">Ár (Ft)</label><input type="number" value={newTour.price} className="form-input-premium" onChange={e => setNewTour({...newTour, price: e.target.value})} /></div>
-                            <div><label className="form-label-premium">Idő (Óra)</label><input type="number" value={newTour.duration} className="form-input-premium" onChange={e => setNewTour({...newTour, duration: e.target.value})} /></div>
-                            <div className="md:col-span-2"><label className="form-label-premium">Kép URL</label><input type="text" value={newTour.image_url} className="form-input-premium" onChange={e => setNewTour({...newTour, image_url: e.target.value})} /></div>
-                            <div className="md:col-span-2"><label className="form-label-premium">Leírás</label><textarea rows="3" value={newTour.description} className="form-input-premium" onChange={e => setNewTour({...newTour, description: e.target.value})}></textarea></div>
-                            <button type="submit" className="md:col-span-2 w-full py-5 rounded-[2rem] font-black text-xl bg-emerald-600 text-white shadow-xl hover:bg-emerald-700 transition-all uppercase">
+                            <div>
+                              <label className="form-label-premium text-[10px]">Maximális létszám</label>
+                              <input 
+                                  type="number" 
+                                  required 
+                                  value={newTour.max_participants} 
+                                  className="form-input-premium" 
+                                  onChange={e => setNewTour({...newTour, max_participants: e.target.value})} 
+                              />
+                          </div>
+                            <div className="md:col-span-2">
+                              <label className="form-label-premium">Kép URL</label>
+                              <input type="text" value={newTour.image_url} 
+                                className="form-input-premium" onChange={e => setNewTour({...newTour, image_url: e.target.value})} /></div>
+                            <div className="md:col-span-2">
+                              <label className="form-label-premium">Leírás</label>
+                                <textarea rows="3" value={newTour.description} 
+                                className="form-input-premium" onChange={e => setNewTour({...newTour, description: e.target.value})}></textarea></div>
+                            <button type="submit" 
+                              className="md:col-span-2 w-full py-5 rounded-[2rem] font-black text-xl bg-emerald-600 text-white shadow-xl hover:bg-emerald-700 transition-all uppercase">
                                 {editingTourId ? '💾 Módosítások mentése' : '🚀 Túra közzététele'}
                             </button>
                         </form>
