@@ -33,10 +33,11 @@ exports.getTourById = async (req, res) => {
 
 exports.createTour = async (req, res) => {
     const { title, location, description, price, duration, difficulty, image_url, start_date, end_date, max_participants } = req.body;
+    const durationValue = duration === "" || duration === null || duration === undefined ? null : Number(duration);
     try {
         await db.query(
             'INSERT INTO tours (title, location, description, price, duration, difficulty, image_url, start_date, end_date, max_participants) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-            [title, location, description, price, duration, difficulty, image_url, start_date, end_date, max_participants]
+            [title, location, description, price, durationValue, difficulty, image_url, start_date, end_date, max_participants]
         );
         res.status(201).json({ message: "Túra sikeresen létrehozva!" });
     } catch (err) {
@@ -51,6 +52,11 @@ exports.updateTour = async (req, res) => {
         return res.status(400).json({ message: "Nincs módosítandó adat!" });
     }
     try {
+        if ("duration" in updates) {
+            let d = updates.duration;
+            d = (d === "" || d === null || d === undefined) ? null : Number(d);
+            updates.duration = (d !== null && Number.isFinite(d)) ? d : null;
+            }
         const fields = [];
         const values = [];
 
