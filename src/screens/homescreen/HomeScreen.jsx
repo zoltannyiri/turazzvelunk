@@ -70,7 +70,7 @@ const HomeScreen = () => {
         <div className="max-w-4xl mx-auto text-center relative z-10">
           <h2 className="text-4xl md:text-5xl font-black text-white mb-6">Készen állsz az első lépésre?</h2>
           <p className="text-emerald-200/70 text-lg mb-10">Csatlakozz több mint 500 elégedett túrázóhoz és fedezd fel a Kárpátok vagy az Alpok legszebb részeit.</p>
-          <Link to="/register" className="inline-block bg-orange-500 hover:bg-orange-400 text-white px-10 py-5 rounded-2xl font-black text-xl transition-all hover:scale-105 shadow-xl shadow-orange-500/20">
+          <Link to="/register" className="inline-block bg-emerald-600 hover:bg-emerald-500 text-white px-10 py-5 rounded-2xl font-black text-xl transition-all hover:scale-105 shadow-xl shadow-orange-500/20">
             Fiók létrehozása most
           </Link>
         </div>

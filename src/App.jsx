@@ -11,6 +11,7 @@ import RegisterScreen from "./screens/registerscreen/RegisterScreen";
 import ToursScreen from "./screens/toursscreen/ToursScreen";
 import ProfileScreen from "./screens/profilescreen/ProfileScreen";
 import AdminDashboard from "./screens/adminscreen/AdminDashboard";
+import CalendarScreen from "./screens/calendarscreen/CalendarScreen";
 
 function App() {
   return (
@@ -21,6 +22,7 @@ function App() {
         <Route path="/profile" element={<ProfileScreen />} />
         <Route path="/tours" element={<ToursScreen />} />
         <Route path="/tours/:id" element={<TourDetailsScreen />} />
+        <Route path="/calendar" element={<CalendarScreen />} />
 
         <Route path="/admin" element={<AdminDashboard />} />
 

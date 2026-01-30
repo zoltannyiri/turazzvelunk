@@ -1,7 +1,7 @@
 import React, { useContext } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
-import { Compass, LogOut, User, UserPlus, UserCircle } from 'lucide-react';
+import { Compass, LogOut, User, UserPlus, Calendar } from 'lucide-react';
 
 const Navbar = () => {
   const { user, logout } = useContext(AuthContext);
@@ -25,6 +25,9 @@ const Navbar = () => {
 
         <div className="hidden md:flex items-center gap-8 font-semibold text-gray-500 text-sm tracking-wide">
           <Link to="/tours" className="hover:text-emerald-600 transition">TÚRÁK</Link>
+          <Link to="/calendar" className="hover:text-emerald-600 transition flex items-center gap-1.5">
+            <span>NAPTÁR</span>
+          </Link>
           <Link to="/about-us" className="hover:text-emerald-600 transition">RÓLUNK</Link>
         </div>
 

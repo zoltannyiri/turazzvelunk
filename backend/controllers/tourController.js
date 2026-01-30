@@ -26,11 +26,11 @@ exports.getTourById = async (req, res) => {
 };
 
 exports.createTour = async (req, res) => {
-    const { title, location, description, price, duration, difficulty, image_url } = req.body;
+    const { title, location, description, price, duration, difficulty, image_url, start_date, end_date } = req.body;
     try {
         await db.query(
-            'INSERT INTO tours (title, location, description, price, duration, difficulty, image_url, start_date) VALUES (?, ?, ?, ?, ?, ?, ?)',
-            [title, location, description, price, duration, difficulty, image_url]
+            'INSERT INTO tours (title, location, description, price, duration, difficulty, image_url, start_date, end_date) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+            [title, location, description, price, duration, difficulty, image_url, start_date, end_date]
         );
         res.status(201).json({ message: "Túra sikeresen létrehozva!" });
     } catch (err) {
