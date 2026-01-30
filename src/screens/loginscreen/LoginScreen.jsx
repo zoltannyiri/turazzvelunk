@@ -38,7 +38,7 @@ const LoginScreen = () => {
           </div>
         </div>
         <h2 className="text-3xl font-black text-center text-emerald-950 mb-2">Üdv újra!</h2>
-        <p className="text-center text-gray-500 mb-8">Jelentkezz be a kalandokhoz.</p>
+        <p className="text-center text-gray-500 mb-8">Jelentkezz be a túrákhoz.</p>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="relative">

@@ -73,7 +73,7 @@ const TourSearchScreen = () => {
         
         <div className="max-w-6xl mx-auto relative z-20 w-full">
           <h1 className="text-5xl md:text-6xl font-black text-white italic uppercase tracking-tighter mb-10 drop-shadow-2xl">
-            Kaland<span className="text-emerald-400">kereső</span>
+            Túra<span className="text-emerald-400">kereső</span>
           </h1>
 
           {/* Glassmorphism Szűrő Panel */}

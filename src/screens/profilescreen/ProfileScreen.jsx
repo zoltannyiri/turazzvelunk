@@ -163,7 +163,7 @@ import {
                 <div className="text-center py-24 bg-slate-50 rounded-[2.5rem] border-2 border-dashed border-slate-200">
                   <Mountain size={48} className="mx-auto text-slate-300 mb-4" />
                   <h4 className="text-xl font-black text-slate-400 uppercase tracking-widest">Még nincsenek túráid</h4>
-                  <p className="text-slate-400 mt-2">Itt az ideje befoglalni az első kalandot!</p>
+                  {/* <p className="text-slate-400 mt-2">Itt az ideje jelentkezni egy túrára!</p> */}
                 </div>
               )}
             </div>

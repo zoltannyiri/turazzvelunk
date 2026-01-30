@@ -31,7 +31,7 @@ const ToursScreen = () => {
       {/* --- HEADER --- */}
       <div className="bg-emerald-950 pt-16 pb-32 px-6">
         <div className="max-w-7xl mx-auto text-center">
-          <h1 className="text-4xl md:text-5xl font-black text-white mb-4">Minden kaland egy helyen</h1>
+          <h1 className="text-4xl md:text-5xl font-black text-white mb-4">Minden túra egy helyen</h1>
           <p className="text-emerald-200/60 max-w-xl mx-auto">Válogass a legizgalmasabb túráink közül, és találd meg a számodra tökéletes kihívást.</p>
         </div>
       </div>
