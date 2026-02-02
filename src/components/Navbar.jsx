@@ -3,7 +3,7 @@ import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
 import { 
   Compass, Calendar, User, LogOut, 
-  Menu, X, ShieldCheck, Info, Search 
+  Menu, X, ShieldCheck, Info, Search, BookOpen 
 } from 'lucide-react';
 
 const Navbar = () => {
@@ -49,6 +49,9 @@ const Navbar = () => {
           </Link>
           <Link to="/calendar" className={linkStyle('/calendar')}>
             <Calendar size={14} /> Naptár
+          </Link>
+          <Link to="/blog" className={linkStyle('/blog')}>
+            <BookOpen size={14} /> Blog
           </Link>
           <Link to="/about-us" className={linkStyle('/about-us')}>
             <Info size={14} /> Rólunk
@@ -113,6 +116,7 @@ const Navbar = () => {
           <Link to="/tours" className={linkStyle('/tours')} onClick={() => setIsMobileMenuOpen(false)}>Túrák</Link>
           <Link to="/tour-search" className={linkStyle('/tour-search')} onClick={() => setIsMobileMenuOpen(false)}>Túrakeresés</Link>
           <Link to="/calendar" className={linkStyle('/calendar')} onClick={() => setIsMobileMenuOpen(false)}>Naptár</Link>
+          <Link to="/blog" className={linkStyle('/blog')} onClick={() => setIsMobileMenuOpen(false)}>Blog</Link>
           <Link to="/about-us" className={linkStyle('/about-us')} onClick={() => setIsMobileMenuOpen(false)}>Rólunk</Link>
           {user?.role === 'admin' && (
             <Link to="/admin" className={linkStyle('/admin')} onClick={() => setIsMobileMenuOpen(false)}>Management</Link>

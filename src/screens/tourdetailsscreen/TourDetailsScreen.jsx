@@ -1,11 +1,12 @@
-import React, { useState, useEffect, useContext } from 'react';
+import React, { useState, useEffect, useContext, useRef } from 'react';
 import { useParams, Link, useNavigate, useLocation } from 'react-router-dom';
 import { AuthContext } from '../../context/AuthContext';
 import { 
   Clock, MapPin, Calendar, Users, ArrowLeft, 
-  Zap, Info, ShieldCheck, CheckCircle2, UserMinus, Sparkles
+  Zap, Info, ShieldCheck, CheckCircle2, UserMinus, Sparkles, MessageCircle, ThumbsUp, X
 } from 'lucide-react';
 import { toast } from 'react-toastify';
+import { io } from 'socket.io-client';
 
 const TourDetailsScreen = () => {
   const { id } = useParams();
@@ -15,6 +16,24 @@ const TourDetailsScreen = () => {
   const [isBooked, setIsBooked] = useState(false);
   const { user } = useContext(AuthContext);
   const navigate = useNavigate();
+  const [activeTab, setActiveTab] = useState('details');
+
+  const [posts, setPosts] = useState([]);
+  const [postsLoading, setPostsLoading] = useState(false);
+  const [newPost, setNewPost] = useState({ title: '', content: '' });
+  const [commentDrafts, setCommentDrafts] = useState({});
+  const [likeLoadingId, setLikeLoadingId] = useState(null);
+  const socketRef = useRef(null);
+  const [postUpdates, setPostUpdates] = useState({});
+  const [commentLikeLoadingId, setCommentLikeLoadingId] = useState(null);
+  const [replyDrafts, setReplyDrafts] = useState({});
+  const [activeReplyTo, setActiveReplyTo] = useState(null);
+  const [isCommentsModalOpen, setIsCommentsModalOpen] = useState(false);
+  const [modalPostId, setModalPostId] = useState(null);
+  const [modalLoading, setModalLoading] = useState(false);
+  const [topCommentsByPost, setTopCommentsByPost] = useState({});
+  const [modalPost, setModalPost] = useState(null);
+  const [modalComments, setModalComments] = useState([]);
 
   const fromCalendar = location.state?.from === 'calendar';
 
@@ -49,6 +68,93 @@ const TourDetailsScreen = () => {
     fetchTourData();
   }, [id, user]);
 
+  const fetchPosts = async ({ silent = false } = {}) => {
+    if (!silent) {
+      setPostsLoading(true);
+    }
+    try {
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/tours/${id}/posts`);
+      const data = await res.json();
+      if (!res.ok) {
+        toast.error(data.message || data.error || 'Hiba a bejegyzések betöltésekor.');
+        setPosts([]);
+        return;
+      }
+
+      setPosts(Array.isArray(data) ? data : []);
+      await fetchTopCommentsForPosts(Array.isArray(data) ? data : []);
+      return data;
+    } catch (err) {
+      toast.error('Hiba a bejegyzések betöltésekor.');
+    } finally {
+      if (!silent) {
+        setPostsLoading(false);
+      }
+    }
+  };
+
+  const fetchTopCommentsForPosts = async (postList) => {
+    if (!postList.length) {
+      setTopCommentsByPost({});
+      return;
+    }
+
+    try {
+      const results = await Promise.all(
+        postList.map(async (post) => {
+          const res = await fetch(`${import.meta.env.VITE_API_URL}/tour-posts/${post.id}/comments/top?limit=2`);
+          const data = await res.json();
+          return [post.id, Array.isArray(data) ? data : []];
+        })
+      );
+
+      const map = results.reduce((acc, [postId, comments]) => {
+        acc[postId] = comments;
+        return acc;
+      }, {});
+      setTopCommentsByPost(map);
+    } catch (err) {
+      setTopCommentsByPost({});
+    }
+  };
+
+  useEffect(() => {
+    if (activeTab === 'posts') {
+      fetchPosts();
+    }
+  }, [activeTab, id]);
+
+  useEffect(() => {
+    const apiBase = import.meta.env.VITE_API_URL || '';
+    const socketBase = apiBase.replace(/\/api\/?$/, '');
+
+    if (!socketRef.current) {
+      socketRef.current = io(socketBase || '/', {
+        transports: ['websocket']
+      });
+    }
+
+    const socket = socketRef.current;
+    if (id) {
+      socket.emit('join-tour', id);
+    }
+
+    const handleNewComment = (payload) => {
+      if (payload?.tourId && String(payload.tourId) !== String(id)) return;
+      if (!payload?.postId) return;
+      setPostUpdates(prev => ({ ...prev, [payload.postId]: true }));
+    };
+
+    socket.on('tour-post-comment', handleNewComment);
+
+    return () => {
+      socket.off('tour-post-comment', handleNewComment);
+      if (id) {
+        socket.emit('leave-tour', id);
+      }
+    };
+  }, [id]);
+
   const handleBooking = async () => {
     if (!user) {
       toast.info("A jelentkezéshez előbb be kell jelentkezned!");
@@ -82,6 +188,162 @@ const TourDetailsScreen = () => {
         fetchTourData();
       }
     } catch (err) { toast.error("Hiba a lejelentkezéskor."); }
+  };
+
+  const handleCreatePost = async (e) => {
+    e.preventDefault();
+    if (!newPost.content.trim()) return;
+    try {
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/tours/${id}/posts`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify({
+          title: newPost.title.trim() || null,
+          content: newPost.content.trim()
+        })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        toast.success('Bejegyzés közzétéve.');
+        setNewPost({ title: '', content: '' });
+        fetchPosts({ silent: true });
+      } else {
+        toast.error(data.message || data.error || 'Hiba történt.');
+      }
+    } catch (err) {
+      toast.error('Hiba történt a mentéskor.');
+    }
+  };
+
+  const handleCreateComment = async (postId, parentCommentId = null) => {
+    const content = (parentCommentId ? replyDrafts[parentCommentId] : commentDrafts[postId] || '').trim();
+    if (!content) return;
+    try {
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/tour-posts/${postId}/comments`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify({ content, parent_comment_id: parentCommentId })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        if (parentCommentId) {
+          setReplyDrafts(prev => ({ ...prev, [parentCommentId]: '' }));
+          setActiveReplyTo(null);
+        } else {
+          setCommentDrafts(prev => ({ ...prev, [postId]: '' }));
+        }
+        await fetchPosts({ silent: true });
+        if (isCommentsModalOpen && modalPostId === postId) {
+          await fetchModalComments(postId);
+        }
+      } else {
+        toast.error(data.message || data.error || 'Hiba történt.');
+      }
+    } catch (err) {
+      toast.error('Hiba történt a komment mentésekor.');
+    }
+  };
+
+  const handleToggleCommentLike = async (commentId) => {
+    if (!user) {
+      toast.info('A like-hoz be kell jelentkezned.');
+      navigate('/login');
+      return;
+    }
+    setCommentLikeLoadingId(commentId);
+    try {
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/tour-posts/comments/${commentId}/likes`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setModalComments(prev => prev.map(c => (
+          c.id === commentId ? { ...c, like_count: data.like_count, liked: data.liked } : c
+        )));
+        setTopCommentsByPost(prev => {
+          const updated = { ...prev };
+          Object.keys(updated).forEach((postId) => {
+            updated[postId] = (updated[postId] || []).map(c => (
+              c.id === commentId ? { ...c, like_count: data.like_count, liked: data.liked } : c
+            ));
+          });
+          return updated;
+        });
+      } else {
+        toast.error(data.message || data.error || 'Hiba történt.');
+      }
+    } catch (err) {
+      toast.error('Hiba történt a komment like műveletnél.');
+    } finally {
+      setCommentLikeLoadingId(null);
+    }
+  };
+
+  const fetchModalComments = async (postId) => {
+    try {
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/tour-posts/${postId}/comments`);
+      const data = await res.json();
+      setModalComments(Array.isArray(data) ? data : []);
+    } catch (err) {
+      setModalComments([]);
+    }
+  };
+
+  const openCommentsModal = async (postId) => {
+    const post = posts.find(p => p.id === postId);
+    setModalPostId(postId);
+    setModalPost(post || null);
+    setIsCommentsModalOpen(true);
+    setModalLoading(true);
+    await fetchModalComments(postId);
+    setPostUpdates(prev => ({ ...prev, [postId]: false }));
+    setModalLoading(false);
+  };
+
+  const closeCommentsModal = () => {
+    setIsCommentsModalOpen(false);
+    setModalPostId(null);
+    setActiveReplyTo(null);
+  };
+
+  const getReplies = (comments = [], parentId) => {
+    return comments.filter(c => String(c.parent_comment_id) === String(parentId));
+  };
+
+  const handleToggleLike = async (postId) => {
+    if (!user) {
+      toast.info('A like-hoz be kell jelentkezned.');
+      navigate('/login');
+      return;
+    }
+    setLikeLoadingId(postId);
+    try {
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/tour-posts/${postId}/likes`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setPosts(prev => prev.map(p => (
+          p.id === postId
+            ? { ...p, like_count: data.like_count, liked: data.liked }
+            : p
+        )));
+      } else {
+        toast.error(data.message || data.error || 'Hiba történt.');
+      }
+    } catch (err) {
+      toast.error('Hiba történt a like műveletnél.');
+    } finally {
+      setLikeLoadingId(null);
+    }
   };
 
   if (loading) return (
@@ -128,32 +390,181 @@ const TourDetailsScreen = () => {
         
         {/* Bal oldal - 8 oszlop */}
         <div className="lg:col-span-8 space-y-8">
-          
-          {/* Info Grid - Kisebb kártyák */}
-          <div className="grid grid-cols-3 gap-3">
-            {[
-              { icon: <Clock size={18}/>, label: 'Idő', val: `${tour.duration} nap` },
-              { icon: <Zap size={18}/>, label: 'Szint', val: tour.difficulty },
-              { icon: <Users size={18}/>, label: 'Helyek', val: `${tour.booked_count || 0}/${tour.max_participants}` }
-            ].map((item, i) => (
-              <div key={i} className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm flex flex-col items-center text-center">
-                <div className="text-emerald-500 mb-1">{item.icon}</div>
-                <div className="text-[9px] text-slate-400 uppercase font-black tracking-tighter">{item.label}</div>
-                <div className="font-bold text-slate-800 text-sm">{item.val}</div>
-              </div>
-            ))}
+
+          {/* Tabok */}
+          <div className="bg-white p-2 rounded-2xl border border-slate-100 shadow-sm inline-flex gap-2">
+            <button
+              onClick={() => setActiveTab('details')}
+              className={`px-4 py-2 rounded-xl text-[11px] font-black uppercase tracking-widest transition ${
+                activeTab === 'details' ? 'bg-emerald-600 text-white' : 'text-slate-500 hover:bg-slate-50'
+              }`}
+            >
+              Alapadatok
+            </button>
+            <button
+              onClick={() => setActiveTab('posts')}
+              className={`px-4 py-2 rounded-xl text-[11px] font-black uppercase tracking-widest transition ${
+                activeTab === 'posts' ? 'bg-emerald-600 text-white' : 'text-slate-500 hover:bg-slate-50'
+              }`}
+            >
+              Bejegyzések
+            </button>
           </div>
 
-          {/* Leírás - Tisztább elrendezés */}
-          <div className="bg-white p-8 rounded-3xl border border-slate-100 shadow-sm">
-             <div className="flex items-center gap-2 mb-4 text-emerald-600">
-                <Info size={20} />
-                <h2 className="text-lg font-black uppercase tracking-tight italic text-slate-900">A túra részletei</h2>
-             </div>
-             <p className="text-slate-600 leading-relaxed text-base font-medium">
-               {tour.description}
-             </p>
-          </div>
+          {activeTab === 'details' && (
+            <>
+              {/* Info Grid - Kisebb kártyák */}
+              <div className="grid grid-cols-3 gap-3">
+                {[
+                  { icon: <Clock size={18}/>, label: 'Idő', val: `${tour.duration} nap` },
+                  { icon: <Zap size={18}/>, label: 'Szint', val: tour.difficulty },
+                  { icon: <Users size={18}/>, label: 'Helyek', val: `${tour.booked_count || 0}/${tour.max_participants}` }
+                ].map((item, i) => (
+                  <div key={i} className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm flex flex-col items-center text-center">
+                    <div className="text-emerald-500 mb-1">{item.icon}</div>
+                    <div className="text-[9px] text-slate-400 uppercase font-black tracking-tighter">{item.label}</div>
+                    <div className="font-bold text-slate-800 text-sm">{item.val}</div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Leírás */}
+              <div className="bg-white p-8 rounded-3xl border border-slate-100 shadow-sm">
+                <div className="flex items-center gap-2 mb-4 text-emerald-600">
+                  <Info size={20} />
+                  <h2 className="text-lg font-black uppercase tracking-tight italic text-slate-900">A túra részletei</h2>
+                </div>
+                <p className="text-slate-600 leading-relaxed text-base font-medium">
+                  {tour.description}
+                </p>
+              </div>
+            </>
+          )}
+
+          {activeTab === 'posts' && (
+            <div className="space-y-6">
+              {user?.role === 'admin' && (
+                <form onSubmit={handleCreatePost} className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm space-y-4">
+                  <div className="text-[10px] font-black uppercase tracking-widest text-emerald-600">Admin bejegyzés</div>
+                  <input
+                    type="text"
+                    placeholder="Cím (opcionális)"
+                    className="w-full p-4 bg-slate-50 border-none rounded-2xl focus:ring-2 focus:ring-emerald-500 outline-none transition font-semibold"
+                    value={newPost.title}
+                    onChange={(e) => setNewPost(prev => ({ ...prev, title: e.target.value }))}
+                  />
+                  <textarea
+                    rows="4"
+                    placeholder="Bejegyzés tartalma..."
+                    className="w-full p-4 bg-slate-50 border-none rounded-2xl focus:ring-2 focus:ring-emerald-500 outline-none transition font-medium"
+                    value={newPost.content}
+                    onChange={(e) => setNewPost(prev => ({ ...prev, content: e.target.value }))}
+                    required
+                  />
+                  <button className="bg-emerald-600 text-white px-6 py-3 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-emerald-700 transition">
+                    Közzététel
+                  </button>
+                </form>
+              )}
+
+              {postsLoading ? (
+                <div className="flex items-center justify-center py-12">
+                  <div className="animate-spin h-8 w-8 border-4 border-emerald-500 border-t-transparent rounded-full"></div>
+                </div>
+              ) : posts.length === 0 ? (
+                <div className="text-center py-12 bg-white rounded-3xl border border-dashed border-slate-200">
+                  <p className="text-slate-500 font-semibold">Még nincs bejegyzés ennél a túránál.</p>
+                </div>
+              ) : (
+                <div className="space-y-6">
+                  {posts.map((post) => (
+                    <div key={post.id} className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm">
+                      <div className="flex items-center justify-between mb-3">
+                        <div className="flex items-center gap-3">
+                          <div className="text-[10px] font-black uppercase tracking-widest text-emerald-600">
+                            {post.author_name}
+                          </div>
+                          <div className="text-[10px] font-bold text-slate-400">
+                            {new Date(post.created_at).toLocaleDateString()}
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-50 text-emerald-700 text-[9px] font-black uppercase tracking-widest">
+                          {tour?.location || 'Túra'}
+                        </div>
+                      </div>
+                      {post.title && (
+                        <h3 className="text-xl font-black text-slate-900 mb-2">{post.title}</h3>
+                      )}
+                      <p className="text-slate-700 leading-relaxed mb-4 whitespace-pre-wrap">{post.content}</p>
+
+                      {postUpdates[post.id] && (
+                        <div className="mb-4">
+                          <button
+                            onClick={() => {
+                              setPostsLoading(true);
+                              fetchPosts().finally(() => {
+                                setPostUpdates(prev => ({ ...prev, [post.id]: false }));
+                              });
+                            }}
+                            className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-emerald-50 text-emerald-700 text-xs font-black uppercase tracking-widest hover:bg-emerald-100 transition"
+                          >
+                            Új komment érkezett – frissítés
+                          </button>
+                        </div>
+                      )}
+
+                      <div className="flex items-center gap-4 mb-4">
+                        <button
+                          onClick={() => handleToggleLike(post.id)}
+                          className={`flex items-center gap-2 px-4 py-2 rounded-full text-xs font-black uppercase tracking-widest transition ${
+                            post.liked ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-50 text-slate-500'
+                          }`}
+                          disabled={likeLoadingId === post.id}
+                        >
+                          <ThumbsUp size={14} /> {post.like_count || 0}
+                        </button>
+                        <button
+                          onClick={() => openCommentsModal(post.id)}
+                          className="flex items-center gap-2 text-xs text-slate-500 font-black uppercase tracking-widest px-3 py-2 rounded-full bg-slate-50 hover:bg-slate-100 transition"
+                        >
+                          <MessageCircle size={14} /> Kommentek ({post.comment_count || post.comments?.length || 0})
+                        </button>
+                      </div>
+
+                      <div className="space-y-3">
+                        {(topCommentsByPost[post.id] || []).map((comment) => (
+                          <div key={comment.id} className="bg-slate-50 rounded-2xl p-4">
+                            <div className="flex items-center justify-between text-[10px] font-bold text-slate-400 mb-2">
+                              <span className="text-emerald-700 uppercase tracking-widest">{comment.author_name}</span>
+                              <span>{new Date(comment.created_at).toLocaleDateString()}</span>
+                            </div>
+                            <p className="text-slate-700 text-sm mb-3">{comment.content}</p>
+                            <div className="flex items-center gap-3">
+                              <button
+                                onClick={() => handleToggleCommentLike(comment.id)}
+                                className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest transition ${
+                                  comment.liked ? 'bg-emerald-50 text-emerald-700' : 'bg-white text-slate-500'
+                                }`}
+                                disabled={commentLikeLoadingId === comment.id}
+                              >
+                                <ThumbsUp size={12} /> {comment.like_count || 0}
+                              </button>
+                              <button
+                                onClick={() => openCommentsModal(post.id)}
+                                className="text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-emerald-600"
+                              >
+                                Válaszok megtekintése
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Jobb oldal / Sidebar - 4 oszlop */}
@@ -214,6 +625,128 @@ const TourDetailsScreen = () => {
           </div>
         </div>
       </div>
+
+      {isCommentsModalOpen && (
+        <div className="fixed inset-0 z-[200] flex items-center justify-center p-6">
+          <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={closeCommentsModal}></div>
+          <div className="relative bg-white w-full max-w-3xl rounded-[2.5rem] shadow-2xl p-8 max-h-[85vh] overflow-y-auto">
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-2xl font-black text-slate-900">Bejegyzés és kommentek</h3>
+              <button onClick={closeCommentsModal} className="p-2 rounded-xl hover:bg-slate-100 transition">
+                <X size={18} />
+              </button>
+            </div>
+
+            {modalLoading ? (
+              <div className="flex items-center justify-center py-12">
+                <div className="animate-spin h-8 w-8 border-4 border-emerald-500 border-t-transparent rounded-full"></div>
+              </div>
+            ) : (() => {
+              const post = modalPost || posts.find(p => p.id === modalPostId);
+              if (!post) {
+                return <p className="text-slate-500">Nem található bejegyzés.</p>;
+              }
+              const topLevelComments = (modalComments || []).filter(c => !c.parent_comment_id);
+
+              return (
+                <div className="space-y-6">
+                  <div className="bg-slate-50 p-6 rounded-2xl">
+                    <div className="text-[10px] font-black uppercase tracking-widest text-emerald-600 mb-2">
+                      {post.author_name}
+                    </div>
+                    {post.title && <h4 className="text-xl font-black text-slate-900 mb-2">{post.title}</h4>}
+                    <p className="text-slate-700 whitespace-pre-wrap">{post.content}</p>
+                  </div>
+
+                  <div className="space-y-4">
+                    {topLevelComments.map((comment) => (
+                      <div key={comment.id} className="bg-white border border-slate-100 rounded-2xl p-4">
+                        <div className="flex items-center justify-between text-[10px] font-bold text-slate-400 mb-2">
+                          <span className="text-emerald-700 uppercase tracking-widest">{comment.author_name}</span>
+                          <span>{new Date(comment.created_at).toLocaleDateString()}</span>
+                        </div>
+                        <p className="text-slate-700 text-sm mb-3">{comment.content}</p>
+                        <div className="flex items-center gap-3 mb-3">
+                          <button
+                            onClick={() => handleToggleCommentLike(comment.id)}
+                            className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest transition ${
+                              comment.liked ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-50 text-slate-500'
+                            }`}
+                            disabled={commentLikeLoadingId === comment.id}
+                          >
+                            <ThumbsUp size={12} /> {comment.like_count || 0}
+                          </button>
+                          <button
+                            onClick={() => setActiveReplyTo(activeReplyTo === comment.id ? null : comment.id)}
+                            className="text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-emerald-600"
+                          >
+                            Válasz
+                          </button>
+                        </div>
+
+                        {activeReplyTo === comment.id && user && (
+                          <div className="flex items-center gap-3 mb-3">
+                            <input
+                              type="text"
+                              placeholder="Írj választ..."
+                              className="flex-1 p-3 bg-slate-50 border-none rounded-2xl focus:ring-2 focus:ring-emerald-500 outline-none transition text-sm"
+                              value={replyDrafts[comment.id] || ''}
+                              onChange={(e) => setReplyDrafts(prev => ({ ...prev, [comment.id]: e.target.value }))}
+                            />
+                            <button
+                              onClick={() => handleCreateComment(post.id, comment.id)}
+                              className="px-4 py-3 rounded-2xl bg-emerald-600 text-white text-xs font-black uppercase tracking-widest hover:bg-emerald-700 transition"
+                            >
+                              Küldés
+                            </button>
+                          </div>
+                        )}
+
+                        {getReplies(modalComments || [], comment.id).map((reply) => (
+                          <div key={reply.id} className="ml-6 mt-3 bg-slate-50 rounded-2xl p-3">
+                            <div className="flex items-center justify-between text-[9px] font-bold text-slate-400 mb-2">
+                              <span className="text-emerald-700 uppercase tracking-widest">{reply.author_name}</span>
+                              <span>{new Date(reply.created_at).toLocaleDateString()}</span>
+                            </div>
+                            <p className="text-slate-700 text-sm mb-2">{reply.content}</p>
+                            <button
+                              onClick={() => handleToggleCommentLike(reply.id)}
+                              className={`flex items-center gap-2 px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest transition ${
+                                reply.liked ? 'bg-emerald-50 text-emerald-700' : 'bg-white text-slate-500'
+                              }`}
+                              disabled={commentLikeLoadingId === reply.id}
+                            >
+                              <ThumbsUp size={10} /> {reply.like_count || 0}
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    ))}
+                  </div>
+
+                  {user && (
+                    <div className="flex items-center gap-3">
+                      <input
+                        type="text"
+                        placeholder="Írj hozzászólást..."
+                        className="flex-1 p-3 bg-slate-50 border-none rounded-2xl focus:ring-2 focus:ring-emerald-500 outline-none transition text-sm"
+                        value={commentDrafts[post.id] || ''}
+                        onChange={(e) => setCommentDrafts(prev => ({ ...prev, [post.id]: e.target.value }))}
+                      />
+                      <button
+                        onClick={() => handleCreateComment(post.id)}
+                        className="px-4 py-3 rounded-2xl bg-emerald-600 text-white text-xs font-black uppercase tracking-widest hover:bg-emerald-700 transition"
+                      >
+                        Küldés
+                      </button>
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
+          </div>
+        </div>
+      )}
     </div>
   );
 };

@@ -28,10 +28,10 @@ const HomeScreen = () => {
             Szakadj ki a hétköznapokból. Profi túravezetőkkel, kis létszámú csoportokkal és életre szóló élményekkel várunk a legszebb csúcsokon.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Link to="/turak" className="group bg-emerald-600 hover:bg-emerald-500 text-white px-8 py-4 rounded-2xl font-black text-lg transition-all flex items-center gap-2 shadow-2xl shadow-emerald-600/20">
+            <Link to="/tours" className="group bg-emerald-600 hover:bg-emerald-500 text-white px-8 py-4 rounded-2xl font-black text-lg transition-all flex items-center gap-2 shadow-2xl shadow-emerald-600/20">
               Túrák böngészése <ArrowRight className="group-hover:translate-x-1 transition-transform" />
             </Link>
-            <Link to="/rolunk" className="bg-white/10 hover:bg-white/20 backdrop-blur-md text-white border border-white/30 px-8 py-4 rounded-2xl font-black text-lg transition-all">
+            <Link to="/about-us" className="bg-white/10 hover:bg-white/20 backdrop-blur-md text-white border border-white/30 px-8 py-4 rounded-2xl font-black text-lg transition-all">
               Hogyan működik?
             </Link>
           </div>

@@ -1,0 +1,31 @@
+CREATE TABLE IF NOT EXISTS tour_posts (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  tour_id INT NOT NULL,
+  user_id INT NOT NULL,
+  title VARCHAR(255) NULL,
+  content TEXT NOT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  CONSTRAINT fk_tour_posts_tour FOREIGN KEY (tour_id) REFERENCES tours(id) ON DELETE CASCADE,
+  CONSTRAINT fk_tour_posts_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS tour_post_comments (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  post_id INT NOT NULL,
+  user_id INT NOT NULL,
+  content TEXT NOT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT fk_post_comments_post FOREIGN KEY (post_id) REFERENCES tour_posts(id) ON DELETE CASCADE,
+  CONSTRAINT fk_post_comments_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS tour_post_likes (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  post_id INT NOT NULL,
+  user_id INT NOT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE KEY uniq_post_user (post_id, user_id),
+  CONSTRAINT fk_post_likes_post FOREIGN KEY (post_id) REFERENCES tour_posts(id) ON DELETE CASCADE,
+  CONSTRAINT fk_post_likes_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
