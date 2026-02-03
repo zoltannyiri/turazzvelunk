@@ -26,7 +26,13 @@ exports.getMyBookings = async (req, res) => {
     try {
         const [myBookings] = await db.query(
             `SELECT bookings.id, bookings.status, bookings.booked_at, 
-             tours.title, tours.location, tours.image_url, tours.price 
+                         tours.id AS tour_id, tours.title, tours.location, tours.image_url, tours.price,
+                         (
+                             SELECT r.status FROM booking_cancel_requests r
+                             WHERE r.booking_id = bookings.id
+                             ORDER BY r.created_at DESC
+                             LIMIT 1
+                         ) AS cancel_request_status
              FROM bookings 
              JOIN tours ON bookings.tour_id = tours.id 
              WHERE bookings.user_id = ?`, 
@@ -49,6 +55,9 @@ exports.deleteBooking = async (req, res) => {
         );
         if (booking.length === 0) {
             return res.status(404).json({ message: "Foglalás nem található, vagy nincs hozzá jogosultságod." });
+        }
+        if (booking[0].status === 'confirmed') {
+            return res.status(400).json({ message: "Az elfogadott jelentkezést csak lejelentkezési kérelemmel lehet visszavonni." });
         }
         await db.query('DELETE FROM bookings WHERE id = ?', [bookingId]);
         res.json({ message: "A jelentkezést sikeresen visszavontad." });
@@ -90,10 +99,17 @@ exports.updateBookingStatus = async (req, res) => {
 
 exports.removeBookingByTourId = async (req, res) => {
     try {
-        await db.query(
-            'DELETE FROM bookings WHERE user_id = ? AND tour_id = ?',
+        const [booking] = await db.query(
+            'SELECT * FROM bookings WHERE user_id = ? AND tour_id = ?',
             [req.user.id, req.params.tourId]
         );
+        if (booking.length === 0) {
+            return res.status(404).json({ message: "Foglalás nem található." });
+        }
+        if (booking[0].status === 'confirmed') {
+            return res.status(400).json({ message: "Az elfogadott jelentkezést csak lejelentkezési kérelemmel lehet visszavonni." });
+        }
+        await db.query('DELETE FROM bookings WHERE user_id = ? AND tour_id = ?', [req.user.id, req.params.tourId]);
         res.json({ message: "Sikeresen lejelentkeztél a túráról!" });
     } catch (err) {
         res.status(500).json({ error: err.message });
@@ -107,6 +123,104 @@ exports.checkIfBooked = async (req, res) => {
             [req.user.id, req.params.tourId]
         );
         res.json({ isBooked: rows.length > 0 });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+};
+
+exports.getBookingStatusByTourId = async (req, res) => {
+    try {
+        const [rows] = await db.query(
+            `SELECT b.id, b.status,
+                (
+                  SELECT r.status FROM booking_cancel_requests r
+                  WHERE r.booking_id = b.id
+                  ORDER BY r.created_at DESC
+                  LIMIT 1
+                ) AS cancel_request_status
+             FROM bookings b
+             WHERE b.user_id = ? AND b.tour_id = ?`,
+            [req.user.id, req.params.tourId]
+        );
+        if (rows.length === 0) {
+            return res.json({ isBooked: false });
+        }
+        res.json({
+            isBooked: true,
+            bookingId: rows[0].id,
+            status: rows[0].status,
+            cancel_request_status: rows[0].cancel_request_status || null
+        });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+};
+
+exports.createCancellationRequest = async (req, res) => {
+    const { reason } = req.body;
+    const bookingId = req.params.id;
+    if (!reason || !reason.trim()) {
+        return res.status(400).json({ message: "Add meg a lejelentkezés okát." });
+    }
+    try {
+        const [booking] = await db.query(
+            'SELECT * FROM bookings WHERE id = ? AND user_id = ?',
+            [bookingId, req.user.id]
+        );
+        if (booking.length === 0) {
+            return res.status(404).json({ message: "Foglalás nem található." });
+        }
+        if (booking[0].status !== 'confirmed') {
+            return res.status(400).json({ message: "Csak elfogadott jelentkezéshez lehet kérelmet leadni." });
+        }
+        await db.query(
+            'INSERT INTO booking_cancel_requests (booking_id, user_id, reason) VALUES (?, ?, ?)',
+            [bookingId, req.user.id, reason.trim()]
+        );
+        res.status(201).json({ message: "Lejelentkezési kérelem elküldve." });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+};
+
+exports.getCancellationRequests = async (req, res) => {
+    try {
+        const [rows] = await db.query(
+            `SELECT r.id, r.booking_id, r.user_id, r.reason, r.status, r.created_at,
+                    b.tour_id, b.status AS booking_status,
+                    t.title AS tour_title, t.location,
+                    u.name AS user_name, u.email
+             FROM booking_cancel_requests r
+             JOIN bookings b ON r.booking_id = b.id
+             JOIN tours t ON b.tour_id = t.id
+             JOIN users u ON r.user_id = u.id
+             ORDER BY r.created_at DESC`
+        );
+        res.json(rows);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+};
+
+exports.updateCancellationRequestStatus = async (req, res) => {
+    const { id } = req.params;
+    const { status } = req.body;
+    if (!['approved', 'rejected'].includes(status)) {
+        return res.status(400).json({ message: "Érvénytelen státusz." });
+    }
+    try {
+        const [rows] = await db.query('SELECT booking_id FROM booking_cancel_requests WHERE id = ?', [id]);
+        if (rows.length === 0) {
+            return res.status(404).json({ message: "Kérelem nem található." });
+        }
+        await db.query(
+            'UPDATE booking_cancel_requests SET status = ?, processed_at = NOW(), admin_id = ? WHERE id = ?',
+            [status, req.user.id, id]
+        );
+        if (status === 'approved') {
+            await db.query('UPDATE bookings SET status = ? WHERE id = ?', ['cancelled', rows[0].booking_id]);
+        }
+        res.json({ message: "Kérelem frissítve." });
     } catch (err) {
         res.status(500).json({ error: err.message });
     }

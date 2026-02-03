@@ -1,32 +1,21 @@
 import React, { useState, useEffect, useContext } from 'react';
+import { Link } from 'react-router-dom';
 import { AuthContext } from '../../context/AuthContext';
 import { 
   MapPin, Calendar, CreditCard, ChevronRight, 
-  Settings, LogOut, Mountain, Clock, CheckCircle2, AlertCircle, Trash2
+  Settings, LogOut, Mountain, Clock, CheckCircle2, AlertCircle, Camera
 } from 'lucide-react';
 
 	const ProfileScreen = () => {
-		const { user, logout } = useContext(AuthContext);
+    const { user, logout, updateUser } = useContext(AuthContext);
 		const [bookings, setBookings] = useState([]);
 		const [loading, setLoading] = useState(true);
-		const handleDelete = async (bookingId) => {
-		if (!window.confirm("Biztosan vissza szeretnéd vonni a jelentkezésedet?")) return;
-		try {
-			const res = await fetch(`${import.meta.env.VITE_API_URL}/bookings/${bookingId}`, {
-				method: 'DELETE',
-				headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
-			});
-			const data = await res.json();
-			if (res.ok) {
-				setBookings(bookings.filter(b => b.id !== bookingId));
-				alert("✅ " + data.message);
-			} else {
-				alert(data.message);
-			}
-		} catch (err) {
-			alert("Hiba történt a törlés során.");
-		}
-	};
+    const [email, setEmail] = useState(user?.email || '');
+    const [currentPassword, setCurrentPassword] = useState('');
+    const [newPassword, setNewPassword] = useState('');
+    const [avatarFile, setAvatarFile] = useState(null);
+    const [saving, setSaving] = useState(false);
+    const [isEditOpen, setIsEditOpen] = useState(false);
 
   useEffect(() => {
     fetch(`${import.meta.env.VITE_API_URL}/bookings/my-bookings`, {
@@ -38,6 +27,41 @@ import {
       setLoading(false);
     });
   }, []);
+
+  useEffect(() => {
+    setEmail(user?.email || '');
+  }, [user]);
+
+  const handleProfileSave = async () => {
+    setSaving(true);
+    try {
+      const formData = new FormData();
+      if (email && email !== user?.email) formData.append('email', email);
+      if (currentPassword) formData.append('currentPassword', currentPassword);
+      if (newPassword) formData.append('newPassword', newPassword);
+      if (avatarFile) formData.append('avatar', avatarFile);
+
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/auth/profile`, {
+        method: 'PUT',
+        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` },
+        body: formData
+      });
+      const data = await res.json();
+      if (res.ok) {
+        updateUser(data.user);
+        setCurrentPassword('');
+        setNewPassword('');
+        setAvatarFile(null);
+        alert('✅ Profil frissítve.');
+      } else {
+        alert(data.message || data.error || 'Hiba történt.');
+      }
+    } catch (err) {
+      alert('Hiba történt a mentéskor.');
+    } finally {
+      setSaving(false);
+    }
+  };
 
   return (
     <div className="bg-slate-50 min-h-screen pb-20">
@@ -55,7 +79,11 @@ import {
                   {user?.name.charAt(0)}
                 </div>
               </div>
-              <button className="absolute bottom-2 right-2 p-3 bg-white rounded-2xl shadow-lg text-emerald-900 hover:scale-110 transition">
+              <button
+                onClick={() => setIsEditOpen(true)}
+                className="absolute bottom-2 right-2 p-3 bg-white rounded-2xl shadow-lg text-emerald-900 hover:scale-110 transition"
+                title="Beállítások"
+              >
                 <Settings size={20} />
               </button>
             </div>
@@ -82,7 +110,9 @@ import {
                 </div>
                 <div className="flex flex-col pt-4 border-t border-gray-50">
                   <span className="text-gray-400 text-xs font-bold uppercase">Tagság kezdete</span>
-                  <span className="text-emerald-950 font-bold">2024. Január</span>
+                  <span className="text-emerald-950 font-bold">
+                    {user?.created_at ? new Date(user.created_at).toLocaleDateString('hu-HU') : '-'}
+                  </span>
                 </div>
               </div>
               <button 
@@ -98,6 +128,7 @@ import {
               <div className="text-4xl font-black">{bookings.length}</div>
               <div className="font-bold opacity-80">Aktív jelentkezés</div>
             </div>
+
           </div>
 
           <div className="lg:col-span-3">
@@ -145,16 +176,13 @@ import {
                             <CheckCircle2 size={14} /> Elfogadva
                           </div>
                         )}
-                        <button className="p-3 bg-gray-50 text-gray-400 rounded-2xl hover:bg-emerald-600 hover:text-white transition-all">
+                        <Link
+                          to={`/tours/${booking.tour_id}`}
+                          className="p-3 bg-gray-50 text-gray-400 rounded-2xl hover:bg-emerald-600 hover:text-white transition-all"
+                          title="Túra megnyitása"
+                        >
                           <ChevronRight size={20} />
-                        </button>
-												<button 
-													onClick={() => handleDelete(booking.id)}
-													className="p-3 bg-red-50 text-red-400 rounded-2xl hover:bg-red-500 hover:text-white transition-all shadow-sm"
-													title="Jelentkezés visszavonása"
-												>
-													<Trash2 size={20} />
-												</button>
+                        </Link>
                       </div>
                     </div>
                   ))}
@@ -170,6 +198,71 @@ import {
           </div>
         </div>
       </div>
+
+      {isEditOpen && (
+        <div className="fixed inset-0 z-[200] flex items-center justify-center p-6">
+          <div className="absolute inset-0 bg-emerald-950/60 backdrop-blur-xl" onClick={() => setIsEditOpen(false)}></div>
+          <div className="relative bg-white w-full max-w-xl rounded-[2.5rem] shadow-2xl p-8">
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-2xl font-black text-emerald-950">Profil beállítások</h3>
+              <button
+                onClick={() => setIsEditOpen(false)}
+                className="p-2 rounded-xl hover:bg-slate-100 transition"
+                title="Bezárás"
+              >
+                ✕
+              </button>
+            </div>
+            <div className="space-y-4">
+              <div>
+                <label className="text-gray-400 text-xs font-bold uppercase">Email</label>
+                <input
+                  type="email"
+                  className="w-full mt-2 p-3 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-2 focus:ring-emerald-500 outline-none"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                />
+              </div>
+              <div>
+                <label className="text-gray-400 text-xs font-bold uppercase">Jelenlegi jelszó</label>
+                <input
+                  type="password"
+                  className="w-full mt-2 p-3 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-2 focus:ring-emerald-500 outline-none"
+                  value={currentPassword}
+                  onChange={(e) => setCurrentPassword(e.target.value)}
+                />
+              </div>
+              <div>
+                <label className="text-gray-400 text-xs font-bold uppercase">Új jelszó</label>
+                <input
+                  type="password"
+                  className="w-full mt-2 p-3 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-2 focus:ring-emerald-500 outline-none"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                />
+              </div>
+              <div className="bg-slate-50 border border-slate-200 rounded-2xl p-3">
+                <label className="text-gray-400 text-xs font-bold uppercase flex items-center gap-2">
+                  <Camera size={14} /> Avatar feltöltése
+                </label>
+                <input
+                  type="file"
+                  accept="image/*"
+                  className="mt-2 w-full text-sm text-slate-600"
+                  onChange={(e) => setAvatarFile(e.target.files?.[0] || null)}
+                />
+              </div>
+              <button
+                onClick={handleProfileSave}
+                disabled={saving}
+                className="w-full py-3 rounded-2xl bg-emerald-600 text-white font-black text-xs uppercase tracking-widest hover:bg-emerald-700 transition disabled:opacity-60"
+              >
+                {saving ? 'Mentés...' : 'Mentés'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

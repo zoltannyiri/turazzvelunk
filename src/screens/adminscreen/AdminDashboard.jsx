@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { Link } from 'react-router-dom';
 import { 
   CheckCircle, Clock, Users, DollarSign, 
-  ChevronDown, ChevronUp, Plus, Edit3, Trash2, Calendar, BarChart
+  ChevronDown, ChevronUp, Plus, Edit3, Trash2, Calendar, BarChart, MessageSquareText, XCircle
 } from 'lucide-react';
 import { toast } from 'react-toastify';
 import DatePicker from "react-datepicker";
@@ -14,6 +15,7 @@ const AdminDashboard = () => {
   const [expandedTour, setExpandedTour] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingTourId, setEditingTourId] = useState(null);
+  const [cancelRequests, setCancelRequests] = useState([]);
   
   const initialTourState = {
     title: '', 
@@ -43,9 +45,22 @@ const AdminDashboard = () => {
     }
   }, []);
 
+  const fetchCancelRequests = useCallback(async () => {
+    try {
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/bookings/cancel-requests`, {
+        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+      });
+      const data = await res.json();
+      setCancelRequests(Array.isArray(data) ? data : []);
+    } catch (err) {
+      toast.error("Hiba a lejelentkezési kérelmek betöltésekor!");
+    }
+  }, []);
+
   useEffect(() => {
     fetchBookings();
-  }, [fetchBookings]);
+    fetchCancelRequests();
+  }, [fetchBookings, fetchCancelRequests]);
 
   const groupedBookings = bookings.reduce((acc, booking) => {
     if (!acc[booking.tour_id]) {
@@ -80,6 +95,25 @@ const AdminDashboard = () => {
     if (res.ok) {
       setBookings(prev => prev.map(b => b.id === id ? { ...b, status: newStatus } : b));
       toast.success("✔️ Státusz frissítve!");
+    }
+  };
+
+  const updateCancelRequestStatus = async (id, status) => {
+    const res = await fetch(`${import.meta.env.VITE_API_URL}/bookings/cancel-requests/${id}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${localStorage.getItem('token')}`
+      },
+      body: JSON.stringify({ status })
+    });
+    const data = await res.json();
+    if (res.ok) {
+      toast.success(data.message || 'Kérelem frissítve!');
+      setCancelRequests(prev => prev.map(r => r.id === id ? { ...r, status } : r));
+      fetchBookings();
+    } else {
+      toast.error(data.message || 'Hiba történt.');
     }
   };
 
@@ -158,6 +192,75 @@ const AdminDashboard = () => {
         </header>
 
         <div className="grid gap-8">
+          <div className="bg-white rounded-[3rem] shadow-sm border border-slate-100 overflow-hidden">
+            <div className="p-8 md:p-10 flex items-center justify-between bg-gradient-to-r from-white to-slate-50">
+              <div className="flex items-center gap-4">
+                <div className="w-14 h-14 rounded-2xl bg-emerald-100 text-emerald-700 flex items-center justify-center">
+                  <MessageSquareText size={24} />
+                </div>
+                <div>
+                  <h2 className="text-2xl font-black text-emerald-950">Lejelentkezési kérelmek</h2>
+                  <div className="text-xs text-slate-400 font-bold uppercase tracking-widest">Admin döntés szükséges</div>
+                </div>
+              </div>
+              <div className="px-4 py-2 rounded-full bg-emerald-50 text-emerald-700 text-xs font-black uppercase tracking-widest">
+                {cancelRequests.filter(r => r.status === 'pending').length} pending
+              </div>
+            </div>
+            <div className="px-8 pb-8">
+              {cancelRequests.length === 0 ? (
+                <div className="text-center py-10 text-slate-400 font-bold">Nincs kérelem.</div>
+              ) : (
+                <div className="grid gap-4">
+                  {cancelRequests.map((req) => (
+                    <div key={req.id} className="bg-slate-50 rounded-[2rem] p-6 border border-slate-100">
+                      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                        <div>
+                          <div className="text-[10px] font-black uppercase tracking-widest text-emerald-600">{req.tour_title}</div>
+                          <div className="text-xs text-slate-400 font-bold">{req.location}</div>
+                          <div className="text-xl font-black text-slate-900 mt-1">{req.user_name}</div>
+                          <div className="text-xs text-slate-400 font-bold">{req.email}</div>
+                        </div>
+                        <div className="text-sm text-slate-600 max-w-xl">{req.reason}</div>
+                        <div className="flex items-center gap-2">
+                          <Link
+                            to={`/tours/${req.tour_id}`}
+                            className="px-4 py-2 rounded-xl bg-slate-900 text-white text-xs font-black uppercase tracking-widest hover:bg-emerald-600 transition"
+                          >
+                            Túra megnyitása
+                          </Link>
+                          {req.status === 'pending' ? (
+                            <>
+                              <button
+                                onClick={() => updateCancelRequestStatus(req.id, 'approved')}
+                                className="px-4 py-2 rounded-xl bg-emerald-600 text-white text-xs font-black uppercase tracking-widest hover:bg-emerald-700"
+                              >
+                                Jóváhagyás
+                              </button>
+                              <button
+                                onClick={() => updateCancelRequestStatus(req.id, 'rejected')}
+                                className="px-4 py-2 rounded-xl bg-red-500/10 text-red-500 text-xs font-black uppercase tracking-widest hover:bg-red-500 hover:text-white"
+                              >
+                                Elutasítás
+                              </button>
+                            </>
+                          ) : req.status === 'approved' ? (
+                            <div className="flex items-center gap-2 text-emerald-600 text-xs font-black uppercase tracking-widest">
+                              <CheckCircle size={16} /> Jóváhagyva
+                            </div>
+                          ) : (
+                            <div className="flex items-center gap-2 text-red-500 text-xs font-black uppercase tracking-widest">
+                              <XCircle size={16} /> Elutasítva
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
           {Object.values(groupedBookings).map((tour) => {
             const currentParticipants = tour.participants.length;
             const maxCapacity = tour.max_participants;

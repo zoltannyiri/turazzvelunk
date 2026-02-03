@@ -1,0 +1,34 @@
+name: Deploy Backend
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Deploy to VPS via SSH
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.HOST }}
+          username: ${{ secrets.USERNAME }}
+          key: ${{ secrets.SSH_KEY }}
+          port: ${{ secrets.PORT }}
+          script: |
+            # Belépünk a főmappába és frissítünk
+            cd /opt/turazzvelunk/turazzvelunk
+            git pull origin main
+            
+            # Belépünk a BACKEND almappába
+            cd backend
+            
+            # Függőségek telepítése
+            npm install --production
+            
+            # Restart PM2
+            pm2 restart backend || pm2 start index.js --name "backend"

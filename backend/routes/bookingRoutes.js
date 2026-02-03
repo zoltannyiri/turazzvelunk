@@ -9,10 +9,14 @@ router.get('/my-bookings', protect, bookingController.getMyBookings);
 router.delete('/:id', protect, bookingController.deleteBooking);
 
 router.get('/check/:tourId', protect, bookingController.checkIfBooked);
+router.get('/status/:tourId', protect, bookingController.getBookingStatusByTourId);
 router.delete('/cancel/:tourId', protect, bookingController.removeBookingByTourId);
+router.post('/:id/cancel-request', protect, bookingController.createCancellationRequest);
 
 //admin
 router.get('/all', protect, adminOnly, bookingController.getAllBookings);
 router.put('/:id/status', protect, adminOnly, bookingController.updateBookingStatus);
+router.get('/cancel-requests', protect, adminOnly, bookingController.getCancellationRequests);
+router.put('/cancel-requests/:id', protect, adminOnly, bookingController.updateCancellationRequestStatus);
 
 module.exports = router;

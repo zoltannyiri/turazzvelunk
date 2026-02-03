@@ -14,6 +14,11 @@ const TourDetailsScreen = () => {
   const [tour, setTour] = useState(null);
   const [loading, setLoading] = useState(true);
   const [isBooked, setIsBooked] = useState(false);
+  const [bookingStatus, setBookingStatus] = useState(null);
+  const [bookingId, setBookingId] = useState(null);
+  const [cancelRequestStatus, setCancelRequestStatus] = useState(null);
+  const [cancelReason, setCancelReason] = useState('');
+  const [cancelSubmitting, setCancelSubmitting] = useState(false);
   const { user } = useContext(AuthContext);
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('details');
@@ -51,11 +56,14 @@ const TourDetailsScreen = () => {
       setTour(data);
 
       if (user) {
-        const checkRes = await fetch(`${import.meta.env.VITE_API_URL}/bookings/check/${id}`, {
+        const checkRes = await fetch(`${import.meta.env.VITE_API_URL}/bookings/status/${id}`, {
           headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
         });
         const checkData = await checkRes.json();
-        setIsBooked(checkData.isBooked);
+        setIsBooked(!!checkData.isBooked);
+        setBookingStatus(checkData.status || null);
+        setBookingId(checkData.bookingId || null);
+        setCancelRequestStatus(checkData.cancel_request_status || null);
       }
       setLoading(false);
     } catch (err) {
@@ -188,6 +196,37 @@ const TourDetailsScreen = () => {
         fetchTourData();
       }
     } catch (err) { toast.error("Hiba a lejelentkezéskor."); }
+  };
+
+  const handleCancelRequest = async () => {
+    if (!bookingId) return;
+    if (!cancelReason.trim()) {
+      toast.error('Kérlek írd meg a lejelentkezés okát.');
+      return;
+    }
+    setCancelSubmitting(true);
+    try {
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/bookings/${bookingId}/cancel-request`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify({ reason: cancelReason })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        toast.success(data.message || 'Kérelem elküldve.');
+        setCancelReason('');
+        setCancelRequestStatus('pending');
+      } else {
+        toast.error(data.message || data.error || 'Hiba történt.');
+      }
+    } catch (err) {
+      toast.error('Hiba történt a kérelem küldésekor.');
+    } finally {
+      setCancelSubmitting(false);
+    }
   };
 
   const handleCreatePost = async (e) => {
@@ -598,12 +637,45 @@ const TourDetailsScreen = () => {
                 </div>
 
                 {isBooked ? (
-                  <button 
-                    onClick={handleCancelBooking}
-                    className="w-full py-4 rounded-2xl font-black text-sm bg-red-500/10 text-red-500 border border-red-500/30 flex items-center justify-center gap-2 uppercase tracking-widest hover:bg-red-500 hover:text-white transition-all"
-                  >
-                    <UserMinus size={18} /> Lejelentkezés
-                  </button>
+                  bookingStatus === 'confirmed' ? (
+                    <div className="space-y-4">
+                      <div className="w-full py-4 rounded-2xl font-black text-sm bg-emerald-500/10 text-emerald-500 border border-emerald-500/30 flex items-center justify-center gap-2 uppercase tracking-widest">
+                        <CheckCircle2 size={18} /> Jelentkezés elfogadva
+                      </div>
+                      <div className="bg-white/5 border border-white/10 rounded-2xl p-4">
+                        <div className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-3">Lejelentkezés kérése</div>
+                        {cancelRequestStatus === 'pending' ? (
+                          <div className="w-full py-3 rounded-xl text-center text-xs font-black uppercase tracking-widest bg-emerald-500/10 text-emerald-400 border border-emerald-500/30">
+                            Kérelem elküldve
+                          </div>
+                        ) : (
+                          <>
+                            <textarea
+                              rows="3"
+                              placeholder="Írd meg röviden, miért szeretnél lejelentkezni..."
+                              className="w-full p-3 rounded-xl bg-slate-900/30 border border-white/10 text-white placeholder:text-slate-500 text-sm focus:ring-2 focus:ring-emerald-400 outline-none"
+                              value={cancelReason}
+                              onChange={(e) => setCancelReason(e.target.value)}
+                            />
+                            <button
+                              onClick={handleCancelRequest}
+                              disabled={cancelSubmitting}
+                              className="mt-3 w-full py-3 rounded-xl font-black text-xs uppercase tracking-widest bg-red-500/10 text-red-400 border border-red-500/30 hover:bg-red-500 hover:text-white transition disabled:opacity-60"
+                            >
+                              Lejelentkezés kérése
+                            </button>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  ) : (
+                    <button 
+                      onClick={handleCancelBooking}
+                      className="w-full py-4 rounded-2xl font-black text-sm bg-red-500/10 text-red-500 border border-red-500/30 flex items-center justify-center gap-2 uppercase tracking-widest hover:bg-red-500 hover:text-white transition-all"
+                    >
+                      <UserMinus size={18} /> Lejelentkezés
+                    </button>
+                  )
                 ) : (
                   <button 
                     onClick={handleBooking}
