@@ -31,4 +31,4 @@ jobs:
             npm install --production
             
             # Restart PM2
-            pm2 restart backend || pm2 start server.js --name "turazzvelunk-backend" 
+            pm2 restart turazzvelunk-backend || pm2 start server.js --name "turazzvelunk-backend" 
