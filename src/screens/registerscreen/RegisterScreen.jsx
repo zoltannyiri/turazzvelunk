@@ -17,7 +17,7 @@ const RegisterScreen = () => {
       const data = await res.json();
       if (res.ok) {
         alert("Sikeres regisztráció! Most már bejelentkezhetsz.");
-        navigate('/bejelentkezes');
+        navigate('/login');
       } else {
         alert(data.message);
       }
@@ -74,7 +74,7 @@ const RegisterScreen = () => {
         </form>
 
         <p className="text-center mt-8 text-gray-600">
-          Már van fiókod? <Link to="/bejelentkezes" className="text-emerald-700 font-bold hover:underline">Jelentkezz be!</Link>
+          Már van fiókod? <Link to="/login" className="text-emerald-700 font-bold hover:underline">Jelentkezz be!</Link>
         </p>
       </div>
     </div>

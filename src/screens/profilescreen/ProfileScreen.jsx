@@ -75,8 +75,16 @@ import {
           <div className="flex flex-col md:flex-row items-center md:items-end gap-8">
             <div className="relative group">
               <div className="w-40 h-40 bg-white p-2 rounded-[3rem] shadow-2xl rotate-3 group-hover:rotate-0 transition-transform duration-500">
-                <div className="w-full h-full bg-emerald-600 rounded-[2.5rem] flex items-center justify-center text-white text-5xl font-black">
-                  {user?.name.charAt(0)}
+                <div className="w-full h-full bg-emerald-600 rounded-[2.5rem] overflow-hidden flex items-center justify-center text-white text-5xl font-black">
+                  {user?.avatar_url ? (
+                    <img
+                      src={`${import.meta.env.VITE_API_URL?.replace(/\/api\/?$/, '')}${user.avatar_url}`}
+                      alt={user.name}
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    user?.name?.charAt(0)
+                  )}
                 </div>
               </div>
               <button

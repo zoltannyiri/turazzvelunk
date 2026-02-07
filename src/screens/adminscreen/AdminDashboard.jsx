@@ -126,11 +126,19 @@ const AdminDashboard = () => {
       const day = String(date.getDate()).padStart(2, '0');
       return `${year}-${month}-${day}`;
     };
+
+    const calculateDuration = (start, end) => {
+      if (!(start instanceof Date) || !(end instanceof Date)) return newTour.duration;
+      const diffMs = end.getTime() - start.getTime();
+      const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+      return diffDays >= 0 ? diffDays + 1 : newTour.duration;
+    };
     
     const payload = {
       ...newTour,
       start_date: formatDate(newTour.start_date),
       end_date: formatDate(newTour.end_date),
+      duration: calculateDuration(newTour.start_date, newTour.end_date),
       max_participants: parseInt(newTour.max_participants)
     };
     

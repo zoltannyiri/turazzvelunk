@@ -69,7 +69,7 @@ const LoginScreen = () => {
         </form>
 
         <p className="text-center mt-8 text-gray-600">
-          Még nincs fiókod? <Link to="/regisztracio" className="text-emerald-700 font-bold hover:underline">Regisztrálj!</Link>
+          Még nincs fiókod? <Link to="/register" className="text-emerald-700 font-bold hover:underline">Regisztrálj!</Link>
         </p>
       </div>
     </div>
