@@ -24,7 +24,9 @@ const CalendarScreen = () => {
 
     const initialTourState = {
         title: '', location: '', description: '', price: '', duration: '', 
-        difficulty: 'Könnyű', image_url: '', start_date: '', end_date: '', max_participants: ''
+        difficulty: 'Könnyű', difficulty_level: 5,
+        category: 'Hegyi túrák', subcategory: 'Hazai - Külföldi túrák',
+        image_url: '', start_date: '', end_date: '', max_participants: ''
     };
     const [newTour, setNewTour] = useState(initialTourState);
     const [hoveredEvent, setHoveredEvent] = useState(null);
@@ -60,6 +62,7 @@ const CalendarScreen = () => {
         const formatDate = (date) => (date instanceof Date ? moment(date).format('YYYY-MM-DD') : date);
         const payload = {
             ...newTour,
+            difficulty_level: Number(newTour.difficulty_level || 0) || null,
             duration: calculatedDuration,
             start_date: formatDate(newTour.start_date),
             end_date: formatDate(newTour.end_date),
@@ -163,7 +166,25 @@ const CalendarScreen = () => {
                                 <input type="text" required value={newTour.location} className="form-input-premium" onChange={e => setNewTour({...newTour, location: e.target.value})} />
                             </div>
                             <div>
-                                <label className="form-label-premium">Nehézség</label>
+                                <label className="form-label-premium">Kategória</label>
+                                <select value={newTour.category} className="form-input-premium" onChange={e => setNewTour({...newTour, category: e.target.value})}>
+                                    <option>Hegyi túrák</option>
+                                    <option>Vízitúrák</option>
+                                    <option>Jóga</option>
+                                    <option>Jóga táborok</option>
+                                    <option>Motoros</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label className="form-label-premium">Alkategória</label>
+                                <input type="text" value={newTour.subcategory} className="form-input-premium" onChange={e => setNewTour({...newTour, subcategory: e.target.value})} />
+                            </div>
+                            <div>
+                                <label className="form-label-premium">Nehézség (1-10)</label>
+                                <input type="number" min="1" max="10" value={newTour.difficulty_level} className="form-input-premium" onChange={e => setNewTour({...newTour, difficulty_level: e.target.value})} />
+                            </div>
+                            <div>
+                                <label className="form-label-premium">Nehézség (szöveg)</label>
                                 <select value={newTour.difficulty} className="form-input-premium" onChange={e => setNewTour({...newTour, difficulty: e.target.value})}>
                                     <option>Könnyű</option><option>Közepes</option><option>Nehéz</option>
                                 </select>

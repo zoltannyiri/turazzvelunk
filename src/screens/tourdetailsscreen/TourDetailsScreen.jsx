@@ -39,6 +39,8 @@ const TourDetailsScreen = () => {
   const [topCommentsByPost, setTopCommentsByPost] = useState({});
   const [modalPost, setModalPost] = useState(null);
   const [modalComments, setModalComments] = useState([]);
+  const [adminBookings, setAdminBookings] = useState([]);
+  const [adminBookingsLoading, setAdminBookingsLoading] = useState(false);
 
   const fromCalendar = location.state?.from === 'calendar';
 
@@ -74,6 +76,28 @@ const TourDetailsScreen = () => {
 
   useEffect(() => {
     fetchTourData();
+  }, [id, user]);
+
+  useEffect(() => {
+    const fetchAdminBookings = async () => {
+      if (!user || user.role !== 'admin') return;
+      setAdminBookingsLoading(true);
+      try {
+        const res = await fetch(`${import.meta.env.VITE_API_URL}/bookings/admin/tours/${id}`,
+          {
+            headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+          }
+        );
+        const data = await res.json();
+        setAdminBookings(Array.isArray(data) ? data : []);
+      } catch (err) {
+        setAdminBookings([]);
+      } finally {
+        setAdminBookingsLoading(false);
+      }
+    };
+
+    fetchAdminBookings();
   }, [id, user]);
 
   const fetchPosts = async ({ silent = false } = {}) => {
@@ -453,11 +477,14 @@ const TourDetailsScreen = () => {
           {activeTab === 'details' && (
             <>
               {/* Info Grid - Kisebb kártyák */}
-              <div className="grid grid-cols-3 gap-3">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                 {[
                   { icon: <Clock size={18}/>, label: 'Idő', val: `${tour.duration} nap` },
                   { icon: <Zap size={18}/>, label: 'Szint', val: tour.difficulty },
-                  { icon: <Users size={18}/>, label: 'Helyek', val: `${tour.booked_count || 0}/${tour.max_participants}` }
+                  { icon: <Users size={18}/>, label: 'Helyek', val: `${tour.booked_count || 0}/${tour.max_participants}` },
+                  { icon: <Sparkles size={18}/>, label: 'Nehézség', val: tour.difficulty_level ? `${tour.difficulty_level}/10` : '-' },
+                  { icon: <MapPin size={18}/>, label: 'Kategória', val: tour.category || '-' },
+                  { icon: <Info size={18}/>, label: 'Alkategória', val: tour.subcategory || '-' }
                 ].map((item, i) => (
                   <div key={i} className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm flex flex-col items-center text-center">
                     <div className="text-emerald-500 mb-1">{item.icon}</div>
@@ -477,6 +504,35 @@ const TourDetailsScreen = () => {
                   {tour.description}
                 </p>
               </div>
+
+              {user?.role === 'admin' && (
+                <div className="bg-white p-8 rounded-3xl border border-slate-100 shadow-sm">
+                  <div className="flex items-center gap-2 mb-4 text-emerald-600">
+                    <ShieldCheck size={20} />
+                    <h2 className="text-lg font-black uppercase tracking-tight italic text-slate-900">Admin betekintés</h2>
+                  </div>
+                  {adminBookingsLoading ? (
+                    <div className="text-slate-400 font-bold">Betöltés...</div>
+                  ) : adminBookings.length === 0 ? (
+                    <div className="text-slate-400 font-bold">Nincs jelentkező.</div>
+                  ) : (
+                    <div className="grid gap-3">
+                      {adminBookings.map((booking) => (
+                        <div key={booking.id} className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 bg-slate-50 rounded-2xl p-4">
+                          <div>
+                            <div className="font-black text-emerald-950 text-sm">{booking.user_name}</div>
+                            <div className="text-xs text-slate-400">{booking.email}</div>
+                          </div>
+                          <div className="text-[10px] font-black uppercase tracking-widest text-slate-400">{booking.status}</div>
+                          <div className="text-xs text-slate-400 font-bold">
+                            {booking.booked_at ? new Date(booking.booked_at).toLocaleDateString() : ''}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
             </>
           )}
 

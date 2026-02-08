@@ -3,7 +3,7 @@ const path = require('path');
 const multer = require('multer');
 const router = express.Router();
 const authController = require('../controllers/authController');
-const { protect } = require('../middleware/authMiddleware');
+const { protect, adminOnly } = require('../middleware/authMiddleware');
 
 const storage = multer.diskStorage({
 	destination: (req, file, cb) => {
@@ -33,5 +33,8 @@ const upload = multer({
 router.post('/register', authController.register);
 router.post('/login', authController.login);
 router.put('/profile', protect, upload.single('avatar'), authController.updateProfile);
+router.get('/users', protect, adminOnly, authController.getAllUsers);
+router.put('/users/:id/role', protect, adminOnly, authController.updateUserRole);
+router.get('/users/:id', protect, adminOnly, authController.getUserById);
 
 module.exports = router;

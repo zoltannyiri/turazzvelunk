@@ -15,7 +15,10 @@ router.post('/:id/cancel-request', protect, bookingController.createCancellation
 
 //admin
 router.get('/all', protect, adminOnly, bookingController.getAllBookings);
+router.get('/admin/tours/:tourId', protect, adminOnly, bookingController.getBookingsByTourId);
+router.get('/admin/users/:userId', protect, adminOnly, bookingController.getBookingsByUserId);
 router.put('/:id/status', protect, adminOnly, bookingController.updateBookingStatus);
+router.delete('/admin/:id', protect, adminOnly, bookingController.adminDeleteBooking);
 router.get('/cancel-requests', protect, adminOnly, bookingController.getCancellationRequests);
 router.put('/cancel-requests/:id', protect, adminOnly, bookingController.updateCancellationRequestStatus);
 

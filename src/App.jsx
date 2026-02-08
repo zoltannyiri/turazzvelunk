@@ -11,6 +11,7 @@ import RegisterScreen from "./screens/registerscreen/RegisterScreen";
 import ToursScreen from "./screens/toursscreen/ToursScreen";
 import ProfileScreen from "./screens/profilescreen/ProfileScreen";
 import AdminDashboard from "./screens/adminscreen/AdminDashboard";
+import AdminUserProfileScreen from "./screens/adminscreen/AdminUserProfileScreen";
 import CalendarScreen from "./screens/calendarscreen/CalendarScreen";
 import TourSearchScreen from "./screens/toursearchscreen/TourSearchScreen";
 import AboutScreen from "./screens/aboutscreen/AboutScreen";
@@ -24,6 +25,7 @@ function App() {
       <Routes>
         <Route path="/" element={<HomeScreen />} />
         <Route path="/profile" element={<ProfileScreen />} />
+        <Route path="/profile/:id" element={<AdminUserProfileScreen />} />
         <Route path="/tours" element={<ToursScreen />} />
         <Route path="/tours/:id" element={<TourDetailsScreen />} />
         <Route path="/calendar" element={<CalendarScreen />} />

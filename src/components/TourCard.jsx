@@ -24,8 +24,13 @@ const TourCard = ({ tour }) => {
           className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
         />
         <div className="absolute top-4 left-4 bg-white/90 backdrop-blur-md px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest text-emerald-900 shadow-sm">
-          {tour.difficulty}
+          {tour.category || tour.difficulty}
         </div>
+        {tour.subcategory && (
+          <div className="absolute top-12 left-4 bg-emerald-600/90 text-white px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest shadow-sm">
+            {tour.subcategory}
+          </div>
+        )}
         <div className="absolute bottom-4 right-4 bg-emerald-600 text-white px-4 py-2 rounded-2xl font-black shadow-lg">
           {new Intl.NumberFormat('hu-HU').format(tour.price || 0)} Ft
         </div>
@@ -43,6 +48,9 @@ const TourCard = ({ tour }) => {
         <div className="flex items-center gap-2 text-gray-400 text-sm font-bold mb-6">
           <Calendar size={16} className="text-emerald-500/50" />
           <span>{formatTourRange(tour.start_date, tour.end_date)}</span>
+          {tour.difficulty_level && (
+            <span className="ml-auto text-[10px] font-black uppercase tracking-widest text-emerald-600">{tour.difficulty_level}/10</span>
+          )}
         </div>
         
         <div className="mt-auto pt-6 border-t border-gray-50 flex items-center justify-between">

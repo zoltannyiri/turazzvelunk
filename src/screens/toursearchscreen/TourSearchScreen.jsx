@@ -14,7 +14,9 @@ const TourSearchScreen = () => {
   
   const [searchTerm, setSearchTerm] = useState("");
   const [maxPrice, setMaxPrice] = useState("");
-  const [difficulty, setDifficulty] = useState("Mind");
+  const [category, setCategory] = useState("Mind");
+  const [subcategory, setSubcategory] = useState("Mind");
+  const [maxDifficulty, setMaxDifficulty] = useState("");
   const [dateRange, setDateRange] = useState([null, null]);
   const [startDate, endDate] = dateRange;
 
@@ -34,11 +36,29 @@ const TourSearchScreen = () => {
     return `${d.getMonth() + 1}.${d.getDate()}`;
   };
 
+  const categories = useMemo(() => {
+    return Array.from(new Set(tours.map((tour) => tour.category).filter(Boolean)));
+  }, [tours]);
+
+  const subcategories = useMemo(() => {
+    return Array.from(
+      new Set(
+        tours
+          .filter((tour) => category === "Mind" || tour.category === category)
+          .map((tour) => tour.subcategory)
+          .filter(Boolean)
+      )
+    );
+  }, [tours, category]);
+
   const filteredTours = useMemo(() => {
     return tours.filter(tour => {
       const matchesSearch = tour.title.toLowerCase().includes(searchTerm.toLowerCase()) || 
                             tour.location.toLowerCase().includes(searchTerm.toLowerCase());
-      const matchesDifficulty = difficulty === "Mind" || tour.difficulty === difficulty;
+      const matchesCategory = category === "Mind" || (tour.category || "").toLowerCase() === category.toLowerCase();
+      const matchesSubcategory = subcategory === "Mind" || (tour.subcategory || "").toLowerCase() === subcategory.toLowerCase();
+      const difficultyLevel = tour.difficulty_level ?? (typeof tour.difficulty === "number" ? tour.difficulty : null);
+      const matchesDifficulty = !maxDifficulty || (typeof difficultyLevel === "number" && difficultyLevel <= parseInt(maxDifficulty));
       const matchesPrice = !maxPrice || tour.price <= parseInt(maxPrice);
       
       let matchesDate = true;
@@ -46,9 +66,9 @@ const TourSearchScreen = () => {
         const tourStart = new Date(tour.start_date);
         matchesDate = tourStart >= startDate && tourStart <= endDate;
       }
-      return matchesSearch && matchesDifficulty && matchesPrice && matchesDate;
+      return matchesSearch && matchesCategory && matchesSubcategory && matchesDifficulty && matchesPrice && matchesDate;
     });
-  }, [tours, searchTerm, difficulty, maxPrice, startDate, endDate]);
+  }, [tours, searchTerm, category, subcategory, maxDifficulty, maxPrice, startDate, endDate]);
 
   if (loading) return <div className="min-h-screen flex items-center justify-center bg-[#fcfdfe]"><div className="animate-spin rounded-full h-10 w-10 border-t-2 border-emerald-600"></div></div>;
 
@@ -113,23 +133,50 @@ const TourSearchScreen = () => {
               />
             </div>
 
-            <div className="md:col-span-2 relative group">
-              <Zap className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-emerald-400 transition-colors" size={20} />
+            <div className="md:col-span-3 relative group">
+              <SlidersHorizontal className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-emerald-400 transition-colors" size={20} />
               <select 
                 className="w-full bg-black/20 border-none rounded-3xl py-4 pl-14 text-white text-sm font-bold outline-none focus:ring-2 focus:ring-emerald-500/50 transition-all appearance-none cursor-pointer shadow-inner"
-                value={difficulty}
-                onChange={(e) => setDifficulty(e.target.value)}
+                value={category}
+                onChange={(e) => { setCategory(e.target.value); setSubcategory("Mind"); }}
               >
-                <option value="Mind" className="bg-slate-900 text-white">Mind</option>
-                <option value="Könnyű" className="bg-slate-900 text-white">Könnyű</option>
-                <option value="Közepes" className="bg-slate-900 text-white">Közepes</option>
-                <option value="Nehéz" className="bg-slate-900 text-white">Nehéz</option>
+                <option value="Mind" className="bg-slate-900 text-white">Minden kategória</option>
+                {categories.map((item) => (
+                  <option key={item} value={item} className="bg-slate-900 text-white">{item}</option>
+                ))}
               </select>
+            </div>
+
+            <div className="md:col-span-3 relative group">
+              <SlidersHorizontal className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-emerald-400 transition-colors" size={20} />
+              <select 
+                className="w-full bg-black/20 border-none rounded-3xl py-4 pl-14 text-white text-sm font-bold outline-none focus:ring-2 focus:ring-emerald-500/50 transition-all appearance-none cursor-pointer shadow-inner"
+                value={subcategory}
+                onChange={(e) => setSubcategory(e.target.value)}
+              >
+                <option value="Mind" className="bg-slate-900 text-white">Minden alkategória</option>
+                {subcategories.map((item) => (
+                  <option key={item} value={item} className="bg-slate-900 text-white">{item}</option>
+                ))}
+              </select>
+            </div>
+
+            <div className="md:col-span-2 relative group">
+              <Zap className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-emerald-400 transition-colors" size={20} />
+              <input 
+                type="number" 
+                min="1"
+                max="10"
+                placeholder="Max nehézség (1-10)" 
+                className="w-full bg-black/20 border-none rounded-3xl py-4 pl-14 text-white placeholder:text-slate-400 text-sm font-bold outline-none focus:ring-2 focus:ring-emerald-500/50 transition-all shadow-inner"
+                value={maxDifficulty}
+                onChange={(e) => setMaxDifficulty(e.target.value)}
+              />
             </div>
 
             <div className="md:col-span-1 flex items-center justify-center">
               <button 
-                onClick={() => { setSearchTerm(""); setMaxPrice(""); setDifficulty("Mind"); setDateRange([null, null]); }}
+                onClick={() => { setSearchTerm(""); setMaxPrice(""); setCategory("Mind"); setSubcategory("Mind"); setMaxDifficulty(""); setDateRange([null, null]); }}
                 className="p-4 text-white/50 hover:text-white hover:bg-white/10 rounded-full transition-all active:scale-90"
                 title="Szűrők törlése"
               >
@@ -160,7 +207,7 @@ const TourSearchScreen = () => {
                 <div className="relative h-56 overflow-hidden">
                   <img src={tour.image_url} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" alt={tour.title} />
                   <div className="absolute top-5 right-5 bg-white/80 backdrop-blur-md pl-2 pr-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-tighter shadow-sm flex items-center gap-1.5">
-                    <Zap size={12} className="text-amber-500" /> {tour.difficulty}
+                    <Zap size={12} className="text-amber-500" /> {tour.difficulty_level ?? tour.difficulty}
                   </div>
                   <div className="absolute bottom-0 left-0 w-full p-5 bg-gradient-to-t from-slate-900/80 to-transparent">
                     <div className="text-white text-xs font-bold flex items-center gap-1.5">

@@ -72,7 +72,7 @@ exports.getAllBookings = async (req, res) => {
             SELECT 
                 b.*, 
                 t.title, t.location, t.price, t.description, t.image_url, 
-                t.duration, t.difficulty, t.start_date, t.end_date,
+                t.duration, t.difficulty, t.difficulty_level, t.category, t.subcategory, t.start_date, t.end_date,
                 t.max_participants,
                 u.name AS user_name, u.email 
             FROM bookings b
@@ -221,6 +221,57 @@ exports.updateCancellationRequestStatus = async (req, res) => {
             await db.query('UPDATE bookings SET status = ? WHERE id = ?', ['cancelled', rows[0].booking_id]);
         }
         res.json({ message: "Kérelem frissítve." });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+};
+
+exports.adminDeleteBooking = async (req, res) => {
+    const { id } = req.params;
+    try {
+        const [rows] = await db.query('SELECT id FROM bookings WHERE id = ?', [id]);
+        if (rows.length === 0) {
+            return res.status(404).json({ message: "Foglalás nem található." });
+        }
+        await db.query('DELETE FROM booking_cancel_requests WHERE booking_id = ?', [id]);
+        await db.query('DELETE FROM bookings WHERE id = ?', [id]);
+        res.json({ message: "Foglalás törölve." });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+};
+
+exports.getBookingsByTourId = async (req, res) => {
+    const { tourId } = req.params;
+    try {
+        const [rows] = await db.query(
+            `SELECT b.id, b.status, b.booked_at, b.user_id,
+                    u.name AS user_name, u.email
+             FROM bookings b
+             JOIN users u ON b.user_id = u.id
+             WHERE b.tour_id = ?
+             ORDER BY b.booked_at DESC`,
+            [tourId]
+        );
+        res.json(rows);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+};
+
+exports.getBookingsByUserId = async (req, res) => {
+    const { userId } = req.params;
+    try {
+        const [rows] = await db.query(
+            `SELECT b.id, b.status, b.booked_at, b.tour_id,
+                    t.title, t.location, t.start_date, t.end_date
+             FROM bookings b
+             JOIN tours t ON b.tour_id = t.id
+             WHERE b.user_id = ?
+             ORDER BY b.booked_at DESC`,
+            [userId]
+        );
+        res.json(rows);
     } catch (err) {
         res.status(500).json({ error: err.message });
     }

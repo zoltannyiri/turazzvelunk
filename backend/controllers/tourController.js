@@ -32,12 +32,12 @@ exports.getTourById = async (req, res) => {
 };
 
 exports.createTour = async (req, res) => {
-    const { title, location, description, price, duration, difficulty, image_url, start_date, end_date, max_participants } = req.body;
+    const { title, location, description, price, duration, difficulty, difficulty_level, category, subcategory, image_url, start_date, end_date, max_participants } = req.body;
     const durationValue = duration === "" || duration === null || duration === undefined ? null : Number(duration);
     try {
         await db.query(
-            'INSERT INTO tours (title, location, description, price, duration, difficulty, image_url, start_date, end_date, max_participants) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-            [title, location, description, price, durationValue, difficulty, image_url, start_date, end_date, max_participants]
+            'INSERT INTO tours (title, location, description, price, duration, difficulty, difficulty_level, category, subcategory, image_url, start_date, end_date, max_participants) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+            [title, location, description, price, durationValue, difficulty, difficulty_level, category, subcategory, image_url, start_date, end_date, max_participants]
         );
         res.status(201).json({ message: "Túra sikeresen létrehozva!" });
     } catch (err) {
@@ -57,6 +57,10 @@ exports.updateTour = async (req, res) => {
             d = (d === "" || d === null || d === undefined) ? null : Number(d);
             updates.duration = (d !== null && Number.isFinite(d)) ? d : null;
             }
+        if ("difficulty_level" in updates) {
+            const lvl = Number(updates.difficulty_level);
+            updates.difficulty_level = Number.isFinite(lvl) ? lvl : null;
+        }
         const fields = [];
         const values = [];
 
