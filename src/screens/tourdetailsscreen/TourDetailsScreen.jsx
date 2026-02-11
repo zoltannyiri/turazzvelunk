@@ -39,6 +39,13 @@ const TourDetailsScreen = () => {
   const [topCommentsByPost, setTopCommentsByPost] = useState({});
   const [modalPost, setModalPost] = useState(null);
   const [modalComments, setModalComments] = useState([]);
+  const [chatMessages, setChatMessages] = useState([]);
+  const [chatLoading, setChatLoading] = useState(false);
+  const [chatInput, setChatInput] = useState('');
+  const [chatMenuOpen, setChatMenuOpen] = useState(false);
+  const [participantsModalOpen, setParticipantsModalOpen] = useState(false);
+  const [participants, setParticipants] = useState([]);
+  const [participantsLoading, setParticipantsLoading] = useState(false);
   const [adminBookings, setAdminBookings] = useState([]);
   const [adminBookingsLoading, setAdminBookingsLoading] = useState(false);
 
@@ -58,14 +65,7 @@ const TourDetailsScreen = () => {
       setTour(data);
 
       if (user) {
-        const checkRes = await fetch(`${import.meta.env.VITE_API_URL}/bookings/status/${id}`, {
-          headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
-        });
-        const checkData = await checkRes.json();
-        setIsBooked(!!checkData.isBooked);
-        setBookingStatus(checkData.status || null);
-        setBookingId(checkData.bookingId || null);
-        setCancelRequestStatus(checkData.cancel_request_status || null);
+        await refreshBookingStatus();
       }
       setLoading(false);
     } catch (err) {
@@ -77,6 +77,33 @@ const TourDetailsScreen = () => {
   useEffect(() => {
     fetchTourData();
   }, [id, user]);
+
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const paymentStatus = params.get('payment');
+    if (paymentStatus === 'success') {
+      toast.success('Sikeres fizetés!');
+      fetchTourData();
+      navigate(`/tours/${id}`, { replace: true });
+    }
+    if (paymentStatus === 'cancel') {
+      toast.info('Fizetés megszakítva.');
+      navigate(`/tours/${id}`, { replace: true });
+    }
+  }, [location.search, id, navigate]);
+
+  const refreshBookingStatus = async () => {
+    if (!user) return;
+    const checkRes = await fetch(`${import.meta.env.VITE_API_URL}/bookings/status/${id}`, {
+      headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+    });
+    const checkData = await checkRes.json();
+    setIsBooked(!!checkData.isBooked);
+    setBookingStatus(checkData.status || null);
+    setBookingId(checkData.bookingId || null);
+    setCancelRequestStatus(checkData.cancel_request_status || null);
+    return checkData;
+  };
 
   useEffect(() => {
     const fetchAdminBookings = async () => {
@@ -156,6 +183,22 @@ const TourDetailsScreen = () => {
     }
   }, [activeTab, id]);
 
+  const isChatAllowed = user?.role === 'admin' || bookingStatus === 'confirmed';
+  const avatarBase = (import.meta.env.VITE_API_URL || '').replace(/\/api\/?$/, '');
+
+  useEffect(() => {
+    if (activeTab === 'chat' && isChatAllowed) {
+      fetchChatMessages();
+    }
+    if (activeTab === 'chat' && user) {
+      refreshBookingStatus().then((data) => {
+        if (!data?.isBooked || data?.status !== 'confirmed') {
+          setActiveTab('details');
+        }
+      });
+    }
+  }, [activeTab, id, isChatAllowed, user]);
+
   useEffect(() => {
     const apiBase = import.meta.env.VITE_API_URL || '';
     const socketBase = apiBase.replace(/\/api\/?$/, '');
@@ -177,15 +220,112 @@ const TourDetailsScreen = () => {
       setPostUpdates(prev => ({ ...prev, [payload.postId]: true }));
     };
 
+    const handleChatMessage = (payload) => {
+      if (!payload?.tour_id || String(payload.tour_id) !== String(id)) return;
+      setChatMessages(prev => [...prev, payload]);
+    };
+
+    const handleMembershipUpdate = (payload) => {
+      if (!payload?.tourId || String(payload.tourId) !== String(id)) return;
+      if (!user || String(payload.userId) !== String(user.id)) return;
+      if (payload.status === 'removed') {
+        setBookingStatus(null);
+        setIsBooked(false);
+        setChatMessages([]);
+        setActiveTab('details');
+        toast.info('Kikerültél a túra csevegéséből.');
+      }
+      if (payload.status === 'confirmed') {
+        setBookingStatus('confirmed');
+        setIsBooked(true);
+      }
+    };
+
     socket.on('tour-post-comment', handleNewComment);
+    socket.on('tour-chat-message', handleChatMessage);
+    socket.on('tour-chat-membership', handleMembershipUpdate);
 
     return () => {
       socket.off('tour-post-comment', handleNewComment);
+      socket.off('tour-chat-message', handleChatMessage);
+      socket.off('tour-chat-membership', handleMembershipUpdate);
       if (id) {
         socket.emit('leave-tour', id);
       }
     };
-  }, [id]);
+  }, [id, user]);
+
+  const fetchChatMessages = async () => {
+    setChatLoading(true);
+    try {
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/tours/${id}/chat-messages`, {
+        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        if (res.status === 403) {
+          setBookingStatus(null);
+          setIsBooked(false);
+          setActiveTab('details');
+        }
+        setChatMessages([]);
+        return;
+      }
+      setChatMessages(Array.isArray(data) ? data : []);
+    } catch (err) {
+      setChatMessages([]);
+    } finally {
+      setChatLoading(false);
+    }
+  };
+
+  const handleSendChatMessage = async (e) => {
+    e.preventDefault();
+    if (!chatInput.trim()) return;
+    const status = await refreshBookingStatus();
+    if (!status?.isBooked || status?.status !== 'confirmed') {
+      toast.info('A csevegés csak elfogadott jelentkezés után érhető el.');
+      setActiveTab('details');
+      return;
+    }
+    try {
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/tours/${id}/chat-messages`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify({ message: chatInput.trim() })
+      });
+      if (!res.ok) {
+        const data = await res.json();
+        toast.error(data.message || data.error || 'Hiba történt.');
+        return;
+      }
+      setChatInput('');
+    } catch (err) {
+      toast.error('Hiba történt.');
+    }
+  };
+
+  const fetchParticipants = async () => {
+    setParticipantsLoading(true);
+    try {
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/bookings/tour/${id}/participants`, {
+        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setParticipants([]);
+        return;
+      }
+      setParticipants(Array.isArray(data) ? data : []);
+    } catch (err) {
+      setParticipants([]);
+    } finally {
+      setParticipantsLoading(false);
+    }
+  };
 
   const handleBooking = async () => {
     if (!user) {
@@ -199,11 +339,15 @@ const TourDetailsScreen = () => {
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${localStorage.getItem('token')}` },
         body: JSON.stringify({ tour_id: id }),
       });
+      const data = await res.json();
       if (res.ok) {
-        toast.success("🎉 Sikeres jelentkezés!");
+        toast.success("🎉 Jelentkezés elküldve, admin jóváhagyásra vár!");
         setIsBooked(true);
+        setBookingStatus('pending');
         fetchTourData();
+        return;
       }
+      toast.error(data.message || data.error || 'Hiba történt.');
     } catch (err) { toast.error("Hiba történt."); }
   };
 
@@ -472,6 +616,16 @@ const TourDetailsScreen = () => {
             >
               Bejegyzések
             </button>
+            {user && bookingStatus === 'confirmed' && (
+              <button
+                onClick={() => setActiveTab('chat')}
+                className={`px-4 py-2 rounded-xl text-[11px] font-black uppercase tracking-widest transition ${
+                  activeTab === 'chat' ? 'bg-emerald-600 text-white' : 'text-slate-500 hover:bg-slate-50'
+                }`}
+              >
+                Csevegés
+              </button>
+            )}
           </div>
 
           {activeTab === 'details' && (
@@ -660,6 +814,107 @@ const TourDetailsScreen = () => {
               )}
             </div>
           )}
+
+          {activeTab === 'chat' && (
+            <div className="space-y-6">
+              {!user && (
+                <div className="bg-white rounded-3xl border border-slate-100 p-6 text-slate-500 font-semibold">
+                  A csevegéshez jelentkezz be.
+                </div>
+              )}
+
+              {user && !isChatAllowed && (
+                <div className="bg-white rounded-3xl border border-slate-100 p-6 text-slate-500 font-semibold">
+                  A csevegés csak elfogadott jelentkezés után érhető el.
+                </div>
+              )}
+
+              {user && isChatAllowed && (
+                <div className="bg-white rounded-3xl border border-slate-100 shadow-sm flex flex-col h-[520px]">
+                  <div className="border-b border-slate-100 px-6 py-4 flex items-center justify-between relative">
+                    <div className="font-black text-emerald-950">Élő chat</div>
+                    <button
+                      onClick={() => setChatMenuOpen((prev) => !prev)}
+                      className="w-9 h-9 rounded-full bg-slate-100 text-slate-700 font-black text-lg hover:bg-emerald-50 hover:text-emerald-700 transition"
+                      title="Résztvevők"
+                    >
+                      ...
+                    </button>
+                    {chatMenuOpen && (
+                      <div className="absolute right-6 top-14 bg-white border border-slate-100 rounded-2xl shadow-xl p-2 w-44 z-20">
+                        <button
+                          onClick={() => {
+                            setChatMenuOpen(false);
+                            setParticipantsModalOpen(true);
+                            fetchParticipants();
+                          }}
+                          className="w-full text-left px-4 py-2 rounded-xl text-sm font-semibold text-slate-700 hover:bg-emerald-50"
+                        >
+                          Résztvevők
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex-1 overflow-y-auto p-6 space-y-4">
+                    {chatLoading ? (
+                      <div className="text-slate-400 font-semibold">Betöltés...</div>
+                    ) : chatMessages.length === 0 ? (
+                      <div className="text-slate-400 font-semibold">Még nincs üzenet.</div>
+                    ) : (
+                      chatMessages.map((msg) => {
+                        const isMine = user && msg.user_id === user.id;
+                        const initials = msg.user_name
+                          ? msg.user_name.split(' ').map((p) => p[0]).slice(0, 2).join('')
+                          : '?';
+
+                        return (
+                          <div key={msg.id} className={`flex ${isMine ? 'justify-end' : 'justify-start'}`}>
+                            <div className={`flex items-end gap-3 max-w-[80%] ${isMine ? 'flex-row-reverse' : 'flex-row'}`}>
+                              <div className="w-10 h-10 rounded-full bg-emerald-100 text-emerald-800 font-black text-xs flex items-center justify-center overflow-hidden">
+                                {isMine && user?.avatar_url ? (
+                                  <img
+                                    src={`${avatarBase}${user.avatar_url}`}
+                                    alt={user?.name || 'avatar'}
+                                    className="w-full h-full object-cover"
+                                  />
+                                ) : (
+                                  initials
+                                )}
+                              </div>
+                              <div className={`rounded-3xl px-4 py-3 shadow-sm ${isMine ? 'bg-emerald-600 text-white' : 'bg-slate-50 text-slate-700'}`}>
+                                <div className={`text-[10px] font-black uppercase tracking-widest ${isMine ? 'text-emerald-100' : 'text-emerald-600'}`}>
+                                  {isMine ? 'Te' : msg.user_name}
+                                </div>
+                                <div className="font-medium whitespace-pre-wrap">{msg.message}</div>
+                                <div className={`text-[10px] mt-2 ${isMine ? 'text-emerald-100/80' : 'text-slate-400'}`}>
+                                  {msg.created_at ? new Date(msg.created_at).toLocaleString() : ''}
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })
+                    )}
+                  </div>
+                  <form onSubmit={handleSendChatMessage} className="border-t border-slate-100 p-4 flex gap-3">
+                    <input
+                      type="text"
+                      value={chatInput}
+                      onChange={(e) => setChatInput(e.target.value)}
+                      placeholder="Írj üzenetet..."
+                      className="flex-1 bg-slate-50 rounded-2xl px-4 py-3 font-semibold outline-none focus:ring-2 focus:ring-emerald-500"
+                    />
+                    <button
+                      type="submit"
+                      className="px-6 py-3 rounded-2xl bg-emerald-600 text-white font-black uppercase tracking-widest text-xs hover:bg-emerald-700"
+                    >
+                      Küldés
+                    </button>
+                  </form>
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Jobb oldal / Sidebar - 4 oszlop */}
@@ -753,6 +1008,67 @@ const TourDetailsScreen = () => {
           </div>
         </div>
       </div>
+
+      {participantsModalOpen && (
+        <div className="fixed inset-0 z-[180] flex items-center justify-center p-6">
+          <div
+            className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm"
+            onClick={() => setParticipantsModalOpen(false)}
+          ></div>
+          <div className="relative bg-white w-full max-w-lg rounded-[2.5rem] shadow-2xl p-8 max-h-[85vh] overflow-y-auto">
+            <div className="flex items-center justify-between mb-6">
+              <div>
+                <div className="text-[10px] font-black uppercase tracking-widest text-slate-400">Résztvevők</div>
+                <div className="text-2xl font-black text-emerald-950">{tour?.title || 'Túra'}</div>
+              </div>
+              <button
+                onClick={() => setParticipantsModalOpen(false)}
+                className="p-2 rounded-xl hover:bg-slate-100 transition"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            {participantsLoading ? (
+              <div className="text-slate-400 font-semibold">Betöltés...</div>
+            ) : participants.length === 0 ? (
+              <div className="text-slate-400 font-semibold">Nincs résztvevő.</div>
+            ) : (
+              <div className="grid gap-3">
+                {participants.map((p) => {
+                  const initials = p.user_name
+                    ? p.user_name.split(' ').map((part) => part[0]).slice(0, 2).join('')
+                    : '?';
+                  return (
+                    <div key={p.user_id} className="flex items-center justify-between gap-3 bg-slate-50 rounded-2xl p-3">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-full bg-emerald-100 text-emerald-800 font-black text-xs flex items-center justify-center overflow-hidden">
+                          {p.avatar_url ? (
+                            <img
+                              src={`${avatarBase}${p.avatar_url}`}
+                              alt={p.user_name}
+                              className="w-full h-full object-cover"
+                            />
+                          ) : (
+                            initials
+                          )}
+                        </div>
+                        <div className="font-semibold text-slate-700">{p.user_name}</div>
+                      </div>
+                      <button
+                        onClick={() => navigate(`/profile/${p.user_id}`)}
+                        className="px-3 py-2 rounded-xl bg-white text-slate-600 text-xs font-black uppercase tracking-widest hover:bg-emerald-600 hover:text-white transition"
+                      >
+                        Profil megtekintése
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {isCommentsModalOpen && (
         <div className="fixed inset-0 z-[200] flex items-center justify-center p-6">

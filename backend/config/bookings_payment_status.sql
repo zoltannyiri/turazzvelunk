@@ -1,0 +1,3 @@
+ALTER TABLE bookings
+  ADD COLUMN payment_status VARCHAR(20) NOT NULL DEFAULT 'pending',
+  ADD COLUMN paid_at TIMESTAMP NULL;

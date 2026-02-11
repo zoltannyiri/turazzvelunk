@@ -33,8 +33,10 @@ const upload = multer({
 router.post('/register', authController.register);
 router.post('/login', authController.login);
 router.put('/profile', protect, upload.single('avatar'), authController.updateProfile);
+router.get('/me', protect, authController.getMe);
 router.get('/users', protect, adminOnly, authController.getAllUsers);
 router.put('/users/:id/role', protect, adminOnly, authController.updateUserRole);
 router.get('/users/:id', protect, adminOnly, authController.getUserById);
+router.get('/users/:id/public', protect, authController.getPublicUserById);
 
 module.exports = router;

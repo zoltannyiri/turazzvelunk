@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useContext } from 'react';
-import { Link } from 'react-router-dom';
+import React, { useState, useEffect, useContext, useRef } from 'react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { AuthContext } from '../../context/AuthContext';
 import { 
   MapPin, Calendar, CreditCard, ChevronRight, 
@@ -7,7 +7,10 @@ import {
 } from 'lucide-react';
 
 	const ProfileScreen = () => {
-    const { user, logout, updateUser } = useContext(AuthContext);
+    const { user, logout, updateUser, loading: authLoading } = useContext(AuthContext);
+    const location = useLocation();
+    const navigate = useNavigate();
+    const paymentHandledRef = useRef(false);
 		const [bookings, setBookings] = useState([]);
 		const [loading, setLoading] = useState(true);
     const [email, setEmail] = useState(user?.email || '');
@@ -17,8 +20,8 @@ import {
     const [saving, setSaving] = useState(false);
     const [isEditOpen, setIsEditOpen] = useState(false);
 
-  useEffect(() => {
-    fetch(`${import.meta.env.VITE_API_URL}/bookings/my-bookings`, {
+  const fetchMyBookings = () => {
+    return fetch(`${import.meta.env.VITE_API_URL}/bookings/my-bookings`, {
       headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
     })
     .then(res => res.json())
@@ -26,7 +29,65 @@ import {
       setBookings(data);
       setLoading(false);
     });
+  };
+
+  useEffect(() => {
+    fetchMyBookings();
   }, []);
+
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const paymentStatus = params.get('payment');
+    const sessionId = params.get('session_id');
+    if (!paymentStatus || paymentHandledRef.current) return;
+    paymentHandledRef.current = true;
+
+    if (paymentStatus === 'success') {
+      alert('✅ Sikeres fizetés!');
+      if (sessionId) {
+        fetch(`${import.meta.env.VITE_API_URL}/payments/confirm-checkout-session`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
+          },
+          body: JSON.stringify({ session_id: sessionId })
+        }).catch(() => {});
+      }
+      fetchMyBookings();
+      for (let i = 1; i <= 3; i += 1) {
+        setTimeout(() => {
+          fetchMyBookings();
+        }, i * 1500);
+      }
+    }
+    if (paymentStatus === 'cancel') {
+      alert('ℹ️ Fizetés megszakítva.');
+    }
+
+    navigate('/profile', { replace: true });
+  }, [location.search, navigate]);
+
+  const handlePay = async (bookingId) => {
+    try {
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/payments/create-checkout-session`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify({ booking_id: bookingId })
+      });
+      const data = await res.json();
+      if (res.ok && data.url) {
+        window.location.href = data.url;
+        return;
+      }
+      alert(data.message || data.error || 'Hiba történt.');
+    } catch (err) {
+      alert('Hiba történt.');
+    }
+  };
 
   useEffect(() => {
     setEmail(user?.email || '');
@@ -62,6 +123,22 @@ import {
       setSaving(false);
     }
   };
+
+  if (authLoading) {
+    return (
+      <div className="min-h-[60vh] flex items-center justify-center">
+        <div className="animate-spin h-10 w-10 border-4 border-emerald-500 border-t-transparent rounded-full" />
+      </div>
+    );
+  }
+
+  if (!user) {
+    return (
+      <div className="min-h-[60vh] flex items-center justify-center">
+        <div className="text-slate-500 font-bold">Kérlek jelentkezz be.</div>
+      </div>
+    );
+  }
 
   return (
     <div className="bg-slate-50 min-h-screen pb-20">
@@ -182,6 +259,19 @@ import {
                         ) : (
                           <div className="flex items-center gap-2 px-5 py-2 bg-emerald-50 text-emerald-600 rounded-full border border-emerald-100 font-black text-xs uppercase tracking-tighter">
                             <CheckCircle2 size={14} /> Elfogadva
+                          </div>
+                        )}
+                        {booking.status === 'confirmed' && booking.payment_status !== 'paid' && (
+                          <button
+                            onClick={() => handlePay(booking.id)}
+                            className="px-5 py-2 bg-emerald-600 text-white rounded-full font-black text-xs uppercase tracking-widest hover:bg-emerald-700 transition"
+                          >
+                            Fizetés
+                          </button>
+                        )}
+                        {booking.payment_status === 'paid' && (
+                          <div className="text-[10px] font-black uppercase tracking-widest text-emerald-600">
+                            Fizetve
                           </div>
                         )}
                         <Link

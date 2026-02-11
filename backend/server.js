@@ -8,6 +8,8 @@ const authRoutes = require('./routes/authRoutes');
 const bookingRoutes = require('./routes/bookingRoutes');
 const blogRoutes = require('./routes/blogRoutes');
 const tourPostRoutes = require('./routes/tourPostRoutes');
+const paymentRoutes = require('./routes/paymentRoutes');
+const paymentController = require('./controllers/paymentController');
 require('dotenv').config();
 
 // backend diagnosztika
@@ -36,6 +38,7 @@ const dns = require('dns').promises;
 
 const app = express();
 app.use(cors());
+app.post('/api/payments/webhook', express.raw({ type: 'application/json' }), paymentController.handleWebhook);
 app.use(express.json());
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
@@ -45,6 +48,7 @@ app.use('/api/tours', tourRoutes);
 app.use('/api/bookings', bookingRoutes);
 app.use('/api/blog', blogRoutes);
 app.use('/api/tour-posts', tourPostRoutes);
+app.use('/api/payments', paymentRoutes);
 
 const server = http.createServer(app);
 const io = new Server(server, {

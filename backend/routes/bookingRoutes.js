@@ -10,6 +10,7 @@ router.delete('/:id', protect, bookingController.deleteBooking);
 
 router.get('/check/:tourId', protect, bookingController.checkIfBooked);
 router.get('/status/:tourId', protect, bookingController.getBookingStatusByTourId);
+router.get('/tour/:tourId/participants', protect, bookingController.getTourParticipants);
 router.delete('/cancel/:tourId', protect, bookingController.removeBookingByTourId);
 router.post('/:id/cancel-request', protect, bookingController.createCancellationRequest);
 

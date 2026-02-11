@@ -7,7 +7,7 @@ import {
 } from 'lucide-react';
 
 const Navbar = () => {
-  const { user, logout } = useContext(AuthContext);
+  const { user, logout, loading } = useContext(AuthContext);
   const navigate = useNavigate();
   const location = useLocation();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -69,7 +69,9 @@ const Navbar = () => {
 
         {/* USER SECTIONS */}
         <div className="flex items-center gap-3">
-          {user ? (
+          {loading ? (
+            <div className="w-28 h-9 rounded-xl bg-slate-100 animate-pulse" />
+          ) : user ? (
             <div className="flex items-center gap-2">
               <Link to="/profile" className="flex items-center gap-2.5 bg-slate-50 hover:bg-emerald-50 pl-1 pr-3 py-1 rounded-full border border-slate-100 transition-all group">
                 <div className="w-7 h-7 bg-white rounded-full flex items-center justify-center text-emerald-600 text-[10px] font-black shadow-sm group-hover:bg-emerald-600 group-hover:text-white transition-all">

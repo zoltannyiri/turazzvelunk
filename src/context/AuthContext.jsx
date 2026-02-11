@@ -3,12 +3,53 @@ import React, { createContext, useState, useEffect } from 'react';
 export const AuthContext = createContext();
 
 export const AuthProvider = ({ children }) => {
-    const [user, setUser] = useState(null);
+    const [user, setUser] = useState(() => {
+        const savedUser = localStorage.getItem('user');
+        if (!savedUser) return null;
+        try {
+            return JSON.parse(savedUser);
+        } catch (err) {
+            localStorage.removeItem('user');
+            return null;
+        }
+    });
+    const [loading, setLoading] = useState(true);
+
     useEffect(() => {
         const savedUser = localStorage.getItem('user');
         if (savedUser) {
-            setUser(JSON.parse(savedUser));
+            setLoading(false);
+            return;
         }
+
+        const token = localStorage.getItem('token');
+        if (!token) {
+            setLoading(false);
+            return;
+        }
+
+        fetch(`${import.meta.env.VITE_API_URL}/auth/me`, {
+            headers: { Authorization: `Bearer ${token}` }
+        })
+            .then((res) => res.json())
+            .then((data) => {
+                if (data && data.id) {
+                    setUser(data);
+                    localStorage.setItem('user', JSON.stringify(data));
+                } else {
+                    localStorage.removeItem('token');
+                    localStorage.removeItem('user');
+                    setUser(null);
+                }
+            })
+            .catch(() => {
+                localStorage.removeItem('token');
+                localStorage.removeItem('user');
+                setUser(null);
+            })
+            .finally(() => {
+                setLoading(false);
+            });
     }, []);
 
     const login = (userData) => {
@@ -29,7 +70,7 @@ export const AuthProvider = ({ children }) => {
     };
 
     return (
-        <AuthContext.Provider value={{ user, login, logout, updateUser }}>
+        <AuthContext.Provider value={{ user, login, logout, updateUser, loading }}>
             {children}
         </AuthContext.Provider>
     );

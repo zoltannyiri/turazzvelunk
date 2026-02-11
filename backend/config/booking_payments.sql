@@ -1,0 +1,13 @@
+CREATE TABLE IF NOT EXISTS booking_payments (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  stripe_session_id VARCHAR(255) NOT NULL UNIQUE,
+  user_id INT NOT NULL,
+  tour_id INT NOT NULL,
+  amount DECIMAL(10,2) NOT NULL,
+  currency VARCHAR(10) NOT NULL DEFAULT 'huf',
+  status VARCHAR(30) NOT NULL DEFAULT 'pending',
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP NULL,
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+  FOREIGN KEY (tour_id) REFERENCES tours(id) ON DELETE CASCADE
+);

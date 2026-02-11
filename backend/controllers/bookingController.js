@@ -4,6 +4,24 @@ exports.createBooking = async (req, res) => {
     const { tour_id } = req.body;
     const user_id = req.user.id;
     try {
+        const [tourRows] = await db.query(
+            'SELECT max_participants FROM tours WHERE id = ?',
+            [tour_id]
+        );
+        if (tourRows.length === 0) {
+            return res.status(404).json({ message: "Túra nem található." });
+        }
+        const maxParticipants = tourRows[0].max_participants;
+        if (maxParticipants) {
+            const [countRows] = await db.query(
+                'SELECT COUNT(*) AS bookedCount FROM bookings WHERE tour_id = ? AND status <> ?',
+                [tour_id, 'cancelled']
+            );
+            const bookedCount = countRows[0]?.bookedCount || 0;
+            if (bookedCount >= maxParticipants) {
+                return res.status(400).json({ message: "A túra betelt." });
+            }
+        }
         const [existing] = await db.query(
             'SELECT * FROM bookings WHERE user_id = ? AND tour_id = ?', 
             [user_id, tour_id]
@@ -25,7 +43,7 @@ exports.getMyBookings = async (req, res) => {
     const user_id = req.user.id;
     try {
         const [myBookings] = await db.query(
-            `SELECT bookings.id, bookings.status, bookings.booked_at, 
+            `SELECT bookings.id, bookings.status, bookings.booked_at, bookings.payment_status, bookings.paid_at,
                          tours.id AS tour_id, tours.title, tours.location, tours.image_url, tours.price,
                          (
                              SELECT r.status FROM booking_cancel_requests r
@@ -60,6 +78,14 @@ exports.deleteBooking = async (req, res) => {
             return res.status(400).json({ message: "Az elfogadott jelentkezést csak lejelentkezési kérelemmel lehet visszavonni." });
         }
         await db.query('DELETE FROM bookings WHERE id = ?', [bookingId]);
+        const io = req.app.get('io');
+        if (io) {
+            io.to(`tour:${booking[0].tour_id}`).emit('tour-chat-membership', {
+                tourId: booking[0].tour_id,
+                userId: userId,
+                status: 'removed'
+            });
+        }
         res.json({ message: "A jelentkezést sikeresen visszavontad." });
     } catch (err) {
         res.status(500).json({ error: err.message });
@@ -90,7 +116,19 @@ exports.updateBookingStatus = async (req, res) => {
     const { id } = req.params;
     const { status } = req.body;
     try {
+        const [rows] = await db.query('SELECT tour_id, user_id FROM bookings WHERE id = ?', [id]);
+        if (rows.length === 0) {
+            return res.status(404).json({ message: "Foglalás nem található." });
+        }
         await db.query('UPDATE bookings SET status = ? WHERE id = ?', [status, id]);
+        const io = req.app.get('io');
+        if (io) {
+            io.to(`tour:${rows[0].tour_id}`).emit('tour-chat-membership', {
+                tourId: rows[0].tour_id,
+                userId: rows[0].user_id,
+                status: status === 'confirmed' ? 'confirmed' : 'removed'
+            });
+        }
         res.json({ message: "Státusz sikeresen frissítve!" });
     } catch (err) {
         res.status(500).json({ error: err.message });
@@ -110,6 +148,14 @@ exports.removeBookingByTourId = async (req, res) => {
             return res.status(400).json({ message: "Az elfogadott jelentkezést csak lejelentkezési kérelemmel lehet visszavonni." });
         }
         await db.query('DELETE FROM bookings WHERE user_id = ? AND tour_id = ?', [req.user.id, req.params.tourId]);
+        const io = req.app.get('io');
+        if (io) {
+            io.to(`tour:${req.params.tourId}`).emit('tour-chat-membership', {
+                tourId: Number(req.params.tourId),
+                userId: req.user.id,
+                status: 'removed'
+            });
+        }
         res.json({ message: "Sikeresen lejelentkeztél a túráról!" });
     } catch (err) {
         res.status(500).json({ error: err.message });
@@ -151,6 +197,31 @@ exports.getBookingStatusByTourId = async (req, res) => {
             status: rows[0].status,
             cancel_request_status: rows[0].cancel_request_status || null
         });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+};
+
+exports.getTourParticipants = async (req, res) => {
+    const { tourId } = req.params;
+    try {
+        const [allowedRows] = await db.query(
+            'SELECT id FROM bookings WHERE tour_id = ? AND user_id = ? AND status = ?',
+            [tourId, req.user.id, 'confirmed']
+        );
+        if (req.user?.role !== 'admin' && allowedRows.length === 0) {
+            return res.status(403).json({ message: 'Nincs jogosultság.' });
+        }
+
+        const [rows] = await db.query(
+            `SELECT b.user_id, u.name AS user_name, u.avatar_url
+             FROM bookings b
+             JOIN users u ON b.user_id = u.id
+             WHERE b.tour_id = ? AND b.status = ?
+             ORDER BY u.name ASC`,
+            [tourId, 'confirmed']
+        );
+        res.json(rows);
     } catch (err) {
         res.status(500).json({ error: err.message });
     }
@@ -219,6 +290,15 @@ exports.updateCancellationRequestStatus = async (req, res) => {
         );
         if (status === 'approved') {
             await db.query('UPDATE bookings SET status = ? WHERE id = ?', ['cancelled', rows[0].booking_id]);
+            const [bookingRows] = await db.query('SELECT tour_id, user_id FROM bookings WHERE id = ?', [rows[0].booking_id]);
+            const io = req.app.get('io');
+            if (io && bookingRows.length > 0) {
+                io.to(`tour:${bookingRows[0].tour_id}`).emit('tour-chat-membership', {
+                    tourId: bookingRows[0].tour_id,
+                    userId: bookingRows[0].user_id,
+                    status: 'removed'
+                });
+            }
         }
         res.json({ message: "Kérelem frissítve." });
     } catch (err) {
@@ -229,12 +309,20 @@ exports.updateCancellationRequestStatus = async (req, res) => {
 exports.adminDeleteBooking = async (req, res) => {
     const { id } = req.params;
     try {
-        const [rows] = await db.query('SELECT id FROM bookings WHERE id = ?', [id]);
+        const [rows] = await db.query('SELECT id, tour_id, user_id FROM bookings WHERE id = ?', [id]);
         if (rows.length === 0) {
             return res.status(404).json({ message: "Foglalás nem található." });
         }
         await db.query('DELETE FROM booking_cancel_requests WHERE booking_id = ?', [id]);
         await db.query('DELETE FROM bookings WHERE id = ?', [id]);
+        const io = req.app.get('io');
+        if (io) {
+            io.to(`tour:${rows[0].tour_id}`).emit('tour-chat-membership', {
+                tourId: rows[0].tour_id,
+                userId: rows[0].user_id,
+                status: 'removed'
+            });
+        }
         res.json({ message: "Foglalás törölve." });
     } catch (err) {
         res.status(500).json({ error: err.message });

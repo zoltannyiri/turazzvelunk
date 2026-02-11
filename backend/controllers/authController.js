@@ -147,3 +147,34 @@ exports.getUserById = async (req, res) => {
         res.status(500).json({ error: err.message });
     }
 };
+
+exports.getPublicUserById = async (req, res) => {
+    const { id } = req.params;
+    try {
+        const [rows] = await db.query(
+            'SELECT id, name, created_at, avatar_url FROM users WHERE id = ?',
+            [id]
+        );
+        if (rows.length === 0) {
+            return res.status(404).json({ message: 'Felhasználó nem található.' });
+        }
+        res.json(rows[0]);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+};
+
+exports.getMe = async (req, res) => {
+    try {
+        const [rows] = await db.query(
+            'SELECT id, name, email, role, created_at, avatar_url FROM users WHERE id = ?',
+            [req.user.id]
+        );
+        if (rows.length === 0) {
+            return res.status(404).json({ message: 'Felhasználó nem található.' });
+        }
+        res.json(rows[0]);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+};
