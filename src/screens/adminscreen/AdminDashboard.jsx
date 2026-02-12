@@ -7,8 +7,11 @@ import {
   ChevronDown, ChevronUp, Plus, Edit3, Trash2, Calendar, MessageSquareText, XCircle, LayoutGrid, ListChecks, UserCog
 } from 'lucide-react';
 import { toast } from 'react-toastify';
-import DatePicker from "react-datepicker";
+import DatePicker, { registerLocale } from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
+import { hu } from "date-fns/locale";
+
+registerLocale('hu', hu);
 import "../../App.css";
 
 ChartJS.register(ArcElement, Tooltip, Legend);
@@ -26,6 +29,20 @@ const AdminDashboard = () => {
   const [expandedUserId, setExpandedUserId] = useState(null);
   const [tours, setTours] = useState([]);
   const [toursLoading, setToursLoading] = useState(true);
+  const monthNames = [
+    'Január',
+    'Február',
+    'Március',
+    'Április',
+    'Május',
+    'Június',
+    'Július',
+    'Augusztus',
+    'Szeptember',
+    'Október',
+    'November',
+    'December'
+  ];
   
   const initialTourState = {
     title: '', 
@@ -100,6 +117,7 @@ const AdminDashboard = () => {
     fetchUsers();
     fetchTours();
   }, [fetchBookings, fetchCancelRequests, fetchUsers, fetchTours]);
+
 
   const groupedBookings = useMemo(() => {
     return bookings.reduce((acc, booking) => {
@@ -203,6 +221,11 @@ const AdminDashboard = () => {
     };
   }, [toursByCategory]);
 
+  const getBookingStatusLabel = (booking) => {
+    if (booking?.payment_status === 'paid') return 'Fizetve';
+    return booking?.status || '';
+  };
+
   const updateStatus = async (id, newStatus) => {
     const res = await fetch(`${import.meta.env.VITE_API_URL}/bookings/${id}/status`, {
       method: 'PUT',
@@ -279,6 +302,8 @@ const AdminDashboard = () => {
 
   const handleSubmitTour = async (e) => {
     e.preventDefault();
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
     const formatDate = (date) => {
       if (!(date instanceof Date)) return date;
       const year = date.getFullYear();
@@ -302,6 +327,15 @@ const AdminDashboard = () => {
       duration: calculateDuration(newTour.start_date, newTour.end_date),
       max_participants: parseInt(newTour.max_participants)
     };
+
+    if (newTour.start_date instanceof Date) {
+      const startDate = new Date(newTour.start_date);
+      startDate.setHours(0, 0, 0, 0);
+      if (startDate < today) {
+        toast.error('A túra kezdete nem lehet korábbi a mai dátumnál.');
+        return;
+      }
+    }
     
     const url = editingTourId 
       ? `${import.meta.env.VITE_API_URL}/tours/${editingTourId}`
@@ -355,6 +389,18 @@ const AdminDashboard = () => {
     return bookings.reduce((sum, booking) => sum + (booking.price || 0), 0);
   }, [bookings]);
 
+  const pendingCancelCount = useMemo(() => {
+    return cancelRequests.filter(
+      (r) => String(r?.status || 'pending').toLowerCase() === 'pending'
+    ).length;
+  }, [cancelRequests]);
+
+  const pendingBookingCount = useMemo(() => {
+    return bookings.filter(
+      (b) => String(b?.status || '').toLowerCase() === 'pending'
+    ).length;
+  }, [bookings]);
+
   const tabs = [
     { id: 'overview', label: 'Áttekintés', icon: LayoutGrid },
     { id: 'tours', label: 'Túrák', icon: Calendar },
@@ -388,7 +434,7 @@ const AdminDashboard = () => {
               })}
             </nav>
             <div className="mt-8 p-4 rounded-2xl bg-emerald-50 text-emerald-900 text-xs font-bold">
-              Napi státusz: {cancelRequests.filter(r => r.status === 'pending').length} nyitott kérelem
+              Napi státusz: {pendingBookingCount} nyitott kérelem
             </div>
           </aside>
 
@@ -629,7 +675,7 @@ const AdminDashboard = () => {
                                               <div className="text-xs text-slate-400">{p.email}</div>
                                             </td>
                                             <td className="px-8 py-5">
-                                              <span className="text-xs font-black uppercase text-slate-400">{p.status}</span>
+                                              <span className="text-xs font-black uppercase text-slate-400">{getBookingStatusLabel(p)}</span>
                                             </td>
                                             <td className="px-8 py-5 text-right">
                                               <div className="flex items-center justify-end gap-2">
@@ -699,7 +745,7 @@ const AdminDashboard = () => {
                             <div className="text-xs text-slate-400">{b.email}</div>
                           </td>
                           <td className="py-4">
-                            <span className="text-[10px] font-black uppercase text-slate-500">{b.status}</span>
+                            <span className="text-[10px] font-black uppercase text-slate-500">{getBookingStatusLabel(b)}</span>
                           </td>
                           <td className="py-4 text-right">
                             <div className="flex items-center justify-end gap-2">
@@ -735,7 +781,7 @@ const AdminDashboard = () => {
                     <div className="text-xs text-slate-400 font-bold uppercase tracking-widest">Teljes lista</div>
                   </div>
                   <div className="px-4 py-2 rounded-full bg-emerald-50 text-emerald-700 text-xs font-black uppercase tracking-widest">
-                    {cancelRequests.filter(r => r.status === 'pending').length} pending
+                    {pendingCancelCount} pending
                   </div>
                 </div>
                 <div className="px-8 pb-8">
@@ -828,20 +874,22 @@ const AdminDashboard = () => {
                             </div>
                             {isExpanded && (
                               <div className="mt-4 border-t border-slate-100 pt-4 space-y-4">
-                                <div className="flex flex-wrap items-center gap-3">
-                                  <div className="text-[10px] font-black uppercase tracking-widest text-slate-400">Szerepkör</div>
-                                  <div className="text-xs font-black uppercase tracking-widest text-emerald-600">{user.role}</div>
+                                <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+                                  <div className="flex flex-wrap items-center gap-3">
+                                    <div className="text-[10px] font-black uppercase tracking-widest text-slate-400">Szerepkör</div>
+                                    <div className="text-xs font-black uppercase tracking-widest text-emerald-600">{user.role}</div>
+                                    <button
+                                      onClick={() => openUserProfile(user.id)}
+                                      className="px-4 py-2 rounded-xl bg-emerald-50 text-emerald-700 text-xs font-black uppercase tracking-widest hover:bg-emerald-100 transition"
+                                    >
+                                      Profil megnyitása
+                                    </button>
+                                  </div>
                                   <button
                                     onClick={() => handleRoleUpdate(user.id, user.role === 'admin' ? 'user' : 'admin')}
-                                    className="px-4 py-2 rounded-xl bg-slate-900 text-white text-xs font-black uppercase tracking-widest hover:bg-emerald-600 transition"
+                                    className="px-4 py-2 rounded-xl bg-slate-900 text-white text-xs font-black uppercase tracking-widest hover:bg-emerald-600 transition self-start md:self-auto"
                                   >
                                     {user.role === 'admin' ? 'Admin elvétel' : 'Admin jog'}
-                                  </button>
-                                  <button
-                                    onClick={() => openUserProfile(user.id)}
-                                    className="px-4 py-2 rounded-xl bg-emerald-50 text-emerald-700 text-xs font-black uppercase tracking-widest hover:bg-emerald-100 transition"
-                                  >
-                                    Profil megnyitása
                                   </button>
                                 </div>
                                 {user.bookings.length > 0 ? (
@@ -851,10 +899,15 @@ const AdminDashboard = () => {
                                       {user.bookings.map((booking) => (
                                         <div key={booking.id} className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 bg-white rounded-2xl p-4">
                                           <div>
-                                            <div className="font-black text-emerald-950 text-sm">{booking.title}</div>
+                                            <Link
+                                              to={`/tours/${booking.tour_id}`}
+                                              className="font-black text-emerald-950 text-sm hover:text-emerald-600 transition"
+                                            >
+                                              {booking.title}
+                                            </Link>
                                             <div className="text-xs text-slate-400">{booking.location}</div>
                                           </div>
-                                          <div className="text-[10px] font-black uppercase text-slate-400">{booking.status}</div>
+                                          <div className="text-[10px] font-black uppercase text-slate-400">{getBookingStatusLabel(booking)}</div>
                                           <button
                                             onClick={() => handleAdminRemoveBooking(booking.id)}
                                             className="px-4 py-2 rounded-xl bg-red-500/10 text-red-500 text-xs font-black uppercase tracking-widest hover:bg-red-500 hover:text-white"
@@ -942,6 +995,7 @@ const AdminDashboard = () => {
                     selectsRange={true}
                     startDate={newTour.start_date instanceof Date ? newTour.start_date : null}
                     endDate={newTour.end_date instanceof Date ? newTour.end_date : null}
+                    minDate={new Date()}
                     onChange={(update) => {
                       const [start, end] = update;
                       setNewTour({
@@ -952,8 +1006,33 @@ const AdminDashboard = () => {
                     }}
                     className="w-full p-4 bg-slate-50 border-none rounded-2xl focus:ring-2 focus:ring-emerald-500 transition font-bold text-emerald-900"
                     dateFormat="yyyy. MM. dd."
+                    locale="hu"
+                    calendarStartDay={1}
                     placeholderText="Válaszd ki az intervallumot..."
                     isClearable={true}
+                    renderCustomHeader={({ date, decreaseMonth, increaseMonth, prevMonthButtonDisabled, nextMonthButtonDisabled }) => (
+                      <div className="flex items-center justify-between px-2 pb-2">
+                        <button
+                          type="button"
+                          onClick={decreaseMonth}
+                          disabled={prevMonthButtonDisabled}
+                          className="p-2 rounded-lg hover:bg-slate-100 disabled:opacity-40"
+                        >
+                          ‹
+                        </button>
+                        <div className="font-black text-slate-900">
+                          {date.getFullYear()}. {monthNames[date.getMonth()]}
+                        </div>
+                        <button
+                          type="button"
+                          onClick={increaseMonth}
+                          disabled={nextMonthButtonDisabled}
+                          className="p-2 rounded-lg hover:bg-slate-100 disabled:opacity-40"
+                        >
+                          ›
+                        </button>
+                      </div>
+                    )}
                   />
                   <Calendar className="absolute right-4 top-4 text-emerald-500/50 pointer-events-none" size={20} />
                 </div>

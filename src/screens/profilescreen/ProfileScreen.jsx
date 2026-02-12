@@ -11,6 +11,7 @@ import {
     const location = useLocation();
     const navigate = useNavigate();
     const paymentHandledRef = useRef(false);
+    const paymentTargetRef = useRef(null);
 		const [bookings, setBookings] = useState([]);
 		const [loading, setLoading] = useState(true);
     const [email, setEmail] = useState(user?.email || '');
@@ -19,6 +20,7 @@ import {
     const [avatarFile, setAvatarFile] = useState(null);
     const [saving, setSaving] = useState(false);
     const [isEditOpen, setIsEditOpen] = useState(false);
+    const [paymentProcessing, setPaymentProcessing] = useState(false);
 
   const fetchMyBookings = () => {
     return fetch(`${import.meta.env.VITE_API_URL}/bookings/my-bookings`, {
@@ -28,6 +30,19 @@ import {
     .then(data => {
       setBookings(data);
       setLoading(false);
+
+      if (paymentProcessing) {
+        const targetId = paymentTargetRef.current;
+        const paid = Array.isArray(data)
+          ? targetId
+            ? data.some((b) => Number(b.id) === Number(targetId) && b.payment_status === 'paid')
+            : data.some((b) => b.payment_status === 'paid')
+          : false;
+        if (paid) {
+          setPaymentProcessing(false);
+          paymentTargetRef.current = null;
+        }
+      }
     });
   };
 
@@ -43,7 +58,7 @@ import {
     paymentHandledRef.current = true;
 
     if (paymentStatus === 'success') {
-      alert('✅ Sikeres fizetés!');
+      setPaymentProcessing(true);
       if (sessionId) {
         fetch(`${import.meta.env.VITE_API_URL}/payments/confirm-checkout-session`, {
           method: 'POST',
@@ -52,7 +67,14 @@ import {
             'Authorization': `Bearer ${localStorage.getItem('token')}`
           },
           body: JSON.stringify({ session_id: sessionId })
-        }).catch(() => {});
+        })
+          .then((res) => res.json())
+          .then((data) => {
+            if (data?.booking_id) {
+              paymentTargetRef.current = data.booking_id;
+            }
+          })
+          .catch(() => {});
       }
       fetchMyBookings();
       for (let i = 1; i <= 3; i += 1) {
@@ -62,11 +84,23 @@ import {
       }
     }
     if (paymentStatus === 'cancel') {
-      alert('ℹ️ Fizetés megszakítva.');
+      setPaymentProcessing(false);
     }
 
     navigate('/profile', { replace: true });
   }, [location.search, navigate]);
+
+  useEffect(() => {
+    if (!paymentProcessing) return;
+    const token = localStorage.getItem('token');
+    if (!token) return;
+
+    const interval = setInterval(() => {
+      fetchMyBookings();
+    }, 2000);
+
+    return () => clearInterval(interval);
+  }, [paymentProcessing]);
 
   const handlePay = async (bookingId) => {
     try {
@@ -124,10 +158,22 @@ import {
     }
   };
 
-  if (authLoading) {
+  if (authLoading && !paymentProcessing) {
     return (
       <div className="min-h-[60vh] flex items-center justify-center">
         <div className="animate-spin h-10 w-10 border-4 border-emerald-500 border-t-transparent rounded-full" />
+      </div>
+    );
+  }
+
+  if (!user && paymentProcessing) {
+    return (
+      <div className="min-h-[60vh] flex items-center justify-center px-6">
+        <div className="bg-white rounded-3xl shadow-xl border border-emerald-50 p-8 max-w-md text-center">
+          <div className="mx-auto mb-4 h-12 w-12 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin" />
+          <h3 className="text-xl font-black text-emerald-950">Bejelentkezés visszaállítása</h3>
+          <p className="text-slate-500 mt-2">Kérlek várj, ez néhány másodpercet vehet igénybe.</p>
+        </div>
       </div>
     );
   }
@@ -142,6 +188,15 @@ import {
 
   return (
     <div className="bg-slate-50 min-h-screen pb-20">
+      {paymentProcessing && (
+        <div className="fixed inset-0 z-[200] bg-black/40 flex items-center justify-center px-6">
+          <div className="bg-white rounded-3xl shadow-2xl border border-emerald-50 p-8 max-w-md text-center">
+            <div className="mx-auto mb-4 h-12 w-12 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin" />
+            <h3 className="text-xl font-black text-emerald-950">Fizetés feldolgozása</h3>
+            <p className="text-slate-500 mt-2">Kérlek várj, amíg a fizetés státusza frissül.</p>
+          </div>
+        </div>
+      )}
       <div className="relative bg-emerald-950 pt-24 pb-48 px-6 overflow-hidden">
         <div className="absolute top-0 left-0 w-full h-full opacity-10 pointer-events-none">
           <div className="absolute top-10 left-10 w-64 h-64 bg-emerald-400 rounded-full blur-3xl"></div>

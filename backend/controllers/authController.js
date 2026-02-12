@@ -4,6 +4,9 @@ const jwt = require('jsonwebtoken');
 
 exports.register = async (req, res) => {
     const { name, email, password } = req.body;
+    if (!name || !name.trim()) {
+        return res.status(400).json({ message: "A név megadása kötelező!" });
+    }
     try {
         const [existingUser] = await db.query('SELECT * FROM users WHERE email = ?', [email]);
         if (existingUser.length > 0) return res.status(400).json({ message: "Ez az email már foglalt!" });

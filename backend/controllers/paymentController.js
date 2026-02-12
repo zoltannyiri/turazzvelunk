@@ -162,10 +162,10 @@ exports.confirmCheckoutSession = async (req, res) => {
                 ['paid', session_id]
             );
 
-            return res.json({ status: 'paid' });
+            return res.json({ status: 'paid', booking_id: bookingId || null });
         }
 
-        return res.json({ status: session.payment_status || 'unpaid' });
+        return res.json({ status: session.payment_status || 'unpaid', booking_id: session?.metadata?.booking_id || null });
     } catch (err) {
         return res.status(500).json({ message: 'Session ellenőrzése sikertelen.' });
     }

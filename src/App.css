@@ -19,3 +19,7 @@
 .react-datepicker__day--keyboard-selected {
   background-color: #10b981 !important;
 }
+
+.react-datepicker-popper {
+  z-index: 9999 !important;
+}

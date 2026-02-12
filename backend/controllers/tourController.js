@@ -2,7 +2,16 @@ const db = require('../config/db');
 
 exports.getAllTours = async (req, res) => {
     try {
-        const [rows] = await db.query('SELECT * FROM tours');
+        const [rows] = await db.query(`
+            SELECT t.*, COALESCE(b.booked_count, 0) AS booked_count
+            FROM tours t
+            LEFT JOIN (
+                SELECT tour_id, COUNT(*) AS booked_count
+                FROM bookings
+                WHERE status <> 'cancelled'
+                GROUP BY tour_id
+            ) b ON b.tour_id = t.id
+        `);
         console.log("Adatok lekérve:", rows.length, "db túra");
         res.json(rows);
     } catch (err) {
@@ -15,7 +24,7 @@ exports.getTourById = async (req, res) => {
     try {
         const [rows] = await db.query(`
             SELECT t.*, 
-            (SELECT COUNT(*) FROM bookings WHERE tour_id = t.id) as booked_count 
+            (SELECT COUNT(*) FROM bookings WHERE tour_id = t.id AND status <> 'cancelled') as booked_count 
             FROM tours t 
             WHERE t.id = ?
         `, [req.params.id]);
@@ -34,6 +43,15 @@ exports.getTourById = async (req, res) => {
 exports.createTour = async (req, res) => {
     const { title, location, description, price, duration, difficulty, difficulty_level, category, subcategory, image_url, start_date, end_date, max_participants } = req.body;
     const durationValue = duration === "" || duration === null || duration === undefined ? null : Number(duration);
+    if (start_date) {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const startDate = new Date(start_date);
+        startDate.setHours(0, 0, 0, 0);
+        if (startDate < today) {
+            return res.status(400).json({ message: "A túra kezdete nem lehet korábbi a mai dátumnál." });
+        }
+    }
     try {
         await db.query(
             'INSERT INTO tours (title, location, description, price, duration, difficulty, difficulty_level, category, subcategory, image_url, start_date, end_date, max_participants) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
@@ -52,6 +70,15 @@ exports.updateTour = async (req, res) => {
         return res.status(400).json({ message: "Nincs módosítandó adat!" });
     }
     try {
+        if (updates.start_date) {
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            const startDate = new Date(updates.start_date);
+            startDate.setHours(0, 0, 0, 0);
+            if (startDate < today) {
+                return res.status(400).json({ message: "A túra kezdete nem lehet korábbi a mai dátumnál." });
+            }
+        }
         if ("duration" in updates) {
             let d = updates.duration;
             d = (d === "" || d === null || d === undefined) ? null : Number(d);

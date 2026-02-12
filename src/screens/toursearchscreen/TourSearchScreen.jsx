@@ -1,11 +1,15 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import { 
   Search, MapPin, Calendar, DollarSign, 
   Zap, Clock, ArrowRight, SlidersHorizontal, X 
 } from 'lucide-react';
-import DatePicker from "react-datepicker";
+import DatePicker, { registerLocale } from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
+import { hu } from "date-fns/locale";
+
+registerLocale('hu', hu);
 
 const TourSearchScreen = () => {
   const navigate = useNavigate();
@@ -19,6 +23,22 @@ const TourSearchScreen = () => {
   const [maxDifficulty, setMaxDifficulty] = useState("");
   const [dateRange, setDateRange] = useState([null, null]);
   const [startDate, endDate] = dateRange;
+
+  const popperContainer = ({ children }) => createPortal(children, document.body);
+  const monthNames = [
+    'Január',
+    'Február',
+    'Március',
+    'Április',
+    'Május',
+    'Június',
+    'Július',
+    'Augusztus',
+    'Szeptember',
+    'Október',
+    'November',
+    'December'
+  ];
 
   useEffect(() => {
     fetch(`${import.meta.env.VITE_API_URL}/tours`)
@@ -119,6 +139,32 @@ const TourSearchScreen = () => {
                 onChange={(update) => setDateRange(update)}
                 placeholderText="Mikor indulnál?"
                 className="w-full bg-black/20 border-none rounded-3xl py-4 pl-14 text-white placeholder:text-slate-400 text-sm font-bold focus:ring-2 focus:ring-emerald-500/50 transition-all outline-none shadow-inner"
+                locale="hu"
+                calendarStartDay={1}
+                popperContainer={popperContainer}
+                renderCustomHeader={({ date, decreaseMonth, increaseMonth, prevMonthButtonDisabled, nextMonthButtonDisabled }) => (
+                  <div className="flex items-center justify-between px-2 pb-2">
+                    <button
+                      type="button"
+                      onClick={decreaseMonth}
+                      disabled={prevMonthButtonDisabled}
+                      className="p-2 rounded-lg hover:bg-slate-100 disabled:opacity-40"
+                    >
+                      ‹
+                    </button>
+                    <div className="font-black text-slate-900">
+                      {date.getFullYear()}. {monthNames[date.getMonth()]}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={increaseMonth}
+                      disabled={nextMonthButtonDisabled}
+                      className="p-2 rounded-lg hover:bg-slate-100 disabled:opacity-40"
+                    >
+                      ›
+                    </button>
+                  </div>
+                )}
               />
             </div>
 

@@ -184,6 +184,9 @@ const TourDetailsScreen = () => {
   }, [activeTab, id]);
 
   const isChatAllowed = user?.role === 'admin' || bookingStatus === 'confirmed';
+  const isTourFull = tour?.max_participants
+    ? Number(tour.booked_count || 0) >= Number(tour.max_participants)
+    : false;
   const avatarBase = (import.meta.env.VITE_API_URL || '').replace(/\/api\/?$/, '');
 
   useEffect(() => {
@@ -990,13 +993,16 @@ const TourDetailsScreen = () => {
                 ) : (
                   <button 
                     onClick={handleBooking}
+                    disabled={isTourFull || !user}
                     className={`w-full py-4 rounded-2xl font-black text-sm transition-all flex items-center justify-center gap-2 uppercase tracking-widest ${
-                      user 
-                        ? 'bg-emerald-500 hover:bg-emerald-400 text-slate-900 shadow-lg shadow-emerald-500/20' 
-                        : 'bg-slate-800 text-slate-500 cursor-not-allowed'
+                      isTourFull
+                        ? 'bg-slate-800 text-slate-500 cursor-not-allowed'
+                        : user 
+                          ? 'bg-emerald-500 hover:bg-emerald-400 text-slate-900 shadow-lg shadow-emerald-500/20' 
+                          : 'bg-slate-800 text-slate-500 cursor-not-allowed'
                     }`}
                   >
-                    {user ? 'Jelentkezem most' : 'Bejelentkezés szükséges'}
+                    {isTourFull ? 'A túra betelt' : user ? 'Jelentkezem most' : 'Bejelentkezés szükséges'}
                   </button>
                 )}
               </div>
