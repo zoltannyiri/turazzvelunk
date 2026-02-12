@@ -1,3 +1,4 @@
+require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const http = require('http');
@@ -11,7 +12,7 @@ const tourPostRoutes = require('./routes/tourPostRoutes');
 const paymentRoutes = require('./routes/paymentRoutes');
 const equipmentRoutes = require('./routes/equipmentRoutes');
 const paymentController = require('./controllers/paymentController');
-require('dotenv').config();
+
 
 // backend diagnosztika
 const dns = require('dns').promises;
