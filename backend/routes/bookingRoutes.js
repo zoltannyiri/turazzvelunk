@@ -7,6 +7,7 @@ router.post('/', protect, bookingController.createBooking);
 
 router.get('/my-bookings', protect, bookingController.getMyBookings);
 router.delete('/:id', protect, bookingController.deleteBooking);
+router.put('/:id/equipment', protect, bookingController.updateBookingEquipment);
 
 router.get('/check/:tourId', protect, bookingController.checkIfBooked);
 router.get('/status/:tourId', protect, bookingController.getBookingStatusByTourId);

@@ -23,7 +23,7 @@ exports.createCheckoutSession = async (req, res) => {
 
     try {
         const [bookingRows] = await db.query(
-            `SELECT b.id, b.status, b.payment_status, b.tour_id, t.title, t.price
+            `SELECT b.id, b.status, b.payment_status, b.tour_id, b.total_price, t.title, t.price
              FROM bookings b
              JOIN tours t ON b.tour_id = t.id
              WHERE b.id = ? AND b.user_id = ?`,
@@ -40,6 +40,8 @@ exports.createCheckoutSession = async (req, res) => {
             return res.status(400).json({ message: 'A foglalás már ki van fizetve.' });
         }
 
+        const amountToPay = Number(booking.total_price || booking.price || 0);
+
         const session = await stripe.checkout.sessions.create({
             mode: 'payment',
             payment_method_types: ['card'],
@@ -50,7 +52,7 @@ exports.createCheckoutSession = async (req, res) => {
                     quantity: 1,
                     price_data: {
                         currency: 'huf',
-                        unit_amount: Math.round(Number(booking.price) * 100),
+                        unit_amount: Math.round(amountToPay * 100),
                         product_data: {
                             name: booking.title
                         }
@@ -66,7 +68,7 @@ exports.createCheckoutSession = async (req, res) => {
 
         await db.query(
             'INSERT INTO booking_payments (stripe_session_id, user_id, tour_id, booking_id, amount, currency, status) VALUES (?, ?, ?, ?, ?, ?, ?)',
-            [session.id, user_id, booking.tour_id, booking.id, booking.price, 'huf', 'pending']
+            [session.id, user_id, booking.tour_id, booking.id, amountToPay, 'huf', 'pending']
         );
 
         res.json({ url: session.url });

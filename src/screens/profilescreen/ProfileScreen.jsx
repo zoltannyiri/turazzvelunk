@@ -103,6 +103,8 @@ import {
   }, [paymentProcessing]);
 
   const handlePay = async (bookingId) => {
+    const ok = window.confirm('Fizetés után az eszközöket már nem lehet visszamondani. Folytatod a fizetést?');
+    if (!ok) return;
     try {
       const res = await fetch(`${import.meta.env.VITE_API_URL}/payments/create-checkout-session`, {
         method: 'POST',
@@ -302,7 +304,7 @@ import {
                         </h3>
                         <div className="flex gap-6 text-gray-400 font-bold text-xs uppercase pt-2">
                           <span className="flex items-center gap-1"><Calendar size={14} /> {new Date(booking.booked_at).toLocaleDateString()}</span>
-                          <span className="flex items-center gap-1"><CreditCard size={14} /> {booking.price.toLocaleString()} Ft</span>
+                          <span className="flex items-center gap-1"><CreditCard size={14} /> {(booking.total_price ?? booking.price).toLocaleString()} Ft</span>
                         </div>
                       </div>
 

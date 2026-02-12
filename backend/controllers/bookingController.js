@@ -1,17 +1,19 @@
 const db = require('../config/db');
 
 exports.createBooking = async (req, res) => {
-    const { tour_id } = req.body;
+    const { tour_id, equipment_ids } = req.body;
     const user_id = req.user.id;
     try {
         const [tourRows] = await db.query(
-            'SELECT max_participants FROM tours WHERE id = ?',
+            `SELECT id, max_participants, price, start_date, end_date
+             FROM tours WHERE id = ?`,
             [tour_id]
         );
         if (tourRows.length === 0) {
             return res.status(404).json({ message: "Túra nem található." });
         }
-        const maxParticipants = tourRows[0].max_participants;
+        const tour = tourRows[0];
+        const maxParticipants = tour.max_participants;
         if (maxParticipants) {
             const [countRows] = await db.query(
                 'SELECT COUNT(*) AS bookedCount FROM bookings WHERE tour_id = ? AND status <> ?',
@@ -29,10 +31,80 @@ exports.createBooking = async (req, res) => {
         if (existing.length > 0) {
             return res.status(400).json({ message: "Erre a túrára már jelentkeztél!" });
         }
-        await db.query(
-            'INSERT INTO bookings (user_id, tour_id) VALUES (?, ?)', 
-            [user_id, tour_id]
+        const selectedEquipmentIds = Array.isArray(equipment_ids)
+            ? [...new Set(equipment_ids.map((id) => Number(id)).filter(Boolean))]
+            : [];
+
+        let extraTotal = 0;
+        if (selectedEquipmentIds.length > 0) {
+            const [equipRows] = await db.query(
+                `SELECT e.id, e.total_quantity,
+                        COALESCE(tp.price, 0) AS price,
+                        COALESCE(reserved.qty, 0) AS reserved_quantity
+                 FROM equipment e
+                 LEFT JOIN tour_equipment_prices tp
+                   ON tp.equipment_id = e.id AND tp.tour_id = ?
+                 LEFT JOIN (
+                   SELECT be.equipment_id, SUM(be.quantity) AS qty
+                   FROM booking_equipments be
+                   JOIN bookings b ON b.id = be.booking_id
+                   JOIN tours t ON t.id = b.tour_id
+                   WHERE b.status <> 'cancelled'
+                     AND t.start_date <= ? AND t.end_date >= ?
+                   GROUP BY be.equipment_id
+                 ) reserved ON reserved.equipment_id = e.id
+                 WHERE e.id IN (${selectedEquipmentIds.map(() => '?').join(',')})`,
+                [tour_id, tour.end_date, tour.start_date, ...selectedEquipmentIds]
+            );
+
+            for (const row of equipRows) {
+                const available = Math.max(0, Number(row.total_quantity || 0) - Number(row.reserved_quantity || 0));
+                if (available <= 0) {
+                    return res.status(400).json({ message: `A(z) ${row.id} eszköz elfogyott erre az időszakra.` });
+                }
+                extraTotal += Number(row.price || 0);
+            }
+        }
+
+        const basePrice = Number(tour.price || 0);
+        const totalPrice = basePrice + extraTotal;
+
+        const [bookingResult] = await db.query(
+            `INSERT INTO bookings (
+                user_id, tour_id,
+                extra_price, total_price, refund_amount, refund_status
+            ) VALUES (?, ?, ?, ?, ?, ?)`,
+            [
+                user_id,
+                tour_id,
+                extraTotal,
+                totalPrice,
+                0,
+                'none'
+            ]
         );
+
+        const bookingId = bookingResult.insertId;
+
+        if (selectedEquipmentIds.length > 0) {
+            const [priceRows] = await db.query(
+                `SELECT equipment_id, price FROM tour_equipment_prices WHERE tour_id = ? AND equipment_id IN (${selectedEquipmentIds.map(() => '?').join(',')})`,
+                [tour_id, ...selectedEquipmentIds]
+            );
+            const priceMap = priceRows.reduce((acc, row) => {
+                acc[row.equipment_id] = Number(row.price || 0);
+                return acc;
+            }, {});
+
+            await Promise.all(
+                selectedEquipmentIds.map((equipmentId) =>
+                    db.query(
+                        'INSERT INTO booking_equipments (booking_id, equipment_id, quantity, price) VALUES (?, ?, ?, ?)',
+                        [bookingId, equipmentId, 1, priceMap[equipmentId] || 0]
+                    )
+                )
+            );
+        }
         res.status(201).json({ message: "Sikeres jelentkezés a túrára!" });
     } catch (err) {
         res.status(500).json({ error: err.message });
@@ -44,6 +116,7 @@ exports.getMyBookings = async (req, res) => {
     try {
         const [myBookings] = await db.query(
             `SELECT bookings.id, bookings.status, bookings.booked_at, bookings.payment_status, bookings.paid_at,
+                         bookings.extra_price, bookings.total_price, bookings.refund_amount, bookings.refund_status,
                          tours.id AS tour_id, tours.title, tours.location, tours.image_url, tours.price,
                          (
                              SELECT r.status FROM booking_cancel_requests r
@@ -176,8 +249,10 @@ exports.checkIfBooked = async (req, res) => {
 
 exports.getBookingStatusByTourId = async (req, res) => {
     try {
-        const [rows] = await db.query(
-            `SELECT b.id, b.status,
+                const [rows] = await db.query(
+                        `SELECT b.id, b.status, b.payment_status,
+                                        b.extra_price, b.total_price,
+                                        b.refund_amount, b.refund_status,
                 (
                   SELECT r.status FROM booking_cancel_requests r
                   WHERE r.booking_id = b.id
@@ -191,11 +266,25 @@ exports.getBookingStatusByTourId = async (req, res) => {
         if (rows.length === 0) {
             return res.json({ isBooked: false });
         }
+        const bookingId = rows[0].id;
+        const [equipRows] = await db.query(
+            `SELECT be.equipment_id, be.quantity
+             FROM booking_equipments be
+             WHERE be.booking_id = ?`,
+            [bookingId]
+        );
+
         res.json({
             isBooked: true,
-            bookingId: rows[0].id,
+            bookingId,
             status: rows[0].status,
-            cancel_request_status: rows[0].cancel_request_status || null
+            payment_status: rows[0].payment_status || null,
+            cancel_request_status: rows[0].cancel_request_status || null,
+            extra_price: rows[0].extra_price ?? 0,
+            total_price: rows[0].total_price ?? 0,
+            refund_amount: rows[0].refund_amount ?? 0,
+            refund_status: rows[0].refund_status || 'none',
+            equipment_ids: equipRows.map((row) => row.equipment_id)
         });
     } catch (err) {
         res.status(500).json({ error: err.message });
@@ -360,6 +449,111 @@ exports.getBookingsByUserId = async (req, res) => {
             [userId]
         );
         res.json(rows);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+};
+
+exports.updateBookingEquipment = async (req, res) => {
+    const bookingId = req.params.id;
+    const userId = req.user.id;
+    const equipmentIds = Array.isArray(req.body?.equipment_ids)
+        ? [...new Set(req.body.equipment_ids.map((id) => Number(id)).filter(Boolean))]
+        : [];
+
+    try {
+        const [rows] = await db.query(
+            `SELECT b.id, b.user_id, b.status, b.payment_status, b.total_price,
+                    b.tour_id, t.price, t.start_date, t.end_date
+             FROM bookings b
+             JOIN tours t ON b.tour_id = t.id
+             WHERE b.id = ? AND b.user_id = ?`,
+            [bookingId, userId]
+        );
+
+        if (rows.length === 0) {
+            return res.status(404).json({ message: 'Foglalás nem található.' });
+        }
+
+        const booking = rows[0];
+        if (booking.status === 'cancelled') {
+            return res.status(400).json({ message: 'A foglalás törölt.' });
+        }
+        if (booking.payment_status === 'paid') {
+            return res.status(400).json({ message: 'Fizetés után az eszközök nem módosíthatók.' });
+        }
+
+        let extraTotal = 0;
+        if (equipmentIds.length > 0) {
+                        const [equipRows] = await db.query(
+                                `SELECT e.id, e.total_quantity,
+                                                COALESCE(tp.price, 0) AS price,
+                                                COALESCE(reserved.qty, 0) AS reserved_quantity
+                                 FROM equipment e
+                                 LEFT JOIN tour_equipment_prices tp
+                                     ON tp.equipment_id = e.id AND tp.tour_id = ?
+                                 LEFT JOIN (
+                                     SELECT be.equipment_id, SUM(be.quantity) AS qty
+                                     FROM booking_equipments be
+                                     JOIN bookings b ON b.id = be.booking_id
+                                     JOIN tours t ON t.id = b.tour_id
+                                     WHERE b.status <> 'cancelled'
+                                         AND b.id <> ?
+                                         AND t.start_date <= ? AND t.end_date >= ?
+                                     GROUP BY be.equipment_id
+                                 ) reserved ON reserved.equipment_id = e.id
+                                 WHERE e.id IN (${equipmentIds.map(() => '?').join(',')})`,
+                                [booking.tour_id, bookingId, booking.end_date, booking.start_date, ...equipmentIds]
+                        );
+
+            for (const row of equipRows) {
+                const available = Math.max(0, Number(row.total_quantity || 0) - Number(row.reserved_quantity || 0));
+                if (available <= 0) {
+                    return res.status(400).json({ message: `A(z) ${row.id} eszköz elfogyott erre az időszakra.` });
+                }
+                extraTotal += Number(row.price || 0);
+            }
+        }
+
+        const basePrice = Number(booking.price || 0);
+        const newTotal = basePrice + extraTotal;
+
+        await db.query('DELETE FROM booking_equipments WHERE booking_id = ?', [bookingId]);
+
+        if (equipmentIds.length > 0) {
+            const [priceRows] = await db.query(
+                `SELECT equipment_id, price FROM tour_equipment_prices WHERE tour_id = ? AND equipment_id IN (${equipmentIds.map(() => '?').join(',')})`,
+                [booking.tour_id, ...equipmentIds]
+            );
+            const priceMap = priceRows.reduce((acc, row) => {
+                acc[row.equipment_id] = Number(row.price || 0);
+                return acc;
+            }, {});
+            await Promise.all(
+                equipmentIds.map((equipmentId) =>
+                    db.query(
+                        'INSERT INTO booking_equipments (booking_id, equipment_id, quantity, price) VALUES (?, ?, ?, ?)',
+                        [bookingId, equipmentId, 1, priceMap[equipmentId] || 0]
+                    )
+                )
+            );
+        }
+
+        await db.query(
+            `UPDATE bookings SET
+                extra_price = ?,
+                total_price = ?,
+                refund_amount = 0,
+                refund_status = 'none'
+             WHERE id = ?`,
+            [extraTotal, newTotal, bookingId]
+        );
+
+        res.json({
+            message: 'Eszközök frissítve.',
+            extra_price: extraTotal,
+            total_price: newTotal
+        });
     } catch (err) {
         res.status(500).json({ error: err.message });
     }

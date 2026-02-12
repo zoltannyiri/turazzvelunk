@@ -1,0 +1,12 @@
+-- Optional cleanup if you no longer want fixed transport columns
+-- ALTER TABLE tours
+--   DROP COLUMN minibus_price,
+--   DROP COLUMN trailer_2_price,
+--   DROP COLUMN trailer_4_price,
+--   DROP COLUMN car_trailer_price;
+--
+-- ALTER TABLE bookings
+--   DROP COLUMN transport_minibus,
+--   DROP COLUMN transport_trailer_2,
+--   DROP COLUMN transport_trailer_4,
+--   DROP COLUMN transport_car_trailer;

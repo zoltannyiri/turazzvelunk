@@ -9,6 +9,7 @@ const bookingRoutes = require('./routes/bookingRoutes');
 const blogRoutes = require('./routes/blogRoutes');
 const tourPostRoutes = require('./routes/tourPostRoutes');
 const paymentRoutes = require('./routes/paymentRoutes');
+const equipmentRoutes = require('./routes/equipmentRoutes');
 const paymentController = require('./controllers/paymentController');
 require('dotenv').config();
 
@@ -49,6 +50,7 @@ app.use('/api/bookings', bookingRoutes);
 app.use('/api/blog', blogRoutes);
 app.use('/api/tour-posts', tourPostRoutes);
 app.use('/api/payments', paymentRoutes);
+app.use('/api/equipment', equipmentRoutes);
 
 const server = http.createServer(app);
 const io = new Server(server, {

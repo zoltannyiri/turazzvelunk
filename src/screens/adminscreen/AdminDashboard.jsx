@@ -29,6 +29,10 @@ const AdminDashboard = () => {
   const [expandedUserId, setExpandedUserId] = useState(null);
   const [tours, setTours] = useState([]);
   const [toursLoading, setToursLoading] = useState(true);
+  const [equipment, setEquipment] = useState([]);
+  const [equipmentLoading, setEquipmentLoading] = useState(true);
+  const [newEquipment, setNewEquipment] = useState({ name: '', description: '', total_quantity: '' });
+  const [equipmentAvailability, setEquipmentAvailability] = useState({});
   const monthNames = [
     'Január',
     'Február',
@@ -57,7 +61,8 @@ const AdminDashboard = () => {
     image_url: '', 
     start_date: '', 
     end_date: '',
-    max_participants: ''
+    max_participants: '',
+    equipment_prices: {}
   };
   const [newTour, setNewTour] = useState(initialTourState);
 
@@ -111,12 +116,27 @@ const AdminDashboard = () => {
     }
   }, []);
 
+  const fetchEquipment = useCallback(async () => {
+    try {
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/equipment`, {
+        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+      });
+      const data = await res.json();
+      setEquipment(Array.isArray(data) ? data : []);
+      setEquipmentLoading(false);
+    } catch (err) {
+      toast.error("Hiba az eszközök betöltésekor!");
+      setEquipmentLoading(false);
+    }
+  }, []);
+
   useEffect(() => {
     fetchBookings();
     fetchCancelRequests();
     fetchUsers();
     fetchTours();
-  }, [fetchBookings, fetchCancelRequests, fetchUsers, fetchTours]);
+    fetchEquipment();
+  }, [fetchBookings, fetchCancelRequests, fetchUsers, fetchTours, fetchEquipment]);
 
 
   const groupedBookings = useMemo(() => {
@@ -296,8 +316,100 @@ const AdminDashboard = () => {
     }
   };
 
+  const handleEquipmentCreate = async () => {
+    if (!newEquipment.name.trim()) {
+      toast.error('Add meg az eszköz nevét.');
+      return;
+    }
+    try {
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/equipment`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify({
+          name: newEquipment.name.trim(),
+          description: newEquipment.description,
+          total_quantity: Number(newEquipment.total_quantity || 0)
+        })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        toast.success(data.message || 'Eszköz létrehozva.');
+        setNewEquipment({ name: '', description: '', total_quantity: '' });
+        fetchEquipment();
+      } else {
+        toast.error(data.message || 'Hiba történt.');
+      }
+    } catch (err) {
+      toast.error('Hiba történt.');
+    }
+  };
+
+  const handleEquipmentUpdate = async (item) => {
+    try {
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/equipment/${item.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify({
+          name: item.name,
+          description: item.description,
+          total_quantity: Number(item.total_quantity || 0)
+        })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        toast.success(data.message || 'Eszköz frissítve.');
+        fetchEquipment();
+      } else {
+        toast.error(data.message || 'Hiba történt.');
+      }
+    } catch (err) {
+      toast.error('Hiba történt.');
+    }
+  };
+
+  const handleEquipmentDelete = async (id) => {
+    if (!window.confirm('Biztosan törlöd az eszközt?')) return;
+    try {
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/equipment/${id}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+      });
+      const data = await res.json();
+      if (res.ok) {
+        toast.success(data.message || 'Eszköz törölve.');
+        fetchEquipment();
+      } else {
+        toast.error(data.message || 'Hiba történt.');
+      }
+    } catch (err) {
+      toast.error('Hiba történt.');
+    }
+  };
+
   const openUserProfile = (userId) => {
     navigate(`/profile/${userId}`);
+  };
+
+  const loadTourEquipmentPrices = async (tourId) => {
+    try {
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/tours/${tourId}/equipment`);
+      const data = await res.json();
+      if (res.ok && Array.isArray(data)) {
+        const map = data.reduce((acc, item) => {
+          acc[item.id] = Number(item.price || 0);
+          return acc;
+        }, {});
+        setNewTour((prev) => ({ ...prev, equipment_prices: map }));
+      }
+    } catch (err) {
+      setNewTour((prev) => ({ ...prev, equipment_prices: {} }));
+    }
   };
 
   const handleSubmitTour = async (e) => {
@@ -325,7 +437,11 @@ const AdminDashboard = () => {
       start_date: formatDate(newTour.start_date),
       end_date: formatDate(newTour.end_date),
       duration: calculateDuration(newTour.start_date, newTour.end_date),
-      max_participants: parseInt(newTour.max_participants)
+      max_participants: parseInt(newTour.max_participants),
+      equipment_prices: equipment.map((item) => ({
+        equipment_id: item.id,
+        price: Number(newTour.equipment_prices?.[item.id] || 0)
+      }))
     };
 
     if (newTour.start_date instanceof Date) {
@@ -359,6 +475,36 @@ const AdminDashboard = () => {
       fetchBookings();
     } else {
       toast.error("Hiba történt a mentés során!");
+    }
+  };
+
+  const fetchEquipmentAvailability = async (startDate, endDate) => {
+    if (!(startDate instanceof Date) || !(endDate instanceof Date)) {
+      setEquipmentAvailability({});
+      return;
+    }
+    const formatDate = (date) => {
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    };
+    try {
+      const res = await fetch(
+        `${import.meta.env.VITE_API_URL}/tours/equipment-availability/range?start_date=${formatDate(startDate)}&end_date=${formatDate(endDate)}`
+      );
+      const data = await res.json();
+      if (res.ok && Array.isArray(data)) {
+        const map = data.reduce((acc, item) => {
+          acc[item.id] = Number(item.available_quantity || 0);
+          return acc;
+        }, {});
+        setEquipmentAvailability(map);
+      } else {
+        setEquipmentAvailability({});
+      }
+    } catch (err) {
+      setEquipmentAvailability({});
     }
   };
 
@@ -406,7 +552,8 @@ const AdminDashboard = () => {
     { id: 'tours', label: 'Túrák', icon: Calendar },
     { id: 'bookings', label: 'Jelentkezések', icon: ListChecks },
     { id: 'cancellations', label: 'Lejelentkezések', icon: MessageSquareText },
-    { id: 'users', label: 'Felhasználók', icon: UserCog }
+    { id: 'users', label: 'Felhasználók', icon: UserCog },
+    { id: 'equipment', label: 'Eszközök', icon: Users }
   ];
 
   return (
@@ -449,7 +596,11 @@ const AdminDashboard = () => {
                   className="bg-emerald-600 hover:bg-emerald-700 text-white px-8 py-4 rounded-[2rem] font-black flex items-center gap-3 transition-all shadow-2xl shadow-emerald-600/20 active:scale-95"
                   onClick={() => {
                     setEditingTourId(null);
-                    setNewTour(initialTourState);
+                    const equipmentMap = equipment.reduce((acc, item) => {
+                      acc[item.id] = 0;
+                      return acc;
+                    }, {});
+                    setNewTour({ ...initialTourState, equipment_prices: equipmentMap });
                     setIsModalOpen(true);
                   }}
                 >
@@ -620,9 +771,11 @@ const AdminDashboard = () => {
                                         subcategory: tour.subcategory || 'Hazai - Külföldi túrák',
                                         image_url: tour.image_url || '',
                                         max_participants: tour.max_participants || 12,
+                                        equipment_prices: {},
                                         start_date: tour.start_date ? new Date(tour.start_date) : null,
                                         end_date: tour.end_date ? new Date(tour.end_date) : null,
                                       });
+                                      loadTourEquipmentPrices(tour.id);
                                       setIsModalOpen(true);
                                     }}
                                     className="p-3 bg-blue-50 text-blue-600 rounded-2xl hover:bg-blue-600 hover:text-white transition shadow-sm"
@@ -931,6 +1084,105 @@ const AdminDashboard = () => {
                 </div>
               </div>
             )}
+
+            {activeTab === 'equipment' && (
+              <div className="bg-white rounded-[3rem] shadow-sm border border-slate-100 overflow-hidden">
+                <div className="p-8 md:p-10 flex items-center justify-between bg-gradient-to-r from-white to-slate-50">
+                  <div>
+                    <h2 className="text-2xl font-black text-emerald-950">Eszközök</h2>
+                    <div className="text-xs text-slate-400 font-bold uppercase tracking-widest">Létrehozás és készlet</div>
+                  </div>
+                  <div className="text-xs font-black uppercase tracking-widest text-emerald-600">{equipment.length} db</div>
+                </div>
+
+                <div className="px-8 pb-8 space-y-6">
+                  <div className="bg-slate-50 rounded-[2rem] p-6 border border-slate-100">
+                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                      <input
+                        type="text"
+                        placeholder="Eszköz neve"
+                        value={newEquipment.name}
+                        onChange={(e) => setNewEquipment((prev) => ({ ...prev, name: e.target.value }))}
+                        className="w-full p-3 bg-white border border-slate-100 rounded-2xl"
+                      />
+                      <input
+                        type="number"
+                        placeholder="Darabszám"
+                        value={newEquipment.total_quantity}
+                        onChange={(e) => setNewEquipment((prev) => ({ ...prev, total_quantity: e.target.value }))}
+                        className="w-full p-3 bg-white border border-slate-100 rounded-2xl"
+                      />
+                      <input
+                        type="text"
+                        placeholder="Leírás (opcionális)"
+                        value={newEquipment.description}
+                        onChange={(e) => setNewEquipment((prev) => ({ ...prev, description: e.target.value }))}
+                        className="w-full p-3 bg-white border border-slate-100 rounded-2xl md:col-span-2"
+                      />
+                    </div>
+                    <button
+                      onClick={handleEquipmentCreate}
+                      className="mt-4 px-6 py-3 rounded-2xl bg-emerald-600 text-white text-xs font-black uppercase tracking-widest hover:bg-emerald-700"
+                    >
+                      Eszköz létrehozása
+                    </button>
+                  </div>
+
+                  {equipmentLoading ? (
+                    <div className="text-center py-10 text-slate-400 font-bold">Betöltés...</div>
+                  ) : equipment.length === 0 ? (
+                    <div className="text-center py-10 text-slate-400 font-bold">Nincs eszköz.</div>
+                  ) : (
+                    <div className="grid gap-4">
+                      {equipment.map((item) => (
+                        <div key={item.id} className="bg-white rounded-[2rem] p-6 border border-slate-100">
+                          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                            <input
+                              type="text"
+                              value={item.name}
+                              onChange={(e) =>
+                                setEquipment((prev) => prev.map((row) => row.id === item.id ? { ...row, name: e.target.value } : row))
+                              }
+                              className="w-full p-3 bg-slate-50 border border-slate-100 rounded-2xl"
+                            />
+                            <input
+                              type="number"
+                              value={item.total_quantity}
+                              onChange={(e) =>
+                                setEquipment((prev) => prev.map((row) => row.id === item.id ? { ...row, total_quantity: e.target.value } : row))
+                              }
+                              className="w-full p-3 bg-slate-50 border border-slate-100 rounded-2xl"
+                            />
+                            <input
+                              type="text"
+                              value={item.description || ''}
+                              onChange={(e) =>
+                                setEquipment((prev) => prev.map((row) => row.id === item.id ? { ...row, description: e.target.value } : row))
+                              }
+                              className="w-full p-3 bg-slate-50 border border-slate-100 rounded-2xl md:col-span-2"
+                            />
+                          </div>
+                          <div className="mt-4 flex flex-wrap gap-2">
+                            <button
+                              onClick={() => handleEquipmentUpdate(item)}
+                              className="px-4 py-2 rounded-xl bg-emerald-600 text-white text-xs font-black uppercase tracking-widest hover:bg-emerald-700"
+                            >
+                              Mentés
+                            </button>
+                            <button
+                              onClick={() => handleEquipmentDelete(item.id)}
+                              className="px-4 py-2 rounded-xl bg-red-500/10 text-red-500 text-xs font-black uppercase tracking-widest hover:bg-red-500 hover:text-white"
+                            >
+                              Törlés
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
           </main>
         </div>
       </div>
@@ -1003,6 +1255,11 @@ const AdminDashboard = () => {
                         start_date: start,
                         end_date: end
                       });
+                      if (start && end) {
+                        fetchEquipmentAvailability(start, end);
+                      } else {
+                        setEquipmentAvailability({});
+                      }
                     }}
                     className="w-full p-4 bg-slate-50 border-none rounded-2xl focus:ring-2 focus:ring-emerald-500 transition font-bold text-emerald-900"
                     dateFormat="yyyy. MM. dd."
@@ -1041,6 +1298,44 @@ const AdminDashboard = () => {
                 <label className="text-[10px] font-black uppercase text-slate-400 ml-4">Ár (Ft)</label>
                 <input type="number" required value={newTour.price} className="w-full p-4 bg-slate-50 border-none rounded-2xl mt-1" 
                   onChange={e => setNewTour({...newTour, price: e.target.value})} />
+              </div>
+
+              <div className="md:col-span-2">
+                <label className="text-[10px] font-black uppercase text-slate-400 ml-4">Eszköz árak (Ft)</label>
+                <div className="mt-2 grid gap-3">
+                  {equipmentLoading ? (
+                    <div className="text-xs text-slate-400 font-bold">Betöltés...</div>
+                  ) : equipment.length === 0 ? (
+                    <div className="text-xs text-slate-400 font-bold">Nincs eszköz. Hozz létre az Eszközök fülön.</div>
+                  ) : (
+                    equipment.map((item) => (
+                      <div key={item.id} className="flex flex-col md:flex-row md:items-center gap-3">
+                        <div className="flex-1 font-bold text-slate-700">{item.name}</div>
+                        <div className="text-xs text-slate-400 font-bold">
+                          Elérhető: {Number(equipmentAvailability[item.id] ?? item.total_quantity ?? 0)} db
+                        </div>
+                        <input
+                          type="number"
+                          className="w-full md:w-48 p-3 bg-slate-50 border-none rounded-2xl"
+                          value={newTour.equipment_prices?.[item.id] ?? 0}
+                          disabled={Number(equipmentAvailability[item.id] ?? item.total_quantity ?? 0) <= 0}
+                          onChange={(e) =>
+                            setNewTour((prev) => ({
+                              ...prev,
+                              equipment_prices: {
+                                ...(prev.equipment_prices || {}),
+                                [item.id]: e.target.value
+                              }
+                            }))
+                          }
+                        />
+                        {Number(equipmentAvailability[item.id] ?? item.total_quantity ?? 0) <= 0 && (
+                          <div className="text-[10px] font-black uppercase tracking-widest text-red-500">Nem elérhető</div>
+                        )}
+                      </div>
+                    ))
+                  )}
+                </div>
               </div>
 
               <div>

@@ -16,6 +16,8 @@ const TourDetailsScreen = () => {
   const [isBooked, setIsBooked] = useState(false);
   const [bookingStatus, setBookingStatus] = useState(null);
   const [bookingId, setBookingId] = useState(null);
+  const [paymentStatus, setPaymentStatus] = useState(null);
+  const [bookingTotals, setBookingTotals] = useState({ total: 0, extra: 0 });
   const [cancelRequestStatus, setCancelRequestStatus] = useState(null);
   const [cancelReason, setCancelReason] = useState('');
   const [cancelSubmitting, setCancelSubmitting] = useState(false);
@@ -48,6 +50,10 @@ const TourDetailsScreen = () => {
   const [participantsLoading, setParticipantsLoading] = useState(false);
   const [adminBookings, setAdminBookings] = useState([]);
   const [adminBookingsLoading, setAdminBookingsLoading] = useState(false);
+  const [equipmentOptions, setEquipmentOptions] = useState([]);
+  const [selectedEquipmentIds, setSelectedEquipmentIds] = useState([]);
+  const [initialEquipmentIds, setInitialEquipmentIds] = useState([]);
+  const [equipmentInitialized, setEquipmentInitialized] = useState(false);
 
   const fromCalendar = location.state?.from === 'calendar';
 
@@ -74,8 +80,23 @@ const TourDetailsScreen = () => {
     }
   };
 
+  const fetchEquipmentOptions = async () => {
+    try {
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/tours/${id}/equipment`);
+      const data = await res.json();
+      if (res.ok) {
+        setEquipmentOptions(Array.isArray(data) ? data : []);
+      } else {
+        setEquipmentOptions([]);
+      }
+    } catch (err) {
+      setEquipmentOptions([]);
+    }
+  };
+
   useEffect(() => {
     fetchTourData();
+    fetchEquipmentOptions();
   }, [id, user]);
 
   useEffect(() => {
@@ -101,7 +122,24 @@ const TourDetailsScreen = () => {
     setIsBooked(!!checkData.isBooked);
     setBookingStatus(checkData.status || null);
     setBookingId(checkData.bookingId || null);
+    setPaymentStatus(checkData.payment_status || null);
     setCancelRequestStatus(checkData.cancel_request_status || null);
+    if (checkData.isBooked && Array.isArray(checkData.equipment_ids)) {
+      setSelectedEquipmentIds(checkData.equipment_ids);
+      setInitialEquipmentIds(checkData.equipment_ids);
+      setEquipmentInitialized(true);
+    }
+    if (!checkData.isBooked) {
+      setEquipmentInitialized(false);
+      setInitialEquipmentIds([]);
+      setSelectedEquipmentIds([]);
+    }
+    if (checkData.isBooked) {
+      setBookingTotals({
+        total: Number(checkData.total_price || 0),
+        extra: Number(checkData.extra_price || 0)
+      });
+    }
     return checkData;
   };
 
@@ -188,6 +226,49 @@ const TourDetailsScreen = () => {
     ? Number(tour.booked_count || 0) >= Number(tour.max_participants)
     : false;
   const avatarBase = (import.meta.env.VITE_API_URL || '').replace(/\/api\/?$/, '');
+  const basePrice = Number(tour?.price || 0);
+  const extraPrice = selectedEquipmentIds.reduce((sum, equipmentId) => {
+    const option = equipmentOptions.find((item) => Number(item.id) === Number(equipmentId));
+    return sum + Number(option?.price || 0);
+  }, 0);
+  const totalPrice = basePrice + extraPrice;
+  const displayExtra = paymentStatus === 'paid' ? bookingTotals.extra : extraPrice;
+  const displayTotal = paymentStatus === 'paid' ? bookingTotals.total : totalPrice;
+  const isEquipmentDirty = (() => {
+    if (!equipmentInitialized) return false;
+    const a = [...initialEquipmentIds].map(Number).sort((x, y) => x - y);
+    const b = [...selectedEquipmentIds].map(Number).sort((x, y) => x - y);
+    if (a.length !== b.length) return true;
+    for (let i = 0; i < a.length; i += 1) {
+      if (a[i] !== b[i]) return true;
+    }
+    return false;
+  })();
+  const isUpdateDisabled = paymentStatus === 'paid' || !equipmentInitialized || !isEquipmentDirty;
+
+  const handleUpdateEquipment = async () => {
+    if (!bookingId || isUpdateDisabled) return;
+    try {
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/bookings/${bookingId}/equipment`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify({ equipment_ids: selectedEquipmentIds })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        toast.success(data.message || 'Frissítve.');
+        fetchEquipmentOptions();
+        refreshBookingStatus();
+      } else {
+        toast.error(data.message || data.error || 'Hiba történt.');
+      }
+    } catch (err) {
+      toast.error('Hiba történt.');
+    }
+  };
 
   useEffect(() => {
     if (activeTab === 'chat' && isChatAllowed) {
@@ -340,7 +421,7 @@ const TourDetailsScreen = () => {
       const res = await fetch(`${import.meta.env.VITE_API_URL}/bookings`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${localStorage.getItem('token')}` },
-        body: JSON.stringify({ tour_id: id }),
+        body: JSON.stringify({ tour_id: id, equipment_ids: selectedEquipmentIds }),
       });
       const data = await res.json();
       if (res.ok) {
@@ -348,6 +429,8 @@ const TourDetailsScreen = () => {
         setIsBooked(true);
         setBookingStatus('pending');
         fetchTourData();
+        fetchEquipmentOptions();
+        refreshBookingStatus();
         return;
       }
       toast.error(data.message || data.error || 'Hiba történt.');
@@ -931,8 +1014,13 @@ const TourDetailsScreen = () => {
                 <div className="mb-6">
                   <div className="text-emerald-400 font-bold uppercase tracking-widest text-[9px] mb-1">Részvételi díj</div>
                   <div className="text-4xl font-black italic tracking-tighter">
-                    {tour.price?.toLocaleString()} <span className="text-lg not-italic text-emerald-500">Ft</span>
+                    {displayTotal.toLocaleString()} <span className="text-lg not-italic text-emerald-500">Ft</span>
                   </div>
+                  {displayExtra > 0 && (
+                    <div className="text-[10px] font-black uppercase tracking-widest text-emerald-300 mt-2">
+                      Alapár: {basePrice.toLocaleString()} Ft · Extra: {displayExtra.toLocaleString()} Ft
+                    </div>
+                  )}
                 </div>
 
                 <div className="space-y-3 mb-8 text-xs">
@@ -981,17 +1069,177 @@ const TourDetailsScreen = () => {
                           </>
                         )}
                       </div>
+                      <div className="bg-white/5 border border-white/10 rounded-2xl p-4 text-xs space-y-3">
+                        <div className="text-[10px] font-black uppercase tracking-widest text-slate-400">Eszközök módosítása</div>
+                        <div className="text-slate-300">
+                          Pipáld ki, amit megtartanál. A gomb csak változtatás után aktív. Fizetés után módosítás nem engedett.
+                        </div>
+                        {equipmentOptions.length > 0 && (
+                          <div className="space-y-2">
+                            {equipmentOptions.map((item) => (
+                              <label key={item.id} className="flex items-center justify-between gap-3">
+                                <div className="flex items-center gap-2">
+                                  <input
+                                    type="checkbox"
+                                    className="accent-emerald-500"
+                                    disabled={paymentStatus === 'paid'}
+                                    checked={selectedEquipmentIds.includes(item.id)}
+                                    onChange={(e) => {
+                                      if (paymentStatus === 'paid') return;
+                                      setSelectedEquipmentIds((prev) =>
+                                        e.target.checked
+                                          ? [...new Set([...prev, item.id])]
+                                          : prev.filter((id) => Number(id) !== Number(item.id))
+                                      );
+                                    }}
+                                  />
+                                  <div className="flex flex-col">
+                                    <span className="font-bold text-white">{item.name}</span>
+                                    {item.description && (
+                                      <span className="text-[10px] text-slate-400">{item.description}</span>
+                                    )}
+                                  </div>
+                                </div>
+                                <span className="text-emerald-300 font-black">{Number(item.price || 0).toLocaleString()} Ft</span>
+                              </label>
+                            ))}
+                          </div>
+                        )}
+                        <button
+                          onClick={handleUpdateEquipment}
+                          disabled={isUpdateDisabled}
+                          className={`w-full py-3 rounded-xl font-black text-xs uppercase tracking-widest border transition ${
+                            isUpdateDisabled
+                              ? 'bg-slate-700/40 text-slate-500 border-slate-700 cursor-not-allowed'
+                              : 'bg-emerald-500/10 text-emerald-300 border-emerald-500/30 hover:bg-emerald-500 hover:text-slate-900'
+                          }`}
+                        >
+                          Eszközök frissítése
+                        </button>
+                        {paymentStatus === 'paid' && (
+                          <div className="text-amber-300 font-black uppercase tracking-widest text-[10px]">
+                            Fizetés után az eszközök nem módosíthatók.
+                          </div>
+                        )}
+                        {!paymentStatus && (!equipmentInitialized || !isEquipmentDirty) && (
+                          <div className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+                            Nincs változtatás.
+                          </div>
+                        )}
+                      </div>
                     </div>
                   ) : (
-                    <button 
-                      onClick={handleCancelBooking}
-                      className="w-full py-4 rounded-2xl font-black text-sm bg-red-500/10 text-red-500 border border-red-500/30 flex items-center justify-center gap-2 uppercase tracking-widest hover:bg-red-500 hover:text-white transition-all"
-                    >
-                      <UserMinus size={18} /> Lejelentkezés
-                    </button>
+                    <div className="space-y-4">
+                      <button 
+                        onClick={handleCancelBooking}
+                        className="w-full py-4 rounded-2xl font-black text-sm bg-red-500/10 text-red-500 border border-red-500/30 flex items-center justify-center gap-2 uppercase tracking-widest hover:bg-red-500 hover:text-white transition-all"
+                      >
+                        <UserMinus size={18} /> Lejelentkezés
+                      </button>
+                      <div className="bg-white/5 border border-white/10 rounded-2xl p-4 text-xs space-y-3">
+                        <div className="text-[10px] font-black uppercase tracking-widest text-slate-400">Eszközök módosítása</div>
+                        <div className="text-slate-300">
+                          Pipáld ki, amit megtartanál. A gomb csak változtatás után aktív. Fizetés után módosítás nem engedett.
+                        </div>
+                        {equipmentOptions.length > 0 && (
+                          <div className="space-y-2">
+                            {equipmentOptions.map((item) => (
+                              <label key={item.id} className="flex items-center justify-between gap-3">
+                                <div className="flex items-center gap-2">
+                                  <input
+                                    type="checkbox"
+                                    className="accent-emerald-500"
+                                    disabled={paymentStatus === 'paid'}
+                                    checked={selectedEquipmentIds.includes(item.id)}
+                                    onChange={(e) => {
+                                      if (paymentStatus === 'paid') return;
+                                      setSelectedEquipmentIds((prev) =>
+                                        e.target.checked
+                                          ? [...new Set([...prev, item.id])]
+                                          : prev.filter((id) => Number(id) !== Number(item.id))
+                                      );
+                                    }}
+                                  />
+                                  <div className="flex flex-col">
+                                    <span className="font-bold text-white">{item.name}</span>
+                                    {item.description && (
+                                      <span className="text-[10px] text-slate-400">{item.description}</span>
+                                    )}
+                                  </div>
+                                </div>
+                                <span className="text-emerald-300 font-black">{Number(item.price || 0).toLocaleString()} Ft</span>
+                              </label>
+                            ))}
+                          </div>
+                        )}
+                        <button
+                          onClick={handleUpdateEquipment}
+                          disabled={isUpdateDisabled}
+                          className={`w-full py-3 rounded-xl font-black text-xs uppercase tracking-widest border transition ${
+                            isUpdateDisabled
+                              ? 'bg-slate-700/40 text-slate-500 border-slate-700 cursor-not-allowed'
+                              : 'bg-emerald-500/10 text-emerald-300 border-emerald-500/30 hover:bg-emerald-500 hover:text-slate-900'
+                          }`}
+                        >
+                          Eszközök frissítése
+                        </button>
+                        {paymentStatus === 'paid' && (
+                          <div className="text-amber-300 font-black uppercase tracking-widest text-[10px]">
+                            Fizetés után az eszközök nem módosíthatók.
+                          </div>
+                        )}
+                        {!paymentStatus && (!equipmentInitialized || !isEquipmentDirty) && (
+                          <div className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+                            Nincs változtatás.
+                          </div>
+                        )}
+                      </div>
+                    </div>
                   )
                 ) : (
-                  <button 
+                  <div className="space-y-4">
+                    {equipmentOptions.length > 0 && (
+                      <div className="bg-white/5 border border-white/10 rounded-2xl p-4 text-xs space-y-3">
+                        <div className="text-[10px] font-black uppercase tracking-widest text-slate-400">Bérelhető eszközök</div>
+                        <div className="text-slate-300 leading-relaxed">
+                          Eszközöket a túra időszakára tudsz bérelni. A készlet korlátozott.
+                        </div>
+                        {equipmentOptions.map((item) => (
+                          <label key={item.id} className="flex items-center justify-between gap-3">
+                            <div className="flex items-center gap-2">
+                              <input
+                                type="checkbox"
+                                className="accent-emerald-500"
+                                disabled={Number(item.available_quantity || 0) <= 0}
+                                checked={selectedEquipmentIds.includes(item.id)}
+                                onChange={(e) => {
+                                  setSelectedEquipmentIds((prev) =>
+                                    e.target.checked
+                                      ? [...new Set([...prev, item.id])]
+                                      : prev.filter((id) => Number(id) !== Number(item.id))
+                                  );
+                                }}
+                              />
+                              <div className="flex flex-col">
+                                <span className="font-bold text-white">{item.name}</span>
+                                {item.description && (
+                                  <span className="text-[10px] text-slate-400">{item.description}</span>
+                                )}
+                              </div>
+                            </div>
+                            <div className="text-right">
+                              <div className="text-emerald-300 font-black">{Number(item.price || 0).toLocaleString()} Ft</div>
+                              {Number(item.available_quantity || 0) > 0 ? (
+                                <div className="text-[10px] text-slate-400">Elérhető: {Number(item.available_quantity || 0)} db</div>
+                              ) : (
+                                <div className="text-[10px] font-black uppercase tracking-widest text-red-400">Nem elérhető</div>
+                              )}
+                            </div>
+                          </label>
+                        ))}
+                      </div>
+                    )}
+                    <button 
                     onClick={handleBooking}
                     disabled={isTourFull || !user}
                     className={`w-full py-4 rounded-2xl font-black text-sm transition-all flex items-center justify-center gap-2 uppercase tracking-widest ${
@@ -1004,6 +1252,7 @@ const TourDetailsScreen = () => {
                   >
                     {isTourFull ? 'A túra betelt' : user ? 'Jelentkezem most' : 'Bejelentkezés szükséges'}
                   </button>
+                  </div>
                 )}
               </div>
             </div>

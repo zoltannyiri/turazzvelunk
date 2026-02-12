@@ -1,0 +1,5 @@
+ALTER TABLE tours
+  ADD COLUMN minibus_price DECIMAL(10,2) DEFAULT 0,
+  ADD COLUMN trailer_2_price DECIMAL(10,2) DEFAULT 0,
+  ADD COLUMN trailer_4_price DECIMAL(10,2) DEFAULT 0,
+  ADD COLUMN car_trailer_price DECIMAL(10,2) DEFAULT 0;

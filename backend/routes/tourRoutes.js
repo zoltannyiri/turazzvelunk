@@ -7,6 +7,8 @@ const tourChatController = require('../controllers/tourChatController');
 
 router.get('/', tourController.getAllTours);
 router.get('/:id', tourController.getTourById);
+router.get('/equipment-availability/range', tourController.getEquipmentAvailabilityByRange);
+router.get('/:id/equipment', tourController.getTourEquipmentOptions);
 router.get('/:tourId/posts', tourPostController.getPostsByTourId);
 router.get('/:id/chat-messages', protect, tourChatController.getChatMessages);
 
