@@ -1,6 +1,7 @@
 const db = require('../config/db');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const { sendRegistrationEmail } = require('../services/emailService');
 
 exports.register = async (req, res) => {
     const { name, email, password } = req.body;
@@ -14,6 +15,12 @@ exports.register = async (req, res) => {
         const hashedPassword = await bcrypt.hash(password, salt);
         await db.query('INSERT INTO users (name, email, password) VALUES (?, ?, ?)', 
             [name, email, hashedPassword]);
+
+        try {
+            await sendRegistrationEmail({ to: email, name });
+        } catch (emailErr) {
+            console.error('Regisztracios email hiba:', emailErr.message);
+        }
 
         res.status(201).json({ message: "Sikeres regisztráció!" });
     } catch (err) {

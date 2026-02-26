@@ -4,7 +4,7 @@ import { Pie } from 'react-chartjs-2';
 import { Chart as ChartJS, ArcElement, Tooltip, Legend } from 'chart.js';
 import { 
   CheckCircle, Users, DollarSign, 
-  ChevronDown, ChevronUp, Plus, Edit3, Trash2, Calendar, MessageSquareText, XCircle, LayoutGrid, ListChecks, UserCog
+  ChevronDown, ChevronUp, Plus, Edit3, Trash2, Calendar, MessageSquareText, XCircle, LayoutGrid, ListChecks, UserCog, Mail
 } from 'lucide-react';
 import { toast } from 'react-toastify';
 import DatePicker, { registerLocale } from "react-datepicker";
@@ -33,6 +33,18 @@ const AdminDashboard = () => {
   const [equipmentLoading, setEquipmentLoading] = useState(true);
   const [newEquipment, setNewEquipment] = useState({ name: '', description: '', total_quantity: '' });
   const [equipmentAvailability, setEquipmentAvailability] = useState({});
+  const [emailSubject, setEmailSubject] = useState('');
+  const [emailMessage, setEmailMessage] = useState('');
+  const [emailRecipients, setEmailRecipients] = useState([]);
+  const [emailTargetMode, setEmailTargetMode] = useState('selected');
+  const [emailTourId, setEmailTourId] = useState('');
+  const [emailSending, setEmailSending] = useState(false);
+  const [emailSection, setEmailSection] = useState('send');
+  const [emailInbox, setEmailInbox] = useState([]);
+  const [emailSent, setEmailSent] = useState([]);
+  const [emailManageLoading, setEmailManageLoading] = useState(false);
+  const [emailModalOpen, setEmailModalOpen] = useState(false);
+  const [emailModalData, setEmailModalData] = useState(null);
   const monthNames = [
     'Január',
     'Február',
@@ -130,6 +142,49 @@ const AdminDashboard = () => {
     }
   }, []);
 
+  const fetchEmailManage = useCallback(async () => {
+    setEmailManageLoading(true);
+    try {
+      const [sentRes, inboxRes] = await Promise.all([
+        fetch(`${import.meta.env.VITE_API_URL}/admin/email/sent`, {
+          headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+        }),
+        fetch(`${import.meta.env.VITE_API_URL}/admin/email/inbox`, {
+          headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+        })
+      ]);
+
+      const sentData = await sentRes.json();
+      const inboxData = await inboxRes.json();
+
+      if (sentRes.ok) {
+        setEmailSent(Array.isArray(sentData) ? sentData : []);
+      } else {
+        toast.error(sentData.message || 'Nem sikerult betolteni az elkuldott emaileket.');
+      }
+
+      if (inboxRes.ok) {
+        setEmailInbox(Array.isArray(inboxData) ? inboxData : []);
+      } else {
+        toast.error(inboxData.message || 'Nem sikerult betolteni a bejovo emaileket.');
+      }
+    } catch (err) {
+      toast.error('Email kezeles betoltese sikertelen.');
+    } finally {
+      setEmailManageLoading(false);
+    }
+  }, []);
+
+  const openEmailModal = (payload) => {
+    setEmailModalData(payload);
+    setEmailModalOpen(true);
+  };
+
+  const closeEmailModal = () => {
+    setEmailModalOpen(false);
+    setEmailModalData(null);
+  };
+
   useEffect(() => {
     fetchBookings();
     fetchCancelRequests();
@@ -137,6 +192,12 @@ const AdminDashboard = () => {
     fetchTours();
     fetchEquipment();
   }, [fetchBookings, fetchCancelRequests, fetchUsers, fetchTours, fetchEquipment]);
+
+  useEffect(() => {
+    if (activeTab === 'email' && emailSection === 'manage') {
+      fetchEmailManage();
+    }
+  }, [activeTab, emailSection, fetchEmailManage]);
 
 
   const groupedBookings = useMemo(() => {
@@ -195,6 +256,35 @@ const AdminDashboard = () => {
       return acc;
     }, {});
   }, [tours]);
+
+  const tourParticipants = useMemo(() => {
+    if (!emailTourId) return [];
+    const tourId = Number(emailTourId);
+    if (!tourId) return [];
+    const raw = groupedBookings[tourId]?.participants || [];
+    const confirmed = raw.filter((participant) => participant.status === 'confirmed');
+    const seen = new Set();
+    return confirmed.filter((participant) => {
+      const key = participant.user_id || participant.email || participant.id;
+      if (!key || seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+  }, [emailTourId, groupedBookings]);
+
+  const allRecipients = useMemo(() => {
+    return users.map((user) => user.email).filter(Boolean);
+  }, [users]);
+
+  const tourRecipients = useMemo(() => {
+    return tourParticipants.map((participant) => participant.email).filter(Boolean);
+  }, [tourParticipants]);
+
+  const effectiveRecipients = useMemo(() => {
+    if (emailTargetMode === 'all') return allRecipients;
+    if (emailTargetMode === 'tour') return tourRecipients;
+    return emailRecipients;
+  }, [emailTargetMode, allRecipients, tourRecipients, emailRecipients]);
 
   const categoryRevenue = useMemo(() => {
     const tourCategoryMap = tours.reduce((acc, tour) => {
@@ -553,8 +643,66 @@ const AdminDashboard = () => {
     { id: 'bookings', label: 'Jelentkezések', icon: ListChecks },
     { id: 'cancellations', label: 'Lejelentkezések', icon: MessageSquareText },
     { id: 'users', label: 'Felhasználók', icon: UserCog },
+    { id: 'email', label: 'Email küldés', icon: Mail },
     { id: 'equipment', label: 'Eszközök', icon: Users }
   ];
+
+  const toggleEmailRecipient = (email) => {
+    setEmailRecipients((prev) => {
+      if (prev.includes(email)) {
+        return prev.filter((item) => item !== email);
+      }
+      return [...prev, email];
+    });
+  };
+
+  const handleSendAdminEmail = async () => {
+    const recipients = effectiveRecipients;
+
+    if (!recipients.length) {
+      toast.error('Nincs kiválasztott címzett.');
+      return;
+    }
+    if (!emailSubject.trim()) {
+      toast.error('Add meg az email tárgyát.');
+      return;
+    }
+    if (!emailMessage.trim()) {
+      toast.error('Add meg az üzenetet.');
+      return;
+    }
+
+    setEmailSending(true);
+    try {
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/admin/email`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify({
+          recipients,
+          subject: emailSubject.trim(),
+          message: emailMessage.trim()
+        })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        toast.success(data.message || 'Email elküldve.');
+        setEmailSubject('');
+        setEmailMessage('');
+        setEmailRecipients([]);
+        setEmailTargetMode('selected');
+        setEmailTourId('');
+      } else {
+        toast.error(data.message || 'Email küldés sikertelen.');
+      }
+    } catch (err) {
+      toast.error('Email küldés sikertelen.');
+    } finally {
+      setEmailSending(false);
+    }
+  };
 
   return (
     <div className="bg-[#f4f7fb] min-h-screen font-sans">
@@ -1081,6 +1229,291 @@ const AdminDashboard = () => {
                       })}
                     </div>
                   )}
+                </div>
+              </div>
+            )}
+
+            {activeTab === 'email' && (
+              <div className="bg-white rounded-[3rem] shadow-sm border border-slate-100 overflow-hidden">
+                <div className="p-8 md:p-10 flex items-center justify-between bg-gradient-to-r from-white to-slate-50">
+                  <div>
+                    <h2 className="text-2xl font-black text-emerald-950">Email küldés</h2>
+                    <div className="text-xs text-slate-400 font-bold uppercase tracking-widest">Üzenet küldése és kezelése</div>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setEmailSection('send')}
+                      className={`px-4 py-2 rounded-2xl text-xs font-black uppercase tracking-widest transition ${emailSection === 'send' ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-600/20' : 'bg-white text-slate-600 hover:bg-emerald-50'}`}
+                    >
+                      Email küldés
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setEmailSection('manage')}
+                      className={`px-4 py-2 rounded-2xl text-xs font-black uppercase tracking-widest transition ${emailSection === 'manage' ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-600/20' : 'bg-white text-slate-600 hover:bg-emerald-50'}`}
+                    >
+                      Email kezelése
+                    </button>
+                  </div>
+                </div>
+
+                <div className="px-8 pb-8">
+                  {emailSection === 'send' ? (
+                    <div className="grid grid-cols-1 lg:grid-cols-[1.1fr_0.9fr] gap-6">
+                      <div className="space-y-4">
+                        <div className="text-xs font-black uppercase tracking-widest text-emerald-600">
+                          Címzettek: {effectiveRecipients.length}
+                        </div>
+                        <div className="bg-slate-50 rounded-[2rem] p-6 border border-slate-100">
+                          <label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Tárgy</label>
+                          <input
+                            type="text"
+                            value={emailSubject}
+                            onChange={(e) => setEmailSubject(e.target.value)}
+                            placeholder="Pl. Fontos információ a közelgő túráról"
+                            className="w-full mt-2 p-3 bg-white border border-slate-100 rounded-2xl"
+                          />
+                        </div>
+                        <div className="bg-slate-50 rounded-[2rem] p-6 border border-slate-100">
+                          <label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Üzenet</label>
+                          <textarea
+                            rows={8}
+                            value={emailMessage}
+                            onChange={(e) => setEmailMessage(e.target.value)}
+                            placeholder="Írd ide az üzenetet..."
+                            className="w-full mt-2 p-3 bg-white border border-slate-100 rounded-2xl resize-none"
+                          />
+                        </div>
+                        <button
+                          type="button"
+                          onClick={handleSendAdminEmail}
+                          disabled={emailSending}
+                          className="w-full py-4 rounded-[2rem] font-black text-sm bg-emerald-600 text-white shadow-xl hover:bg-emerald-700 transition-all disabled:opacity-60"
+                        >
+                          {emailSending ? 'Küldés folyamatban...' : 'Email küldése'}
+                        </button>
+                      </div>
+
+                      <div className="bg-slate-50 rounded-[2rem] p-6 border border-slate-100">
+                        <div className="flex flex-col gap-4">
+                          <div className="flex items-center justify-between">
+                            <div className="text-[10px] font-black uppercase tracking-widest text-slate-400">Címzettek</div>
+                            <div className="text-[10px] font-black uppercase tracking-widest text-emerald-600">
+                              {emailTargetMode === 'tour' ? 'Túra résztvevői' : emailTargetMode === 'all' ? 'Összes felhasználó' : 'Kijelölt'}
+                            </div>
+                          </div>
+                          <div className="flex flex-wrap gap-2">
+                            {[
+                              { id: 'selected', label: 'Kijelölt felhasználók' },
+                              { id: 'all', label: 'Összes felhasználó' },
+                              { id: 'tour', label: 'Túra résztvevői' }
+                            ].map((mode) => (
+                              <button
+                                key={mode.id}
+                                type="button"
+                                onClick={() => setEmailTargetMode(mode.id)}
+                                className={`px-4 py-2 rounded-2xl text-xs font-black uppercase tracking-widest transition ${emailTargetMode === mode.id ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-600/20' : 'bg-white text-slate-600 hover:bg-emerald-50'}`}
+                              >
+                                {mode.label}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+
+                        {emailTargetMode === 'tour' && (
+                          <div className="mt-4">
+                            <label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Túra kiválasztása</label>
+                            <select
+                              value={emailTourId}
+                              onChange={(e) => setEmailTourId(e.target.value)}
+                              className="w-full mt-2 p-3 bg-white border border-slate-100 rounded-2xl"
+                            >
+                              <option value="">Válassz túrát...</option>
+                              {tours.map((tour) => (
+                                <option key={tour.id} value={tour.id}>
+                                  {tour.title}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+                        )}
+
+                        {usersLoading ? (
+                          <div className="text-center py-10 text-slate-400 font-bold">Betöltés...</div>
+                        ) : emailTargetMode === 'all' ? (
+                          <div className="mt-4 rounded-2xl border border-slate-100 bg-white p-4 text-sm text-slate-600">
+                            Az email az összes felhasználónak ki lesz küldve.
+                          </div>
+                        ) : emailTargetMode === 'tour' ? (
+                          <div className="mt-4">
+                            {!emailTourId ? (
+                              <div className="rounded-2xl border border-slate-100 bg-white p-4 text-sm text-slate-500">
+                                Válassz ki egy túrát a résztvevők listájához.
+                              </div>
+                            ) : tourParticipants.length === 0 ? (
+                              <div className="rounded-2xl border border-slate-100 bg-white p-4 text-sm text-slate-500">
+                                Nincs elfogadott résztvevő a kiválasztott túrán.
+                              </div>
+                            ) : (
+                              <div className="grid gap-3 max-h-[420px] overflow-y-auto pr-2">
+                                {tourParticipants.map((participant) => (
+                                  <div key={participant.user_id} className="flex items-center gap-3 p-3 rounded-2xl border bg-white border-slate-100">
+                                    <div>
+                                      <div className="text-sm font-black text-slate-900">{participant.user_name}</div>
+                                      <div className="text-xs text-slate-400 font-bold">{participant.email}</div>
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        ) : users.length === 0 ? (
+                          <div className="text-center py-10 text-slate-400 font-bold">Nincs felhasználó.</div>
+                        ) : (
+                          <div className="mt-4 grid gap-3 max-h-[420px] overflow-y-auto pr-2">
+                            {users.map((user) => (
+                              <label
+                                key={user.id}
+                                className="flex items-center gap-3 p-3 rounded-2xl border bg-white border-slate-100 hover:border-emerald-200 transition"
+                              >
+                                <input
+                                  type="checkbox"
+                                  checked={emailRecipients.includes(user.email)}
+                                  onChange={() => toggleEmailRecipient(user.email)}
+                                  className="accent-emerald-600"
+                                />
+                                <div>
+                                  <div className="text-sm font-black text-slate-900">{user.name}</div>
+                                  <div className="text-xs text-slate-400 font-bold">{user.email}</div>
+                                </div>
+                              </label>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="space-y-6">
+                      <div className="flex items-center justify-between">
+                        <div className="text-xs font-black uppercase tracking-widest text-slate-400">Email kezelése</div>
+                        <button
+                          type="button"
+                          onClick={fetchEmailManage}
+                          className="px-4 py-2 rounded-2xl text-xs font-black uppercase tracking-widest bg-emerald-600 text-white shadow-lg shadow-emerald-600/20 hover:bg-emerald-700 transition"
+                        >
+                          Frissítés
+                        </button>
+                      </div>
+
+                      {emailManageLoading ? (
+                        <div className="text-center py-10 text-slate-400 font-bold">Betöltés...</div>
+                      ) : (
+                        <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+                          <div className="bg-slate-50 rounded-[2rem] p-6 border border-slate-100">
+                            <div className="text-sm font-black text-emerald-900">Elküldött emailek</div>
+                            {emailSent.length === 0 ? (
+                              <div className="text-sm text-slate-500 mt-4">Nincs elküldött email.</div>
+                            ) : (
+                              <div className="mt-4 space-y-3 max-h-[420px] overflow-y-auto pr-2">
+                                {emailSent.map((item) => (
+                                  <button
+                                    key={item.id}
+                                    type="button"
+                                    onClick={() => openEmailModal({
+                                      type: 'sent',
+                                      subject: item.subject,
+                                      message: item.message,
+                                      date: item.created_at,
+                                      recipients: item.recipients
+                                    })}
+                                    className="w-full text-left bg-white rounded-2xl p-4 border border-slate-100 hover:border-emerald-200 transition"
+                                  >
+                                    <div className="text-sm font-black text-slate-900">{item.subject}</div>
+                                    <div className="text-xs text-slate-400 mt-1">{new Date(item.created_at).toLocaleString('hu-HU')}</div>
+                                    <div className="text-xs text-slate-500 mt-2">Címzettek: {item.recipients.length}</div>
+                                  </button>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+
+                          <div className="bg-slate-50 rounded-[2rem] p-6 border border-slate-100">
+                            <div className="text-sm font-black text-emerald-900">Bejövő emailek</div>
+                            {emailInbox.length === 0 ? (
+                              <div className="text-sm text-slate-500 mt-4">Nincs bejövő email regisztrált címtől.</div>
+                            ) : (
+                              <div className="mt-4 space-y-3 max-h-[420px] overflow-y-auto pr-2">
+                                {emailInbox.map((item) => (
+                                  <button
+                                    key={item.uid}
+                                    type="button"
+                                    onClick={() => openEmailModal({
+                                      type: 'inbox',
+                                      subject: item.subject || '(Nincs tárgy)',
+                                      message: item.text || '',
+                                      date: item.date,
+                                      from: item.from
+                                    })}
+                                    className="w-full text-left bg-white rounded-2xl p-4 border border-slate-100 hover:border-emerald-200 transition"
+                                  >
+                                    <div className="text-sm font-black text-slate-900">{item.subject || '(Nincs tárgy)'}</div>
+                                    <div className="text-xs text-slate-400 mt-1">
+                                      {item.from?.name ? `${item.from.name} <${item.from.email}>` : item.from?.email}
+                                    </div>
+                                    <div className="text-xs text-slate-400 mt-1">{item.date ? new Date(item.date).toLocaleString('hu-HU') : ''}</div>
+                                  </button>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {emailModalOpen && emailModalData && (
+              <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 px-4" onClick={closeEmailModal}>
+                <div
+                  className="w-full max-w-2xl bg-white rounded-[2rem] shadow-2xl border border-slate-100 overflow-hidden"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <div className="p-6 border-b border-slate-100 flex items-start justify-between gap-4">
+                    <div>
+                      <div className="text-xs font-black uppercase tracking-widest text-emerald-600">
+                        {emailModalData.type === 'sent' ? 'Elküldött email' : 'Bejövő email'}
+                      </div>
+                      <div className="text-xl font-black text-slate-900 mt-2">{emailModalData.subject}</div>
+                      {emailModalData.date && (
+                        <div className="text-xs text-slate-400 mt-1">{new Date(emailModalData.date).toLocaleString('hu-HU')}</div>
+                      )}
+                      {emailModalData.type === 'inbox' && emailModalData.from && (
+                        <div className="text-xs text-slate-500 mt-1">
+                          {emailModalData.from?.name ? `${emailModalData.from.name} <${emailModalData.from.email}>` : emailModalData.from?.email}
+                        </div>
+                      )}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={closeEmailModal}
+                      className="px-3 py-2 rounded-2xl text-xs font-black uppercase tracking-widest bg-slate-100 text-slate-600 hover:bg-slate-200"
+                    >
+                      Bezárás
+                    </button>
+                  </div>
+                  <div className="p-6">
+                    {emailModalData.type === 'sent' && emailModalData.recipients && (
+                      <div className="text-xs text-slate-500 mb-4">
+                        Címzettek: {emailModalData.recipients.length}
+                      </div>
+                    )}
+                    <div className="text-sm text-slate-700 whitespace-pre-line">
+                      {emailModalData.message || 'Nincs megjelenitheto tartalom.'}
+                    </div>
+                  </div>
                 </div>
               </div>
             )}

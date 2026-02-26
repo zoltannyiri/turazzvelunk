@@ -1,11 +1,12 @@
 const db = require('../config/db');
+const { sendBookingEmail } = require('../services/emailService');
 
 exports.createBooking = async (req, res) => {
     const { tour_id, equipment_ids } = req.body;
     const user_id = req.user.id;
     try {
         const [tourRows] = await db.query(
-            `SELECT id, max_participants, price, start_date, end_date
+            `SELECT id, title, max_participants, price, start_date, end_date
              FROM tours WHERE id = ?`,
             [tour_id]
         );
@@ -104,6 +105,25 @@ exports.createBooking = async (req, res) => {
                     )
                 )
             );
+        }
+
+        try {
+            const [userRows] = await db.query(
+                'SELECT name, email FROM users WHERE id = ?',
+                [user_id]
+            );
+            if (userRows.length > 0) {
+                await sendBookingEmail({
+                    to: userRows[0].email,
+                    name: userRows[0].name,
+                    tourTitle: tour.title,
+                    startDate: tour.start_date,
+                    endDate: tour.end_date,
+                    totalPrice
+                });
+            }
+        } catch (emailErr) {
+            console.error('Foglalas email hiba:', emailErr.message);
         }
         res.status(201).json({ message: "Sikeres jelentkezés a túrára!" });
     } catch (err) {
