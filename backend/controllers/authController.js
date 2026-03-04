@@ -2,6 +2,7 @@ const db = require('../config/db');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const { sendRegistrationEmail } = require('../services/emailService');
+const { logActivity } = require('../services/activityService');
 
 exports.register = async (req, res) => {
     const { name, email, password } = req.body;
@@ -13,8 +14,19 @@ exports.register = async (req, res) => {
         if (existingUser.length > 0) return res.status(400).json({ message: "Ez az email már foglalt!" });
         const salt = await bcrypt.genSalt(10);
         const hashedPassword = await bcrypt.hash(password, salt);
-        await db.query('INSERT INTO users (name, email, password) VALUES (?, ?, ?)', 
+        const [result] = await db.query('INSERT INTO users (name, email, password) VALUES (?, ?, ?)', 
             [name, email, hashedPassword]);
+        const userId = result.insertId;
+
+        try {
+            await logActivity({
+                type: 'user_registered',
+                message: `Új regisztráció: ${name} (${email})`,
+                userId
+            });
+        } catch (logErr) {
+            console.error('Tevékenységnapló hiba:', logErr.message);
+        }
 
         try {
             await sendRegistrationEmail({ to: email, name });
@@ -186,5 +198,35 @@ exports.getMe = async (req, res) => {
         res.json(rows[0]);
     } catch (err) {
         res.status(500).json({ error: err.message });
+    }
+};
+
+exports.deleteMe = async (req, res) => {
+    try {
+        const [rows] = await db.query('SELECT id FROM users WHERE id = ?', [req.user.id]);
+        if (rows.length === 0) {
+            return res.status(404).json({ message: 'Felhasználó nem található.' });
+        }
+        await db.query('DELETE FROM users WHERE id = ?', [req.user.id]);
+        res.json({ message: 'Fiók törölve.' });
+    } catch (err) {
+        res.status(500).json({ message: 'Fiók törlése sikertelen.', error: err.message });
+    }
+};
+
+exports.adminDeleteUser = async (req, res) => {
+    const { id } = req.params;
+    if (Number(id) === Number(req.user.id)) {
+        return res.status(400).json({ message: 'Saját fiókot innen nem törölheted.' });
+    }
+    try {
+        const [rows] = await db.query('SELECT id FROM users WHERE id = ?', [id]);
+        if (rows.length === 0) {
+            return res.status(404).json({ message: 'Felhasználó nem található.' });
+        }
+        await db.query('DELETE FROM users WHERE id = ?', [id]);
+        res.json({ message: 'Felhasználó törölve.' });
+    } catch (err) {
+        res.status(500).json({ message: 'Felhasználó törlése sikertelen.', error: err.message });
     }
 };

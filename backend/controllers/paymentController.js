@@ -1,5 +1,7 @@
 const Stripe = require('stripe');
 const db = require('../config/db');
+const { logActivity } = require('../services/activityService');
+const { sendPaymentEmail, sendAdminNotification } = require('../services/emailService');
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || '', {
     apiVersion: '2024-06-20'
@@ -110,6 +112,33 @@ exports.handleWebhook = async (req, res) => {
                         'UPDATE bookings SET payment_status = ?, paid_at = NOW() WHERE id = ?',
                         ['paid', payment.booking_id]
                     );
+                    try {
+                        const [tourRows] = await db.query('SELECT title FROM tours WHERE id = ?', [payment.tour_id]);
+                        const [userRows] = await db.query('SELECT name, email FROM users WHERE id = ?', [payment.user_id]);
+                        const title = tourRows[0]?.title || 'ismeretlen túra';
+                        const userName = userRows[0]?.name || 'Ismeretlen felhasználó';
+                        await logActivity({
+                            type: 'booking_paid',
+                            message: `${userName} befizette a túrát: ${title}`,
+                            userId: payment.user_id,
+                            tourId: payment.tour_id,
+                            bookingId: payment.booking_id
+                        });
+                        if (userRows.length > 0 && userRows[0].email) {
+                            await sendPaymentEmail({
+                                to: userRows[0].email,
+                                name: userName,
+                                tourTitle: title,
+                                amount: payment.amount
+                            });
+                        }
+                        await sendAdminNotification({
+                            subject: `Befizetés: ${title}`,
+                            message: `${userName} befizette a túrát. Összeg: ${Number(payment.amount || 0).toLocaleString('hu-HU')} Ft.`
+                        });
+                    } catch (logErr) {
+                        console.error('Tevékenységnapló hiba:', logErr.message);
+                    }
                 }
                 await db.query(
                     'UPDATE booking_payments SET status = ?, updated_at = NOW() WHERE stripe_session_id = ?',
@@ -154,10 +183,44 @@ exports.confirmCheckoutSession = async (req, res) => {
         if (session.payment_status === 'paid') {
             const bookingId = session?.metadata?.booking_id;
             if (bookingId) {
-                await db.query(
-                    'UPDATE bookings SET payment_status = ?, paid_at = NOW() WHERE id = ?',
-                    ['paid', bookingId]
+                const [bookingRows] = await db.query(
+                    'SELECT payment_status, tour_id, total_price FROM bookings WHERE id = ? AND user_id = ? LIMIT 1',
+                    [bookingId, user_id]
                 );
+                const alreadyPaid = bookingRows[0]?.payment_status === 'paid';
+                if (!alreadyPaid) {
+                    await db.query(
+                        'UPDATE bookings SET payment_status = ?, paid_at = NOW() WHERE id = ?',
+                        ['paid', bookingId]
+                    );
+                    try {
+                        const [tourRows] = await db.query('SELECT title FROM tours WHERE id = ?', [bookingRows[0]?.tour_id]);
+                        const [userRows] = await db.query('SELECT name, email FROM users WHERE id = ?', [user_id]);
+                        const title = tourRows[0]?.title || 'ismeretlen túra';
+                        const userName = userRows[0]?.name || 'Ismeretlen felhasználó';
+                        await logActivity({
+                            type: 'booking_paid',
+                            message: `${userName} befizette a túrát: ${title}`,
+                            userId: user_id,
+                            tourId: bookingRows[0]?.tour_id || null,
+                            bookingId
+                        });
+                        if (userRows.length > 0 && userRows[0].email) {
+                            await sendPaymentEmail({
+                                to: userRows[0].email,
+                                name: userName,
+                                tourTitle: title,
+                                amount: bookingRows[0]?.total_price || 0
+                            });
+                        }
+                        await sendAdminNotification({
+                            subject: `Befizetés: ${title}`,
+                            message: `${userName} befizette a túrát.`
+                        });
+                    } catch (logErr) {
+                        console.error('Tevékenységnapló hiba:', logErr.message);
+                    }
+                }
             }
             await db.query(
                 'UPDATE booking_payments SET status = ?, updated_at = NOW() WHERE stripe_session_id = ?',

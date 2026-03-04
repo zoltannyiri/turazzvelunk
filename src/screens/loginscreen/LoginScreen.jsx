@@ -1,11 +1,14 @@
 import React, { useState, useContext } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { AuthContext } from '../../context/AuthContext';
-import { LogIn, Mail, Lock } from 'lucide-react';
+import { LogIn, Mail, Lock, Eye, EyeOff } from 'lucide-react';
+import { toast } from 'react-toastify';
 
 const LoginScreen = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [formError, setFormError] = useState('');
   const { login } = useContext(AuthContext);
   const navigate = useNavigate();
 
@@ -20,12 +23,18 @@ const LoginScreen = () => {
         const data = await res.json();
         if (res.ok) {
         login(data);
+        setFormError('');
         navigate('/');
         } else {
-        alert(data.message);
+        const message = data.message || 'Hiba történt.';
+        setFormError(message);
+        toast.error(message);
         }
     } catch (err) {
         console.error("Bejelentkezési hiba:", err);
+        const message = 'Hiba történt.';
+        setFormError(message);
+        toast.error(message);
     }
     };
 
@@ -55,17 +64,30 @@ const LoginScreen = () => {
           <div className="relative">
             <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
             <input 
-              type="password" 
+              type={showPassword ? 'text' : 'password'}
               placeholder="Jelszavad" 
-              className="w-full pl-12 pr-4 py-4 bg-gray-50 border-none rounded-2xl focus:ring-2 focus:ring-emerald-500 outline-none transition"
+              className="w-full pl-12 pr-12 py-4 bg-gray-50 border-none rounded-2xl focus:ring-2 focus:ring-emerald-500 outline-none transition"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
             />
+            <button
+              type="button"
+              onClick={() => setShowPassword((prev) => !prev)}
+              className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-emerald-600 transition"
+              aria-label={showPassword ? 'Jelszó elrejtése' : 'Jelszó megjelenítése'}
+            >
+              {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+            </button>
           </div>
           <button className="w-full bg-emerald-900 text-white py-4 rounded-2xl font-black text-lg hover:bg-emerald-800 transition shadow-lg shadow-emerald-900/20">
             Bejelentkezés
           </button>
+          {formError && (
+            <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-bold text-red-600">
+              {formError}
+            </div>
+          )}
         </form>
 
         <p className="text-center mt-8 text-gray-600">

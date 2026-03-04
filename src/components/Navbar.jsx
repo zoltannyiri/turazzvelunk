@@ -3,7 +3,7 @@ import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
 import { 
   Compass, Calendar, User, LogOut, 
-  Menu, X, ShieldCheck, Info, Search, BookOpen 
+  Menu, X, ShieldCheck, Info, Search, BookOpen, Mail
 } from 'lucide-react';
 
 const Navbar = () => {
@@ -55,6 +55,9 @@ const Navbar = () => {
           </Link>
           <Link to="/about-us" className={linkStyle('/about-us')}>
             <Info size={14} /> Rólunk
+          </Link>
+          <Link to="/contact" className={linkStyle('/contact')}>
+            <Mail size={14} /> Kapcsolat
           </Link>
 
           {/* Admin Management - Elválasztóval */}
@@ -120,6 +123,7 @@ const Navbar = () => {
           <Link to="/calendar" className={linkStyle('/calendar')} onClick={() => setIsMobileMenuOpen(false)}>Naptár</Link>
           <Link to="/blog" className={linkStyle('/blog')} onClick={() => setIsMobileMenuOpen(false)}>Blog</Link>
           <Link to="/about-us" className={linkStyle('/about-us')} onClick={() => setIsMobileMenuOpen(false)}>Rólunk</Link>
+          <Link to="/contact" className={linkStyle('/contact')} onClick={() => setIsMobileMenuOpen(false)}>Kapcsolat</Link>
           {user?.role === 'admin' && (
             <Link to="/admin" className={linkStyle('/admin')} onClick={() => setIsMobileMenuOpen(false)}>Management</Link>
           )}

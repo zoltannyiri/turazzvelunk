@@ -12,6 +12,8 @@ const tourPostRoutes = require('./routes/tourPostRoutes');
 const paymentRoutes = require('./routes/paymentRoutes');
 const equipmentRoutes = require('./routes/equipmentRoutes');
 const adminEmailRoutes = require('./routes/adminEmailRoutes');
+const activityRoutes = require('./routes/activityRoutes');
+const contactRoutes = require('./routes/contactRoutes');
 const paymentController = require('./controllers/paymentController');
 
 
@@ -54,6 +56,8 @@ app.use('/api/tour-posts', tourPostRoutes);
 app.use('/api/payments', paymentRoutes);
 app.use('/api/equipment', equipmentRoutes);
 app.use('/api/admin/email', adminEmailRoutes);
+app.use('/api/admin/activity', activityRoutes);
+app.use('/api/contact', contactRoutes);
 
 const server = http.createServer(app);
 const io = new Server(server, {

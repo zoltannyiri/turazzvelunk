@@ -1,5 +1,6 @@
 const db = require('../config/db');
-const { sendBookingEmail } = require('../services/emailService');
+const { sendBookingEmail, sendBookingCancelledEmail, sendAdminNotification } = require('../services/emailService');
+const { logActivity } = require('../services/activityService');
 
 exports.createBooking = async (req, res) => {
     const { tour_id, equipment_ids } = req.body;
@@ -72,12 +73,13 @@ exports.createBooking = async (req, res) => {
 
         const [bookingResult] = await db.query(
             `INSERT INTO bookings (
-                user_id, tour_id,
+                user_id, tour_id, status,
                 extra_price, total_price, refund_amount, refund_status
-            ) VALUES (?, ?, ?, ?, ?, ?)`,
+            ) VALUES (?, ?, ?, ?, ?, ?, ?)`,
             [
                 user_id,
                 tour_id,
+                'confirmed',
                 extraTotal,
                 totalPrice,
                 0,
@@ -86,6 +88,20 @@ exports.createBooking = async (req, res) => {
         );
 
         const bookingId = bookingResult.insertId;
+
+        try {
+            const [userRows] = await db.query('SELECT name, email FROM users WHERE id = ?', [user_id]);
+            const userName = userRows[0]?.name || 'Ismeretlen felhasználó';
+            await logActivity({
+                type: 'booking_created',
+                message: `${userName} jelentkezett a túrára: ${tour.title}`,
+                userId: user_id,
+                tourId: tour_id,
+                bookingId
+            });
+        } catch (logErr) {
+            console.error('Tevékenységnapló hiba:', logErr.message);
+        }
 
         if (selectedEquipmentIds.length > 0) {
             const [priceRows] = await db.query(
@@ -121,6 +137,10 @@ exports.createBooking = async (req, res) => {
                     endDate: tour.end_date,
                     totalPrice
                 });
+                await sendAdminNotification({
+                    subject: `Új túra jelentkezés: ${tour.title}`,
+                    message: `${userRows[0].name} (${userRows[0].email}) jelentkezett a túrára.`
+                });
             }
         } catch (emailErr) {
             console.error('Foglalas email hiba:', emailErr.message);
@@ -134,6 +154,10 @@ exports.createBooking = async (req, res) => {
 exports.getMyBookings = async (req, res) => {
     const user_id = req.user.id;
     try {
+        await db.query(
+            'UPDATE bookings SET status = ? WHERE user_id = ? AND status = ?',
+            ['confirmed', user_id, 'pending']
+        );
         const [myBookings] = await db.query(
             `SELECT bookings.id, bookings.status, bookings.booked_at, bookings.payment_status, bookings.paid_at,
                          bookings.extra_price, bookings.total_price, bookings.refund_amount, bookings.refund_status,
@@ -167,8 +191,34 @@ exports.deleteBooking = async (req, res) => {
         if (booking.length === 0) {
             return res.status(404).json({ message: "Foglalás nem található, vagy nincs hozzá jogosultságod." });
         }
-        if (booking[0].status === 'confirmed') {
-            return res.status(400).json({ message: "Az elfogadott jelentkezést csak lejelentkezési kérelemmel lehet visszavonni." });
+        if (booking[0].payment_status === 'paid') {
+            return res.status(400).json({ message: "Fizetett jelentkezést csak lejelentkezési kérelemmel lehet visszavonni." });
+        }
+        try {
+            const [tourRows] = await db.query('SELECT title FROM tours WHERE id = ?', [booking[0].tour_id]);
+            const [userRows] = await db.query('SELECT name, email FROM users WHERE id = ?', [userId]);
+            const title = tourRows[0]?.title || 'ismeretlen túra';
+            const userName = userRows[0]?.name || 'Ismeretlen felhasználó';
+            await logActivity({
+                type: 'booking_cancelled',
+                message: `Lejelentkezés a túráról: ${title}`,
+                userId,
+                tourId: booking[0].tour_id,
+                bookingId
+            });
+            if (userRows.length > 0) {
+                await sendBookingCancelledEmail({
+                    to: userRows[0].email,
+                    name: userRows[0].name,
+                    tourTitle: title
+                });
+            }
+            await sendAdminNotification({
+                subject: `Lejelentkezés: ${title}`,
+                message: `${userName} (${userRows[0]?.email || 'n/a'}) lejelentkezett a túráról.`
+            });
+        } catch (logErr) {
+            console.error('Tevékenységnapló hiba:', logErr.message);
         }
         await db.query('DELETE FROM bookings WHERE id = ?', [bookingId]);
         const io = req.app.get('io');
@@ -237,8 +287,34 @@ exports.removeBookingByTourId = async (req, res) => {
         if (booking.length === 0) {
             return res.status(404).json({ message: "Foglalás nem található." });
         }
-        if (booking[0].status === 'confirmed') {
-            return res.status(400).json({ message: "Az elfogadott jelentkezést csak lejelentkezési kérelemmel lehet visszavonni." });
+        if (booking[0].payment_status === 'paid') {
+            return res.status(400).json({ message: "Fizetett jelentkezést csak lejelentkezési kérelemmel lehet visszavonni." });
+        }
+        try {
+            const [tourRows] = await db.query('SELECT title FROM tours WHERE id = ?', [req.params.tourId]);
+            const [userRows] = await db.query('SELECT name, email FROM users WHERE id = ?', [req.user.id]);
+            const title = tourRows[0]?.title || 'ismeretlen túra';
+            const userName = userRows[0]?.name || 'Ismeretlen felhasználó';
+            await logActivity({
+                type: 'booking_cancelled',
+                message: `Lejelentkezés a túráról: ${title}`,
+                userId: req.user.id,
+                tourId: Number(req.params.tourId),
+                bookingId: booking[0].id
+            });
+            if (userRows.length > 0) {
+                await sendBookingCancelledEmail({
+                    to: userRows[0].email,
+                    name: userRows[0].name,
+                    tourTitle: title
+                });
+            }
+            await sendAdminNotification({
+                subject: `Lejelentkezés: ${title}`,
+                message: `${userName} (${userRows[0]?.email || 'n/a'}) lejelentkezett a túráról.`
+            });
+        } catch (logErr) {
+            console.error('Tevékenységnapló hiba:', logErr.message);
         }
         await db.query('DELETE FROM bookings WHERE user_id = ? AND tour_id = ?', [req.user.id, req.params.tourId]);
         const io = req.app.get('io');
@@ -269,6 +345,10 @@ exports.checkIfBooked = async (req, res) => {
 
 exports.getBookingStatusByTourId = async (req, res) => {
     try {
+        await db.query(
+            'UPDATE bookings SET status = ? WHERE user_id = ? AND tour_id = ? AND status = ?',
+            ['confirmed', req.user.id, req.params.tourId, 'pending']
+        );
                 const [rows] = await db.query(
                         `SELECT b.id, b.status, b.payment_status,
                                         b.extra_price, b.total_price,
@@ -350,8 +430,8 @@ exports.createCancellationRequest = async (req, res) => {
         if (booking.length === 0) {
             return res.status(404).json({ message: "Foglalás nem található." });
         }
-        if (booking[0].status !== 'confirmed') {
-            return res.status(400).json({ message: "Csak elfogadott jelentkezéshez lehet kérelmet leadni." });
+        if (booking[0].payment_status !== 'paid') {
+            return res.status(400).json({ message: "Csak fizetett jelentkezéshez lehet lejelentkezési kérelmet leadni." });
         }
         await db.query(
             'INSERT INTO booking_cancel_requests (booking_id, user_id, reason) VALUES (?, ?, ?)',
@@ -407,6 +487,32 @@ exports.updateCancellationRequestStatus = async (req, res) => {
                     userId: bookingRows[0].user_id,
                     status: 'removed'
                 });
+            }
+            try {
+                const [tourRows] = await db.query('SELECT title FROM tours WHERE id = ?', [bookingRows[0].tour_id]);
+                const [userRows] = await db.query('SELECT name, email FROM users WHERE id = ?', [bookingRows[0].user_id]);
+                const title = tourRows[0]?.title || 'ismeretlen túra';
+                const userName = userRows[0]?.name || 'Ismeretlen felhasználó';
+                await logActivity({
+                    type: 'booking_cancelled',
+                    message: `Lejelentkezés a túráról: ${title}`,
+                    userId: bookingRows[0].user_id,
+                    tourId: bookingRows[0].tour_id,
+                    bookingId: rows[0].booking_id
+                });
+                if (userRows.length > 0) {
+                    await sendBookingCancelledEmail({
+                        to: userRows[0].email,
+                        name: userRows[0].name,
+                        tourTitle: title
+                    });
+                }
+                await sendAdminNotification({
+                    subject: `Lejelentkezés (jóváhagyva): ${title}`,
+                    message: `${userName} (${userRows[0]?.email || 'n/a'}) lejelentkezett a túráról.`
+                });
+            } catch (logErr) {
+                console.error('Tevékenységnapló hiba:', logErr.message);
             }
         }
         res.json({ message: "Kérelem frissítve." });

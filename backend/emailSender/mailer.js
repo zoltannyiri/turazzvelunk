@@ -15,16 +15,17 @@ const transporter = nodemailer.createTransport({
 
 const defaultFrom = process.env.EMAIL_FROM || 'Turazz Velunk <no-reply@turazzvelunk.local>';
 
-const sendMail = async ({ to, subject, html, text }) => {
+const sendMail = async ({ to, subject, html, text, replyTo, from }) => {
     if (!process.env.SMTP_HOST || !process.env.SMTP_USER || !process.env.SMTP_PASS) {
         throw new Error('SMTP nincs beallitva. Ellenorizd az SMTP_* env valtozokat.');
     }
     return transporter.sendMail({
-        from: defaultFrom,
+        from: from || defaultFrom,
         to,
         subject,
         html,
-        text
+        text,
+        ...(replyTo ? { replyTo } : {})
     });
 };
 

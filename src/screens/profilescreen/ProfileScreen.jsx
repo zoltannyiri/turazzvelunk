@@ -160,6 +160,26 @@ import {
     }
   };
 
+  const handleDeleteAccount = async () => {
+    const ok = window.confirm('Biztosan törölni szeretnéd a fiókodat? Ez nem visszavonható.');
+    if (!ok) return;
+    try {
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/auth/me`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+      });
+      const data = await res.json();
+      if (res.ok) {
+        logout();
+        navigate('/', { replace: true });
+      } else {
+        alert(data.message || data.error || 'Hiba történt.');
+      }
+    } catch (err) {
+      alert('Hiba történt.');
+    }
+  };
+
   if (authLoading && !paymentProcessing) {
     return (
       <div className="min-h-[60vh] flex items-center justify-center">
@@ -263,6 +283,12 @@ import {
               >
                 <LogOut size={18} className="group-hover:-translate-x-1 transition-transform" /> Kijelentkezés
               </button>
+              <button
+                onClick={handleDeleteAccount}
+                className="w-full mt-3 flex items-center justify-center gap-2 p-4 rounded-2xl bg-red-500 text-white font-black hover:bg-red-600 transition-all"
+              >
+                Fiók törlése
+              </button>
             </div>
             
             <div className="bg-emerald-600 p-8 rounded-[2.5rem] text-white shadow-xl shadow-emerald-600/20">
@@ -310,8 +336,8 @@ import {
 
                       <div className="flex flex-col items-center md:items-end gap-3">
                         {booking.status === 'pending' ? (
-                          <div className="flex items-center gap-2 px-5 py-2 bg-orange-50 text-orange-600 rounded-full border border-orange-100 font-black text-xs uppercase tracking-tighter">
-                            <AlertCircle size={14} /> Függőben
+                          <div className="flex items-center gap-2 px-5 py-2 bg-emerald-50 text-emerald-600 rounded-full border border-emerald-100 font-black text-xs uppercase tracking-tighter">
+                            <CheckCircle2 size={14} /> Elfogadva
                           </div>
                         ) : (
                           <div className="flex items-center gap-2 px-5 py-2 bg-emerald-50 text-emerald-600 rounded-full border border-emerald-100 font-black text-xs uppercase tracking-tighter">

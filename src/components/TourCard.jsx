@@ -3,6 +3,12 @@ import { Link } from 'react-router-dom';
 import { Clock, MapPin, ArrowRight, Calendar } from 'lucide-react';
 
 const TourCard = ({ tour }) => {
+  const bookedCount = Number(tour.booked_count || 0);
+  const maxParticipants = Number(tour.max_participants || 0);
+  const saturation = maxParticipants > 0
+    ? Math.round((bookedCount / maxParticipants) * 100)
+    : 0;
+
   const formatTourRange = (start, end) => {
     if (!start || !end) return "Hamarosan...";
     const s = new Date(start);
@@ -48,9 +54,24 @@ const TourCard = ({ tour }) => {
         <div className="flex items-center gap-2 text-gray-400 text-sm font-bold mb-6">
           <Calendar size={16} className="text-emerald-500/50" />
           <span>{formatTourRange(tour.start_date, tour.end_date)}</span>
-          {tour.difficulty_level && (
-            <span className="ml-auto text-[10px] font-black uppercase tracking-widest text-emerald-600">{tour.difficulty_level}/10</span>
-          )}
+          <span className="ml-auto text-[10px] font-black uppercase tracking-widest text-emerald-600">
+            Létszám: {bookedCount}/{maxParticipants > 0 ? maxParticipants : '-'}
+          </span>
+        </div>
+
+        <div className="mb-6">
+          <div className="flex justify-between text-[10px] font-black uppercase mb-1.5 text-slate-400">
+            <span>
+              Jelentkezők: <span className="text-slate-900">{bookedCount}</span> / {maxParticipants > 0 ? maxParticipants : '-'} fő
+            </span>
+            <span className={saturation >= 90 ? 'text-red-500' : 'text-emerald-500'}>{saturation}%</span>
+          </div>
+          <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
+            <div
+              className={`h-full transition-all duration-1000 ease-out ${saturation >= 90 ? 'bg-red-500' : 'bg-emerald-500'}`}
+              style={{ width: `${Math.min(saturation, 100)}%` }}
+            ></div>
+          </div>
         </div>
         
         <div className="mt-auto pt-6 border-t border-gray-50 flex items-center justify-between">

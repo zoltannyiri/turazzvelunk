@@ -243,7 +243,11 @@ const TourSearchScreen = () => {
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
           {filteredTours.map((tour) => {
-            const saturation = Math.round(((tour.booked_count || 0) / (tour.max_participants || 12)) * 100);
+            const maxParticipants = Number(tour.max_participants || 0);
+            const bookedCount = Number(tour.booked_count || 0);
+            const saturation = maxParticipants > 0
+              ? Math.round((bookedCount / maxParticipants) * 100)
+              : 0;
             return (
               <div 
                 key={tour.id} 
@@ -275,7 +279,9 @@ const TourSearchScreen = () => {
                     </div>
                     <div className="mb-2">
                       <div className="flex justify-between text-[9px] font-black uppercase mb-1.5 text-slate-400">
-                        <span>Létszám: <span className="text-slate-900">{tour.booked_count || 0}</span> / {tour.max_participants || 12} fő</span>
+                        <span>
+                          Létszám: <span className="text-slate-900">{bookedCount}</span> / {maxParticipants > 0 ? maxParticipants : '-'} fő
+                        </span>
                         <span className={saturation >= 90 ? 'text-red-500' : 'text-emerald-500'}>{saturation}%</span>
                       </div>
                       <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">

@@ -17,6 +17,7 @@ import TourSearchScreen from "./screens/toursearchscreen/TourSearchScreen";
 import AboutScreen from "./screens/aboutscreen/AboutScreen";
 import BlogScreen from "./screens/blogscreen/BlogScreen";
 import BlogDetailsScreen from "./screens/blogdetailsscreen/BlogDetailsScreen";
+import ContactScreen from "./screens/contactscreen/ContactScreen";
 
 function App() {
   return (
@@ -33,6 +34,7 @@ function App() {
         <Route path="/about-us" element={<AboutScreen />} />
         <Route path="/blog" element={<BlogScreen />} />
         <Route path="/blog/:id" element={<BlogDetailsScreen />} />
+        <Route path="/contact" element={<ContactScreen />} />
 
         <Route path="/admin" element={<AdminDashboard />} />
 

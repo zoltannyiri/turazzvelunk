@@ -4,7 +4,7 @@ import { Pie } from 'react-chartjs-2';
 import { Chart as ChartJS, ArcElement, Tooltip, Legend } from 'chart.js';
 import { 
   CheckCircle, Users, DollarSign, 
-  ChevronDown, ChevronUp, Plus, Edit3, Trash2, Calendar, MessageSquareText, XCircle, LayoutGrid, ListChecks, UserCog, Mail
+  ChevronDown, ChevronUp, Plus, Edit3, Trash2, Calendar, MessageSquareText, XCircle, LayoutGrid, ListChecks, UserCog, Mail, Activity
 } from 'lucide-react';
 import { toast } from 'react-toastify';
 import DatePicker, { registerLocale } from "react-datepicker";
@@ -45,6 +45,14 @@ const AdminDashboard = () => {
   const [emailManageLoading, setEmailManageLoading] = useState(false);
   const [emailModalOpen, setEmailModalOpen] = useState(false);
   const [emailModalData, setEmailModalData] = useState(null);
+  const [activityLog, setActivityLog] = useState([]);
+  const [activityLoading, setActivityLoading] = useState(false);
+  const activityLabels = useMemo(() => ({
+    user_registered: 'Regisztráció',
+    booking_created: 'Túrára jelentkezés',
+    booking_paid: 'Túra befizetés',
+    booking_cancelled: 'Lejelentkezés'
+  }), []);
   const monthNames = [
     'Január',
     'Február',
@@ -175,6 +183,25 @@ const AdminDashboard = () => {
     }
   }, []);
 
+  const fetchActivityLog = useCallback(async () => {
+    setActivityLoading(true);
+    try {
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/admin/activity`, {
+        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setActivityLog(Array.isArray(data) ? data : []);
+      } else {
+        toast.error(data.message || 'Nem sikerult betolteni a tevekenysegnaplot.');
+      }
+    } catch (err) {
+      toast.error('Nem sikerult betolteni a tevekenysegnaplot.');
+    } finally {
+      setActivityLoading(false);
+    }
+  }, []);
+
   const openEmailModal = (payload) => {
     setEmailModalData(payload);
     setEmailModalOpen(true);
@@ -198,6 +225,12 @@ const AdminDashboard = () => {
       fetchEmailManage();
     }
   }, [activeTab, emailSection, fetchEmailManage]);
+
+  useEffect(() => {
+    if (activeTab === 'activity') {
+      fetchActivityLog();
+    }
+  }, [activeTab, fetchActivityLog]);
 
 
   const groupedBookings = useMemo(() => {
@@ -403,6 +436,25 @@ const AdminDashboard = () => {
       setUsers(prev => prev.map(u => u.id === id ? { ...u, role } : u));
     } else {
       toast.error(data.message || 'Hiba történt.');
+    }
+  };
+
+  const handleAdminDeleteUser = async (id) => {
+    if (!window.confirm('Biztosan törlöd ezt a felhasználót? Ez nem visszavonható.')) return;
+    try {
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/auth/users/${id}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+      });
+      const data = await res.json();
+      if (res.ok) {
+        toast.success(data.message || 'Felhasználó törölve.');
+        setUsers((prev) => prev.filter((u) => u.id !== id));
+      } else {
+        toast.error(data.message || 'Hiba történt.');
+      }
+    } catch (err) {
+      toast.error('Hiba történt.');
     }
   };
 
@@ -642,6 +694,7 @@ const AdminDashboard = () => {
     { id: 'tours', label: 'Túrák', icon: Calendar },
     { id: 'bookings', label: 'Jelentkezések', icon: ListChecks },
     { id: 'cancellations', label: 'Lejelentkezések', icon: MessageSquareText },
+    { id: 'activity', label: 'Tevékenységnapló', icon: Activity },
     { id: 'users', label: 'Felhasználók', icon: UserCog },
     { id: 'email', label: 'Email küldés', icon: Mail },
     { id: 'equipment', label: 'Eszközök', icon: Users }
@@ -1192,6 +1245,12 @@ const AdminDashboard = () => {
                                   >
                                     {user.role === 'admin' ? 'Admin elvétel' : 'Admin jog'}
                                   </button>
+                                  <button
+                                    onClick={() => handleAdminDeleteUser(user.id)}
+                                    className="px-4 py-2 rounded-xl bg-red-500/10 text-red-500 text-xs font-black uppercase tracking-widest hover:bg-red-500 hover:text-white transition self-start md:self-auto"
+                                  >
+                                    Felhasználó törlése
+                                  </button>
                                 </div>
                                 {user.bookings.length > 0 ? (
                                   <div>
@@ -1227,6 +1286,80 @@ const AdminDashboard = () => {
                           </div>
                         );
                       })}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {activeTab === 'activity' && (
+              <div className="bg-white rounded-[3rem] shadow-sm border border-slate-100 overflow-hidden">
+                <div className="p-8 md:p-10 flex items-center justify-between bg-gradient-to-r from-white to-slate-50">
+                  <div>
+                    <h2 className="text-2xl font-black text-emerald-950">Tevékenységnapló</h2>
+                    <div className="text-xs text-slate-400 font-bold uppercase tracking-widest">Regisztrációk, jelentkezések, fizetések, lejelentkezések</div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={fetchActivityLog}
+                    className="px-4 py-2 rounded-2xl text-xs font-black uppercase tracking-widest bg-emerald-600 text-white shadow-lg shadow-emerald-600/20 hover:bg-emerald-700 transition"
+                  >
+                    Frissítés
+                  </button>
+                </div>
+                <div className="px-8 pb-8">
+                  {activityLoading ? (
+                    <div className="text-center py-10 text-slate-400 font-bold">Betöltés...</div>
+                  ) : activityLog.length === 0 ? (
+                    <div className="text-center py-10 text-slate-400 font-bold">Nincs naplózott esemény.</div>
+                  ) : (
+                    <div className="grid gap-4">
+                      {activityLog.map((item) => (
+                        <div key={item.id} className="bg-slate-50 rounded-[2rem] p-6 border border-slate-100">
+                          <div className="text-xs font-black uppercase tracking-widest text-emerald-600">
+                            {activityLabels[item.type] || item.type}
+                          </div>
+                          <div className="text-lg font-black text-slate-900 mt-2">{item.message}</div>
+                          <div className="text-xs text-slate-400 mt-2">
+                            {item.created_at ? new Date(item.created_at).toLocaleString('hu-HU') : ''}
+                          </div>
+                          {(item.user_name || item.tour_title) && (
+                            <div className="text-xs text-slate-500 mt-3">
+                              {item.user_name ? (
+                                <>
+                                  Felhasználó:{' '}
+                                  {item.user_id ? (
+                                    <Link
+                                      to={`/profile/${item.user_id}`}
+                                      className="font-black text-emerald-700 hover:text-emerald-800"
+                                    >
+                                      {item.user_name}
+                                    </Link>
+                                  ) : (
+                                    <span className="font-black text-slate-700">{item.user_name}</span>
+                                  )}
+                                </>
+                              ) : null}
+                              {item.user_name && item.tour_title ? ' · ' : ''}
+                              {item.tour_title ? (
+                                <>
+                                  Túra:{' '}
+                                  {item.tour_id ? (
+                                    <Link
+                                      to={`/tours/${item.tour_id}`}
+                                      className="font-black text-emerald-700 hover:text-emerald-800"
+                                    >
+                                      {item.tour_title}
+                                    </Link>
+                                  ) : (
+                                    <span className="font-black text-slate-700">{item.tour_title}</span>
+                                  )}
+                                </>
+                              ) : null}
+                            </div>
+                          )}
+                        </div>
+                      ))}
                     </div>
                   )}
                 </div>
