@@ -15,6 +15,10 @@ const adminEmailRoutes = require('./routes/adminEmailRoutes');
 const activityRoutes = require('./routes/activityRoutes');
 const contactRoutes = require('./routes/contactRoutes');
 const paymentController = require('./controllers/paymentController');
+const errorLogRoutes = require('./routes/errorLogRoutes');
+const clientErrorRoutes = require('./routes/clientErrorRoutes');
+const { errorLogger } = require('./middleware/errorLogger');
+const { requestLogger } = require('./middleware/requestLogger');
 
 
 // backend diagnosztika
@@ -57,7 +61,13 @@ app.use('/api/payments', paymentRoutes);
 app.use('/api/equipment', equipmentRoutes);
 app.use('/api/admin/email', adminEmailRoutes);
 app.use('/api/admin/activity', activityRoutes);
+app.use('/api/admin/errors', errorLogRoutes);
+app.use('/api/errors', clientErrorRoutes);
 app.use('/api/contact', contactRoutes);
+
+app.use(requestLogger);
+
+app.use(errorLogger);
 
 const server = http.createServer(app);
 const io = new Server(server, {

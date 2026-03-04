@@ -4,7 +4,7 @@ import { Pie } from 'react-chartjs-2';
 import { Chart as ChartJS, ArcElement, Tooltip, Legend } from 'chart.js';
 import { 
   CheckCircle, Users, DollarSign, 
-  ChevronDown, ChevronUp, Plus, Edit3, Trash2, Calendar, MessageSquareText, XCircle, LayoutGrid, ListChecks, UserCog, Mail, Activity
+  ChevronDown, ChevronUp, Plus, Edit3, Trash2, Calendar, MessageSquareText, XCircle, LayoutGrid, ListChecks, UserCog, Mail, Activity, AlertTriangle
 } from 'lucide-react';
 import { toast } from 'react-toastify';
 import DatePicker, { registerLocale } from "react-datepicker";
@@ -31,6 +31,11 @@ const AdminDashboard = () => {
   const [toursLoading, setToursLoading] = useState(true);
   const [equipment, setEquipment] = useState([]);
   const [equipmentLoading, setEquipmentLoading] = useState(true);
+  const [bookingSearch, setBookingSearch] = useState('');
+  const [bookingStatusFilter, setBookingStatusFilter] = useState('all');
+  const [bookingPaymentFilter, setBookingPaymentFilter] = useState('all');
+  const [cancelSearch, setCancelSearch] = useState('');
+  const [cancelStatusFilter, setCancelStatusFilter] = useState('all');
   const [newEquipment, setNewEquipment] = useState({ name: '', description: '', total_quantity: '' });
   const [equipmentAvailability, setEquipmentAvailability] = useState({});
   const [emailSubject, setEmailSubject] = useState('');
@@ -47,6 +52,10 @@ const AdminDashboard = () => {
   const [emailModalData, setEmailModalData] = useState(null);
   const [activityLog, setActivityLog] = useState([]);
   const [activityLoading, setActivityLoading] = useState(false);
+  const [errorLogs, setErrorLogs] = useState([]);
+  const [errorLoading, setErrorLoading] = useState(false);
+  const [errorSearch, setErrorSearch] = useState('');
+  const [errorLevelFilter, setErrorLevelFilter] = useState('');
   const activityLabels = useMemo(() => ({
     user_registered: 'Regisztráció',
     booking_created: 'Túrára jelentkezés',
@@ -202,6 +211,26 @@ const AdminDashboard = () => {
     }
   }, []);
 
+  const fetchErrorLogs = useCallback(async () => {
+    setErrorLoading(true);
+    try {
+      const levelQuery = errorLevelFilter ? `?level=${encodeURIComponent(errorLevelFilter)}` : '';
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/admin/errors${levelQuery}`, {
+        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setErrorLogs(Array.isArray(data) ? data : []);
+      } else {
+        toast.error(data.message || 'Nem sikerült betölteni a hibákat.');
+      }
+    } catch (err) {
+      toast.error('Nem sikerült betölteni a hibákat.');
+    } finally {
+      setErrorLoading(false);
+    }
+  }, [errorLevelFilter]);
+
   const openEmailModal = (payload) => {
     setEmailModalData(payload);
     setEmailModalOpen(true);
@@ -231,6 +260,12 @@ const AdminDashboard = () => {
       fetchActivityLog();
     }
   }, [activeTab, fetchActivityLog]);
+
+  useEffect(() => {
+    if (activeTab === 'errors') {
+      fetchErrorLogs();
+    }
+  }, [activeTab, fetchErrorLogs]);
 
 
   const groupedBookings = useMemo(() => {
@@ -368,6 +403,65 @@ const AdminDashboard = () => {
     if (booking?.payment_status === 'paid') return 'Fizetve';
     return booking?.status || '';
   };
+
+  const normalizeValue = (value) => String(value || '').toLowerCase();
+
+
+  const filteredBookings = useMemo(() => {
+    const term = normalizeValue(bookingSearch.trim());
+    return bookings.filter((booking) => {
+      if (bookingStatusFilter !== 'all' && booking.status !== bookingStatusFilter) {
+        return false;
+      }
+      if (bookingPaymentFilter === 'paid' && booking.payment_status !== 'paid') {
+        return false;
+      }
+      if (bookingPaymentFilter === 'unpaid' && booking.payment_status === 'paid') {
+        return false;
+      }
+      if (!term) return true;
+      const haystack = [
+        booking.title,
+        booking.location,
+        booking.user_name,
+        booking.email
+      ].map(normalizeValue).join(' ');
+      return haystack.includes(term);
+    });
+  }, [bookings, bookingSearch, bookingStatusFilter, bookingPaymentFilter]);
+
+  const filteredCancelRequests = useMemo(() => {
+    const term = normalizeValue(cancelSearch.trim());
+    return cancelRequests.filter((req) => {
+      if (cancelStatusFilter !== 'all' && req.status !== cancelStatusFilter) {
+        return false;
+      }
+      if (!term) return true;
+      const haystack = [
+        req.tour_title,
+        req.location,
+        req.user_name,
+        req.email,
+        req.reason
+      ].map(normalizeValue).join(' ');
+      return haystack.includes(term);
+    });
+  }, [cancelRequests, cancelSearch, cancelStatusFilter]);
+
+  const filteredErrorLogs = useMemo(() => {
+    const term = normalizeValue(errorSearch.trim());
+    return errorLogs.filter((log) => {
+      if (!term) return true;
+      const haystack = [
+        log.message,
+        log.path,
+        log.method,
+        log.user_name,
+        log.user_email
+      ].map(normalizeValue).join(' ');
+      return haystack.includes(term);
+    });
+  }, [errorLogs, errorSearch]);
 
   const updateStatus = async (id, newStatus) => {
     const res = await fetch(`${import.meta.env.VITE_API_URL}/bookings/${id}/status`, {
@@ -695,6 +789,7 @@ const AdminDashboard = () => {
     { id: 'bookings', label: 'Jelentkezések', icon: ListChecks },
     { id: 'cancellations', label: 'Lejelentkezések', icon: MessageSquareText },
     { id: 'activity', label: 'Tevékenységnapló', icon: Activity },
+    { id: 'errors', label: 'Hibák', icon: AlertTriangle },
     { id: 'users', label: 'Felhasználók', icon: UserCog },
     { id: 'email', label: 'Email küldés', icon: Mail },
     { id: 'equipment', label: 'Eszközök', icon: Users }
@@ -1075,7 +1170,39 @@ const AdminDashboard = () => {
                     <h2 className="text-2xl font-black text-emerald-950">Összes jelentkezés</h2>
                     <div className="text-xs text-slate-400 font-bold uppercase tracking-widest">Admin kezelő</div>
                   </div>
-                  <div className="text-xs font-black uppercase tracking-widest text-emerald-600">{bookings.length} db</div>
+                  <div className="text-xs font-black uppercase tracking-widest text-emerald-600">
+                    {filteredBookings.length} / {bookings.length} db
+                  </div>
+                </div>
+                <div className="px-8 pb-4">
+                  <div className="grid grid-cols-1 md:grid-cols-[1.3fr_0.6fr_0.6fr] gap-3">
+                    <input
+                      type="text"
+                      placeholder="Keresés túra, felhasználó vagy email alapján..."
+                      className="w-full px-4 py-3 rounded-2xl bg-slate-50 border border-slate-100 text-sm font-semibold focus:ring-2 focus:ring-emerald-500 outline-none"
+                      value={bookingSearch}
+                      onChange={(e) => setBookingSearch(e.target.value)}
+                    />
+                    <select
+                      className="w-full px-4 py-3 rounded-2xl bg-slate-50 border border-slate-100 text-sm font-semibold focus:ring-2 focus:ring-emerald-500 outline-none"
+                      value={bookingStatusFilter}
+                      onChange={(e) => setBookingStatusFilter(e.target.value)}
+                    >
+                      <option value="all">Összes státusz</option>
+                      <option value="pending">Függőben</option>
+                      <option value="confirmed">Elfogadva</option>
+                      <option value="cancelled">Lemondva</option>
+                    </select>
+                    <select
+                      className="w-full px-4 py-3 rounded-2xl bg-slate-50 border border-slate-100 text-sm font-semibold focus:ring-2 focus:ring-emerald-500 outline-none"
+                      value={bookingPaymentFilter}
+                      onChange={(e) => setBookingPaymentFilter(e.target.value)}
+                    >
+                      <option value="all">Összes fizetés</option>
+                      <option value="paid">Fizetve</option>
+                      <option value="unpaid">Nem fizetett</option>
+                    </select>
+                  </div>
                 </div>
                 <div className="px-8 pb-8 overflow-x-auto">
                   <table className="w-full text-left">
@@ -1088,7 +1215,7 @@ const AdminDashboard = () => {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">
-                      {bookings.map((b) => (
+                      {filteredBookings.map((b) => (
                         <tr key={b.id} className="text-sm">
                           <td className="py-4">
                             <div className="font-black text-emerald-950">{b.title}</div>
@@ -1138,12 +1265,33 @@ const AdminDashboard = () => {
                     {pendingCancelCount} pending
                   </div>
                 </div>
+                <div className="px-8 pb-4">
+                  <div className="grid grid-cols-1 md:grid-cols-[1.3fr_0.6fr] gap-3">
+                    <input
+                      type="text"
+                      placeholder="Keresés túra, felhasználó vagy email alapján..."
+                      className="w-full px-4 py-3 rounded-2xl bg-slate-50 border border-slate-100 text-sm font-semibold focus:ring-2 focus:ring-emerald-500 outline-none"
+                      value={cancelSearch}
+                      onChange={(e) => setCancelSearch(e.target.value)}
+                    />
+                    <select
+                      className="w-full px-4 py-3 rounded-2xl bg-slate-50 border border-slate-100 text-sm font-semibold focus:ring-2 focus:ring-emerald-500 outline-none"
+                      value={cancelStatusFilter}
+                      onChange={(e) => setCancelStatusFilter(e.target.value)}
+                    >
+                      <option value="all">Összes státusz</option>
+                      <option value="pending">Függőben</option>
+                      <option value="approved">Jóváhagyva</option>
+                      <option value="rejected">Elutasítva</option>
+                    </select>
+                  </div>
+                </div>
                 <div className="px-8 pb-8">
-                  {cancelRequests.length === 0 ? (
+                  {filteredCancelRequests.length === 0 ? (
                     <div className="text-center py-10 text-slate-400 font-bold">Nincs kérelem.</div>
                   ) : (
                     <div className="grid gap-4">
-                      {cancelRequests.map((req) => (
+                      {filteredCancelRequests.map((req) => (
                         <div key={req.id} className="bg-slate-50 rounded-[2rem] p-6 border border-slate-100">
                           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
                             <div>
@@ -1358,6 +1506,78 @@ const AdminDashboard = () => {
                               ) : null}
                             </div>
                           )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {activeTab === 'errors' && (
+              <div className="bg-white rounded-[3rem] shadow-sm border border-slate-100 overflow-hidden">
+                <div className="p-8 md:p-10 flex items-center justify-between bg-gradient-to-r from-white to-slate-50">
+                  <div>
+                    <h2 className="text-2xl font-black text-emerald-950">Hibanapló</h2>
+                    <div className="text-xs text-slate-400 font-bold uppercase tracking-widest">Szerver hibák és rendellenességek</div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={fetchErrorLogs}
+                    className="px-4 py-2 rounded-2xl text-xs font-black uppercase tracking-widest bg-emerald-600 text-white shadow-lg shadow-emerald-600/20 hover:bg-emerald-700 transition"
+                  >
+                    Frissítés
+                  </button>
+                </div>
+                <div className="px-8 pb-4">
+                  <div className="grid grid-cols-1 md:grid-cols-[1.2fr_0.6fr] gap-3">
+                    <input
+                      type="text"
+                      placeholder="Keresés üzenet, endpoint vagy felhasználó alapján..."
+                      className="w-full px-4 py-3 rounded-2xl bg-slate-50 border border-slate-100 text-sm font-semibold focus:ring-2 focus:ring-emerald-500 outline-none"
+                      value={errorSearch}
+                      onChange={(e) => setErrorSearch(e.target.value)}
+                    />
+                    <select
+                      className="w-full px-4 py-3 rounded-2xl bg-slate-50 border border-slate-100 text-sm font-semibold focus:ring-2 focus:ring-emerald-500 outline-none"
+                      value={errorLevelFilter}
+                      onChange={(e) => setErrorLevelFilter(e.target.value)}
+                    >
+                      <option value="">Összes szint</option>
+                      <option value="error">Error</option>
+                      <option value="warn">Warn</option>
+                      <option value="info">Info</option>
+                    </select>
+                  </div>
+                </div>
+                <div className="px-8 pb-8">
+                  {errorLoading ? (
+                    <div className="text-center py-10 text-slate-400 font-bold">Betöltés...</div>
+                  ) : filteredErrorLogs.length === 0 ? (
+                    <div className="text-center py-10 text-slate-400 font-bold">Nincs naplózott hiba.</div>
+                  ) : (
+                    <div className="grid gap-4">
+                      {filteredErrorLogs.map((log) => (
+                        <div key={log.id} className="bg-slate-50 rounded-[2rem] p-6 border border-slate-100">
+                          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+                            <div>
+                              <div className="text-[10px] font-black uppercase tracking-widest text-emerald-600">
+                                {log.level || 'error'} · {log.status_code || ''}
+                              </div>
+                              <div className="text-lg font-black text-slate-900 mt-1">{log.message}</div>
+                              <div className="text-xs text-slate-400 mt-2">
+                                {log.method ? `${log.method} ` : ''}{log.path || ''}
+                              </div>
+                              {(log.user_name || log.user_email) && (
+                                <div className="text-xs text-slate-500 mt-2">
+                                  Felhasználó: {log.user_name || 'Ismeretlen'} {log.user_email ? `(${log.user_email})` : ''}
+                                </div>
+                              )}
+                            </div>
+                            <div className="text-xs text-slate-400 font-bold">
+                              {log.created_at ? new Date(log.created_at).toLocaleString('hu-HU') : ''}
+                            </div>
+                          </div>
                         </div>
                       ))}
                     </div>
