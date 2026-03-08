@@ -60,7 +60,12 @@ const AdminDashboard = () => {
     user_registered: 'Regisztráció',
     booking_created: 'Túrára jelentkezés',
     booking_paid: 'Túra befizetés',
-    booking_cancelled: 'Lejelentkezés'
+    booking_cancelled: 'Lejelentkezés',
+    booking_cancel_requested: 'Lejelentkezési kérelem',
+    booking_cancel_approved: 'Lejelentkezés jóváhagyva',
+    booking_cancel_rejected: 'Lejelentkezés elutasítva',
+    booking_admin_removed: 'Jelentkezés törölve (admin)',
+    user_deleted: 'Fiók törlés'
   }), []);
   const monthNames = [
     'Január',
@@ -1170,8 +1175,17 @@ const AdminDashboard = () => {
                     <h2 className="text-2xl font-black text-emerald-950">Összes jelentkezés</h2>
                     <div className="text-xs text-slate-400 font-bold uppercase tracking-widest">Admin kezelő</div>
                   </div>
-                  <div className="text-xs font-black uppercase tracking-widest text-emerald-600">
-                    {filteredBookings.length} / {bookings.length} db
+                  <div className="flex items-center gap-3">
+                    <button
+                      type="button"
+                      onClick={fetchBookings}
+                      className="px-4 py-2 rounded-2xl text-xs font-black uppercase tracking-widest bg-emerald-600 text-white shadow-lg shadow-emerald-600/20 hover:bg-emerald-700 transition"
+                    >
+                      Frissítés
+                    </button>
+                    <div className="text-xs font-black uppercase tracking-widest text-emerald-600">
+                      {filteredBookings.length} / {bookings.length} db
+                    </div>
                   </div>
                 </div>
                 <div className="px-8 pb-4">

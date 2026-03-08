@@ -1,7 +1,7 @@
 const db = require('../config/db');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
-const { sendRegistrationEmail } = require('../services/emailService');
+const { sendRegistrationEmail, sendAccountDeletedEmail } = require('../services/emailService');
 const { logActivity } = require('../services/activityService');
 
 exports.register = async (req, res) => {
@@ -203,11 +203,28 @@ exports.getMe = async (req, res) => {
 
 exports.deleteMe = async (req, res) => {
     try {
-        const [rows] = await db.query('SELECT id FROM users WHERE id = ?', [req.user.id]);
+        const [rows] = await db.query('SELECT id, name, email FROM users WHERE id = ?', [req.user.id]);
         if (rows.length === 0) {
             return res.status(404).json({ message: 'Felhasználó nem található.' });
         }
+        const user = rows[0];
+        try {
+            await logActivity({
+                type: 'user_deleted',
+                message: `Felhasználó törölte a fiókját: ${user.name} (${user.email})`,
+                userId: user.id
+            });
+        } catch (logErr) {
+            console.error('Tevékenységnapló hiba:', logErr.message);
+        }
         await db.query('DELETE FROM users WHERE id = ?', [req.user.id]);
+        try {
+            if (user.email) {
+                await sendAccountDeletedEmail({ to: user.email, name: user.name });
+            }
+        } catch (emailErr) {
+            console.error('Fiók törlés email hiba:', emailErr.message);
+        }
         res.json({ message: 'Fiók törölve.' });
     } catch (err) {
         res.status(500).json({ message: 'Fiók törlése sikertelen.', error: err.message });
@@ -220,11 +237,28 @@ exports.adminDeleteUser = async (req, res) => {
         return res.status(400).json({ message: 'Saját fiókot innen nem törölheted.' });
     }
     try {
-        const [rows] = await db.query('SELECT id FROM users WHERE id = ?', [id]);
+        const [rows] = await db.query('SELECT id, name, email FROM users WHERE id = ?', [id]);
         if (rows.length === 0) {
             return res.status(404).json({ message: 'Felhasználó nem található.' });
         }
+        const user = rows[0];
+        try {
+            await logActivity({
+                type: 'user_deleted',
+                message: `Admin törölte a fiókot: ${user.name} (${user.email})`,
+                userId: user.id
+            });
+        } catch (logErr) {
+            console.error('Tevékenységnapló hiba:', logErr.message);
+        }
         await db.query('DELETE FROM users WHERE id = ?', [id]);
+        try {
+            if (user.email) {
+                await sendAccountDeletedEmail({ to: user.email, name: user.name });
+            }
+        } catch (emailErr) {
+            console.error('Fiók törlés email hiba:', emailErr.message);
+        }
         res.json({ message: 'Felhasználó törölve.' });
     } catch (err) {
         res.status(500).json({ message: 'Felhasználó törlése sikertelen.', error: err.message });

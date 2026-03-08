@@ -1,5 +1,11 @@
 const db = require('../config/db');
-const { sendBookingEmail, sendBookingCancelledEmail, sendAdminNotification } = require('../services/emailService');
+const {
+    sendBookingEmail,
+    sendBookingCancelledEmail,
+    sendAdminRemovedBookingEmail,
+    sendCancellationRequestEmail,
+    sendAdminNotification
+} = require('../services/emailService');
 const { logActivity } = require('../services/activityService');
 
 exports.createBooking = async (req, res) => {
@@ -27,8 +33,8 @@ exports.createBooking = async (req, res) => {
             }
         }
         const [existing] = await db.query(
-            'SELECT * FROM bookings WHERE user_id = ? AND tour_id = ?', 
-            [user_id, tour_id]
+            'SELECT * FROM bookings WHERE user_id = ? AND tour_id = ? AND status <> ?',
+            [user_id, tour_id, 'cancelled']
         );
         if (existing.length > 0) {
             return res.status(400).json({ message: "Erre a túrára már jelentkeztél!" });
@@ -281,8 +287,11 @@ exports.updateBookingStatus = async (req, res) => {
 exports.removeBookingByTourId = async (req, res) => {
     try {
         const [booking] = await db.query(
-            'SELECT * FROM bookings WHERE user_id = ? AND tour_id = ?',
-            [req.user.id, req.params.tourId]
+            `SELECT * FROM bookings
+             WHERE user_id = ? AND tour_id = ? AND status <> ?
+             ORDER BY booked_at DESC
+             LIMIT 1`,
+            [req.user.id, req.params.tourId, 'cancelled']
         );
         if (booking.length === 0) {
             return res.status(404).json({ message: "Foglalás nem található." });
@@ -334,8 +343,8 @@ exports.removeBookingByTourId = async (req, res) => {
 exports.checkIfBooked = async (req, res) => {
     try {
         const [rows] = await db.query(
-            'SELECT id FROM bookings WHERE user_id = ? AND tour_id = ?',
-            [req.user.id, req.params.tourId]
+            'SELECT id FROM bookings WHERE user_id = ? AND tour_id = ? AND status <> ?',
+            [req.user.id, req.params.tourId, 'cancelled']
         );
         res.json({ isBooked: rows.length > 0 });
     } catch (err) {
@@ -353,16 +362,16 @@ exports.getBookingStatusByTourId = async (req, res) => {
                         `SELECT b.id, b.status, b.payment_status,
                                         b.extra_price, b.total_price,
                                         b.refund_amount, b.refund_status,
-                (
-                  SELECT r.status FROM booking_cancel_requests r
-                  WHERE r.booking_id = b.id
-                  ORDER BY r.created_at DESC
-                  LIMIT 1
-                ) AS cancel_request_status
-             FROM bookings b
-             WHERE b.user_id = ? AND b.tour_id = ?`,
-            [req.user.id, req.params.tourId]
-        );
+                                        (
+                                            SELECT r.status FROM booking_cancel_requests r
+                                            WHERE r.booking_id = b.id
+                                            ORDER BY r.created_at DESC
+                                            LIMIT 1
+                                        ) AS cancel_request_status
+                         FROM bookings b
+                         WHERE b.user_id = ? AND b.tour_id = ? AND b.status <> ?`,
+                        [req.user.id, req.params.tourId, 'cancelled']
+                );
         if (rows.length === 0) {
             return res.json({ isBooked: false });
         }
@@ -437,6 +446,34 @@ exports.createCancellationRequest = async (req, res) => {
             'INSERT INTO booking_cancel_requests (booking_id, user_id, reason) VALUES (?, ?, ?)',
             [bookingId, req.user.id, reason.trim()]
         );
+        try {
+            const [tourRows] = await db.query('SELECT title FROM tours WHERE id = ?', [booking[0].tour_id]);
+            const [userRows] = await db.query('SELECT name, email FROM users WHERE id = ?', [req.user.id]);
+            const title = tourRows[0]?.title || 'ismeretlen túra';
+            const userName = userRows[0]?.name || 'Ismeretlen felhasználó';
+            const userEmail = userRows[0]?.email || '';
+            await logActivity({
+                type: 'booking_cancel_requested',
+                message: `${userName} lejelentkezési kérelmet küldött: ${title}`,
+                userId: req.user.id,
+                tourId: booking[0].tour_id,
+                bookingId
+            });
+            if (userEmail) {
+                await sendCancellationRequestEmail({
+                    to: userEmail,
+                    name: userName,
+                    tourTitle: title,
+                    reason: reason.trim()
+                });
+            }
+            await sendAdminNotification({
+                subject: `Lejelentkezési kérelem érkezett: ${title}`,
+                message: `${userName} (${userEmail || 'n/a'}) lejelentkezési kérelmet küldött.\nIndok: ${reason.trim()}`
+            });
+        } catch (logErr) {
+            console.error('Tevékenységnapló hiba:', logErr.message);
+        }
         res.status(201).json({ message: "Lejelentkezési kérelem elküldve." });
     } catch (err) {
         res.status(500).json({ error: err.message });
@@ -473,6 +510,8 @@ exports.updateCancellationRequestStatus = async (req, res) => {
         if (rows.length === 0) {
             return res.status(404).json({ message: "Kérelem nem található." });
         }
+        const [adminRows] = await db.query('SELECT name FROM users WHERE id = ?', [req.user.id]);
+        const adminName = adminRows[0]?.name || 'Ismeretlen admin';
         await db.query(
             'UPDATE booking_cancel_requests SET status = ?, processed_at = NOW(), admin_id = ? WHERE id = ?',
             [status, req.user.id, id]
@@ -493,6 +532,13 @@ exports.updateCancellationRequestStatus = async (req, res) => {
                 const [userRows] = await db.query('SELECT name, email FROM users WHERE id = ?', [bookingRows[0].user_id]);
                 const title = tourRows[0]?.title || 'ismeretlen túra';
                 const userName = userRows[0]?.name || 'Ismeretlen felhasználó';
+                await logActivity({
+                    type: 'booking_cancel_approved',
+                    message: `${adminName} jóváhagyta a lejelentkezést: ${title}`,
+                    userId: bookingRows[0].user_id,
+                    tourId: bookingRows[0].tour_id,
+                    bookingId: rows[0].booking_id
+                });
                 await logActivity({
                     type: 'booking_cancelled',
                     message: `Lejelentkezés a túráról: ${title}`,
@@ -515,6 +561,24 @@ exports.updateCancellationRequestStatus = async (req, res) => {
                 console.error('Tevékenységnapló hiba:', logErr.message);
             }
         }
+        if (status === 'rejected') {
+            try {
+                const [bookingRows] = await db.query('SELECT tour_id, user_id FROM bookings WHERE id = ?', [rows[0].booking_id]);
+                if (bookingRows.length > 0) {
+                    const [tourRows] = await db.query('SELECT title FROM tours WHERE id = ?', [bookingRows[0].tour_id]);
+                    const title = tourRows[0]?.title || 'ismeretlen túra';
+                    await logActivity({
+                        type: 'booking_cancel_rejected',
+                        message: `${adminName} elutasította a lejelentkezést: ${title}`,
+                        userId: bookingRows[0].user_id,
+                        tourId: bookingRows[0].tour_id,
+                        bookingId: rows[0].booking_id
+                    });
+                }
+            } catch (logErr) {
+                console.error('Tevékenységnapló hiba:', logErr.message);
+            }
+        }
         res.json({ message: "Kérelem frissítve." });
     } catch (err) {
         res.status(500).json({ error: err.message });
@@ -524,10 +588,44 @@ exports.updateCancellationRequestStatus = async (req, res) => {
 exports.adminDeleteBooking = async (req, res) => {
     const { id } = req.params;
     try {
-        const [rows] = await db.query('SELECT id, tour_id, user_id FROM bookings WHERE id = ?', [id]);
+        const [rows] = await db.query(
+            `SELECT b.id, b.tour_id, b.user_id, t.title AS tour_title,
+                    u.name AS user_name, u.email AS user_email
+             FROM bookings b
+             JOIN tours t ON b.tour_id = t.id
+             JOIN users u ON b.user_id = u.id
+             WHERE b.id = ?`,
+            [id]
+        );
         if (rows.length === 0) {
             return res.status(404).json({ message: "Foglalás nem található." });
         }
+        const booking = rows[0];
+        let adminName = 'Ismeretlen admin';
+        try {
+            const [adminRows] = await db.query('SELECT name FROM users WHERE id = ?', [req.user.id]);
+            adminName = adminRows[0]?.name || adminName;
+            await logActivity({
+                type: 'booking_admin_removed',
+                message: `${adminName} törölte a jelentkezést: ${booking.tour_title || 'ismeretlen túra'}`,
+                userId: booking.user_id,
+                tourId: booking.tour_id,
+                bookingId: booking.id
+            });
+        } catch (logErr) {
+            console.error('Tevékenységnapló hiba:', logErr.message);
+        }
+        if (booking.user_email) {
+            await sendAdminRemovedBookingEmail({
+                to: booking.user_email,
+                name: booking.user_name,
+                tourTitle: booking.tour_title || 'ismeretlen túra'
+            });
+        }
+        await sendAdminNotification({
+            subject: `Admin törlés: ${booking.tour_title || 'ismeretlen túra'}`,
+            message: `${adminName} törölte ${booking.user_name} (${booking.user_email || 'n/a'}) jelentkezését.`
+        });
         await db.query('DELETE FROM booking_cancel_requests WHERE booking_id = ?', [id]);
         await db.query('DELETE FROM bookings WHERE id = ?', [id]);
         const io = req.app.get('io');

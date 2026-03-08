@@ -23,10 +23,13 @@ const TourDetailsScreen = () => {
   const [cancelSubmitting, setCancelSubmitting] = useState(false);
   const [bookingSubmitting, setBookingSubmitting] = useState(false);
   const [cancelBookingSubmitting, setCancelBookingSubmitting] = useState(false);
-  const [cancelConfirmOpen, setCancelConfirmOpen] = useState(false);
+  const [paymentSubmitting, setPaymentSubmitting] = useState(false);
+  const [paymentProcessing, setPaymentProcessing] = useState(false);
   const { user } = useContext(AuthContext);
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('details');
+  const paymentHandledRef = useRef(false);
+  const paymentTargetRef = useRef(null);
 
   const [posts, setPosts] = useState([]);
   const [postsLoading, setPostsLoading] = useState(false);
@@ -105,15 +108,47 @@ const TourDetailsScreen = () => {
   useEffect(() => {
     const params = new URLSearchParams(location.search);
     const paymentStatus = params.get('payment');
+    const sessionId = params.get('session_id');
+    if (!paymentStatus || paymentHandledRef.current) return;
+    paymentHandledRef.current = true;
+
     if (paymentStatus === 'success') {
+      setPaymentProcessing(true);
+      if (sessionId) {
+        fetch(`${import.meta.env.VITE_API_URL}/payments/confirm-checkout-session`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
+          },
+          body: JSON.stringify({ session_id: sessionId })
+        })
+          .then((res) => res.json())
+          .then((data) => {
+            if (data?.booking_id) {
+              paymentTargetRef.current = data.booking_id;
+            }
+          })
+          .catch(() => {});
+      }
       toast.success('Sikeres fizetés!');
       fetchTourData();
-      navigate(`/tours/${id}`, { replace: true });
+      refreshBookingStatus();
+      for (let i = 1; i <= 3; i += 1) {
+        setTimeout(() => {
+          fetchTourData();
+          refreshBookingStatus();
+        }, i * 1500);
+      }
+      setTimeout(() => {
+        setPaymentProcessing(false);
+      }, 3500);
     }
     if (paymentStatus === 'cancel') {
       toast.info('Fizetés megszakítva.');
-      navigate(`/tours/${id}`, { replace: true });
+      setPaymentProcessing(false);
     }
+    navigate(`/tours/${id}`, { replace: true });
   }, [location.search, id, navigate]);
 
   const refreshBookingStatus = async () => {
@@ -463,7 +498,6 @@ const TourDetailsScreen = () => {
       toast.error("Hiba a lejelentkezéskor.");
     } finally {
       setCancelBookingSubmitting(false);
-      setCancelConfirmOpen(false);
     }
   };
 
@@ -495,6 +529,36 @@ const TourDetailsScreen = () => {
       toast.error('Hiba történt a kérelem küldésekor.');
     } finally {
       setCancelSubmitting(false);
+    }
+  };
+
+  const handlePay = async () => {
+    if (!bookingId || paymentSubmitting) return;
+    const ok = window.confirm('Fizetés után az eszközöket már nem lehet visszamondani. Folytatod a fizetést?');
+    if (!ok) return;
+    setPaymentSubmitting(true);
+    try {
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/payments/create-checkout-session`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify({
+          booking_id: bookingId,
+          return_url: `${window.location.origin}${window.location.pathname}`
+        })
+      });
+      const data = await res.json();
+      if (res.ok && data.url) {
+        window.location.href = data.url;
+        return;
+      }
+      toast.error(data.message || data.error || 'Hiba történt.');
+    } catch (err) {
+      toast.error('Hiba történt.');
+    } finally {
+      setPaymentSubmitting(false);
     }
   };
 
@@ -664,6 +728,15 @@ const TourDetailsScreen = () => {
 
   return (
     <div className="bg-[#fcfdfe] min-h-screen pb-12 font-sans">
+      {paymentProcessing && (
+        <div className="fixed inset-0 z-[200] bg-black/40 flex items-center justify-center px-6">
+          <div className="bg-white rounded-3xl shadow-2xl border border-emerald-50 p-8 max-w-md text-center">
+            <div className="mx-auto mb-4 h-12 w-12 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin" />
+            <h3 className="text-xl font-black text-emerald-950">Fizetés feldolgozása</h3>
+            <p className="text-slate-500 mt-2">Kérlek várj, amíg a fizetés státusza frissül.</p>
+          </div>
+        </div>
+      )}
       {/* --- HERO SECTION - Kompaktabb magasság --- */}
       <div className="relative h-[40vh] md:h-[45vh] w-full overflow-hidden shadow-lg">
         <img src={tour.image_url} className="w-full h-full object-cover" alt={tour.title} />
@@ -1036,6 +1109,25 @@ const TourDetailsScreen = () => {
                       Alapár: {basePrice.toLocaleString()} Ft · Extra: {displayExtra.toLocaleString()} Ft
                     </div>
                   )}
+                  {isBooked && bookingStatus === 'confirmed' && paymentStatus !== 'paid' && (
+                    <button
+                      onClick={handlePay}
+                      disabled={!bookingId || paymentSubmitting}
+                      className={`mt-4 w-full py-3 rounded-xl font-black text-xs uppercase tracking-widest border flex items-center justify-center gap-2 transition ${
+                        paymentSubmitting || !bookingId
+                          ? 'bg-slate-800 text-slate-500 border-slate-700 cursor-not-allowed'
+                          : 'bg-emerald-500/15 text-emerald-200 border-emerald-500/40 hover:bg-emerald-500 hover:text-slate-900'
+                      }`}
+                    >
+                      {paymentSubmitting && (
+                        <span
+                          className="h-4 w-4 rounded-full border-2 border-emerald-200 border-t-emerald-500 animate-spin"
+                          aria-hidden="true"
+                        ></span>
+                      )}
+                      {paymentSubmitting ? 'Fizetés...' : 'Fizetés most'}
+                    </button>
+                  )}
                 </div>
 
                 <div className="space-y-3 mb-8 text-xs">
@@ -1086,60 +1178,24 @@ const TourDetailsScreen = () => {
                           )}
                         </div>
                       ) : (
-                        cancelConfirmOpen ? (
-                          <div className="w-full rounded-2xl border border-red-500/30 bg-red-500/5 p-3">
-                            <div className="text-[10px] font-black uppercase tracking-widest text-red-300 mb-3">
-                              Biztosan lejelentkezel?
-                            </div>
-                            <div className="flex gap-2">
-                              <button
-                                type="button"
-                                onClick={() => setCancelConfirmOpen(false)}
-                                disabled={cancelBookingSubmitting}
-                                className="flex-1 py-2 rounded-xl font-black text-[11px] uppercase tracking-widest bg-white/10 text-slate-200 border border-white/10 hover:bg-white/20 transition"
-                              >
-                                Mégse
-                              </button>
-                              <button
-                                type="button"
-                                onClick={handleCancelBooking}
-                                disabled={cancelBookingSubmitting}
-                                className={`flex-1 py-2 rounded-xl font-black text-[11px] uppercase tracking-widest border flex items-center justify-center gap-2 transition ${
-                                  cancelBookingSubmitting
-                                    ? 'bg-red-500/5 text-red-300 border-red-500/20 cursor-not-allowed'
-                                    : 'bg-red-500/20 text-red-200 border-red-500/40 hover:bg-red-500 hover:text-white'
-                                }`}
-                              >
-                                {cancelBookingSubmitting && (
-                                  <span
-                                    className="h-4 w-4 rounded-full border-2 border-red-200 border-t-red-500 animate-spin"
-                                    aria-hidden="true"
-                                  ></span>
-                                )}
-                                Igen, lejelentkezem
-                              </button>
-                            </div>
-                          </div>
-                        ) : (
-                          <button 
-                            onClick={() => setCancelConfirmOpen(true)}
-                            disabled={cancelBookingSubmitting}
-                            className={`w-full py-4 rounded-2xl font-black text-sm border flex items-center justify-center gap-2 uppercase tracking-widest transition-all ${
-                              cancelBookingSubmitting
-                                ? 'bg-red-500/5 text-red-300 border-red-500/20 cursor-not-allowed'
-                                : 'bg-red-500/10 text-red-500 border-red-500/30 hover:bg-red-500 hover:text-white'
-                            }`}
-                          >
-                            {cancelBookingSubmitting && (
-                              <span
-                                className="h-4 w-4 rounded-full border-2 border-red-200 border-t-red-500 animate-spin"
-                                aria-hidden="true"
-                              ></span>
-                            )}
-                            <UserMinus size={18} />
-                            {cancelBookingSubmitting ? 'Lejelentkezés...' : 'Lejelentkezés'}
-                          </button>
-                        )
+                        <button
+                          onClick={handleCancelBooking}
+                          disabled={cancelBookingSubmitting}
+                          className={`w-full py-4 rounded-2xl font-black text-sm border flex items-center justify-center gap-2 uppercase tracking-widest transition-all ${
+                            cancelBookingSubmitting
+                              ? 'bg-red-500/5 text-red-300 border-red-500/20 cursor-not-allowed'
+                              : 'bg-red-500/10 text-red-500 border-red-500/30 hover:bg-red-500 hover:text-white'
+                          }`}
+                        >
+                          {cancelBookingSubmitting && (
+                            <span
+                              className="h-4 w-4 rounded-full border-2 border-red-200 border-t-red-500 animate-spin"
+                              aria-hidden="true"
+                            ></span>
+                          )}
+                          <UserMinus size={18} />
+                          {cancelBookingSubmitting ? 'Lejelentkezés...' : 'Lejelentkezés'}
+                        </button>
                       )}
                       <div className="bg-white/5 border border-white/10 rounded-2xl p-4 text-xs space-y-3">
                         <div className="text-[10px] font-black uppercase tracking-widest text-slate-400">Eszközök módosítása</div>
@@ -1202,60 +1258,24 @@ const TourDetailsScreen = () => {
                     </div>
                   ) : (
                     <div className="space-y-4">
-                      {cancelConfirmOpen ? (
-                        <div className="w-full rounded-2xl border border-red-500/30 bg-red-500/5 p-3">
-                          <div className="text-[10px] font-black uppercase tracking-widest text-red-300 mb-3">
-                            Biztosan lejelentkezel?
-                          </div>
-                          <div className="flex gap-2">
-                            <button
-                              type="button"
-                              onClick={() => setCancelConfirmOpen(false)}
-                              disabled={cancelBookingSubmitting}
-                              className="flex-1 py-2 rounded-xl font-black text-[11px] uppercase tracking-widest bg-white/10 text-slate-200 border border-white/10 hover:bg-white/20 transition"
-                            >
-                              Mégse
-                            </button>
-                            <button
-                              type="button"
-                              onClick={handleCancelBooking}
-                              disabled={cancelBookingSubmitting}
-                              className={`flex-1 py-2 rounded-xl font-black text-[11px] uppercase tracking-widest border flex items-center justify-center gap-2 transition ${
-                                cancelBookingSubmitting
-                                  ? 'bg-red-500/5 text-red-300 border-red-500/20 cursor-not-allowed'
-                                  : 'bg-red-500/20 text-red-200 border-red-500/40 hover:bg-red-500 hover:text-white'
-                              }`}
-                            >
-                              {cancelBookingSubmitting && (
-                                <span
-                                  className="h-4 w-4 rounded-full border-2 border-red-200 border-t-red-500 animate-spin"
-                                  aria-hidden="true"
-                                ></span>
-                              )}
-                              Igen, lejelentkezem
-                            </button>
-                          </div>
-                        </div>
-                      ) : (
-                        <button 
-                          onClick={() => setCancelConfirmOpen(true)}
-                          disabled={cancelBookingSubmitting}
-                          className={`w-full py-4 rounded-2xl font-black text-sm border flex items-center justify-center gap-2 uppercase tracking-widest transition-all ${
-                            cancelBookingSubmitting
-                              ? 'bg-red-500/5 text-red-300 border-red-500/20 cursor-not-allowed'
-                              : 'bg-red-500/10 text-red-500 border-red-500/30 hover:bg-red-500 hover:text-white'
-                          }`}
-                        >
-                          {cancelBookingSubmitting && (
-                            <span
-                              className="h-4 w-4 rounded-full border-2 border-red-200 border-t-red-500 animate-spin"
-                              aria-hidden="true"
-                            ></span>
-                          )}
-                          <UserMinus size={18} />
-                          {cancelBookingSubmitting ? 'Lejelentkezés...' : 'Lejelentkezés'}
-                        </button>
-                      )}
+                      <button
+                        onClick={handleCancelBooking}
+                        disabled={cancelBookingSubmitting}
+                        className={`w-full py-4 rounded-2xl font-black text-sm border flex items-center justify-center gap-2 uppercase tracking-widest transition-all ${
+                          cancelBookingSubmitting
+                            ? 'bg-red-500/5 text-red-300 border-red-500/20 cursor-not-allowed'
+                            : 'bg-red-500/10 text-red-500 border-red-500/30 hover:bg-red-500 hover:text-white'
+                        }`}
+                      >
+                        {cancelBookingSubmitting && (
+                          <span
+                            className="h-4 w-4 rounded-full border-2 border-red-200 border-t-red-500 animate-spin"
+                            aria-hidden="true"
+                          ></span>
+                        )}
+                        <UserMinus size={18} />
+                        {cancelBookingSubmitting ? 'Lejelentkezés...' : 'Lejelentkezés'}
+                      </button>
                       <div className="bg-white/5 border border-white/10 rounded-2xl p-4 text-xs space-y-3">
                         <div className="text-[10px] font-black uppercase tracking-widest text-slate-400">Eszközök módosítása</div>
                         <div className="text-slate-300">

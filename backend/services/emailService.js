@@ -1,6 +1,15 @@
 const db = require('../config/db');
 const { sendMail } = require('../emailSender/mailer');
-const { buildRegistrationEmail, buildBookingEmail, buildBookingCancelledEmail, buildPaymentEmail, buildAdminEmail } = require('./emailTemplates');
+const {
+    buildRegistrationEmail,
+    buildBookingEmail,
+    buildBookingCancelledEmail,
+    buildAdminRemovedBookingEmail,
+    buildCancellationRequestEmail,
+    buildPaymentEmail,
+    buildAdminEmail,
+    buildAccountDeletedEmail
+} = require('./emailTemplates');
 
 const getAdminRecipients = async () => {
     const [rows] = await db.query(
@@ -36,8 +45,23 @@ const sendBookingCancelledEmail = async ({ to, name, tourTitle }) => {
     return sendMail({ to, subject, text, html });
 };
 
+const sendAdminRemovedBookingEmail = async ({ to, name, tourTitle }) => {
+    const { subject, text, html } = buildAdminRemovedBookingEmail({ name, tourTitle });
+    return sendMail({ to, subject, text, html });
+};
+
+const sendCancellationRequestEmail = async ({ to, name, tourTitle, reason }) => {
+    const { subject, text, html } = buildCancellationRequestEmail({ name, tourTitle, reason });
+    return sendMail({ to, subject, text, html });
+};
+
 const sendPaymentEmail = async ({ to, name, tourTitle, amount }) => {
     const { subject, text, html } = buildPaymentEmail({ name, tourTitle, amount });
+    return sendMail({ to, subject, text, html });
+};
+
+const sendAccountDeletedEmail = async ({ to, name }) => {
+    const { subject, text, html } = buildAccountDeletedEmail({ name });
     return sendMail({ to, subject, text, html });
 };
 
@@ -53,7 +77,10 @@ module.exports = {
     sendRegistrationEmail,
     sendBookingEmail,
     sendBookingCancelledEmail,
+    sendAdminRemovedBookingEmail,
+    sendCancellationRequestEmail,
     sendPaymentEmail,
     sendAdminEmail,
-    sendAdminNotification
+    sendAdminNotification,
+    sendAccountDeletedEmail
 };

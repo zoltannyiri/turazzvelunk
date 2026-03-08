@@ -112,7 +112,10 @@ import {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${localStorage.getItem('token')}`
         },
-        body: JSON.stringify({ booking_id: bookingId })
+        body: JSON.stringify({
+          booking_id: bookingId,
+          return_url: `${window.location.origin}${window.location.pathname}`
+        })
       });
       const data = await res.json();
       if (res.ok && data.url) {

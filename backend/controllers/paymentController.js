@@ -62,7 +62,7 @@ const getClientOrigin = (req) => {
 };
 
 exports.createCheckoutSession = async (req, res) => {
-    const { booking_id } = req.body;
+    const { booking_id, return_url } = req.body;
     const user_id = req.user.id;
 
     if (!process.env.STRIPE_SECRET_KEY) {
@@ -90,11 +90,33 @@ exports.createCheckoutSession = async (req, res) => {
 
         const amountToPay = Number(booking.total_price || booking.price || 0);
 
+        const defaultReturnUrl = `${getClientOrigin(req)}/profile`;
+        let baseReturnUrl = defaultReturnUrl;
+        if (return_url && typeof return_url === 'string') {
+            try {
+                const candidate = new URL(return_url);
+                const origin = getClientOrigin(req);
+                if (candidate.origin === origin) {
+                    candidate.searchParams.delete('payment');
+                    candidate.searchParams.delete('session_id');
+                    candidate.searchParams.delete('sessionId');
+                    candidate.hash = '';
+                    baseReturnUrl = candidate.toString();
+                }
+            } catch (err) {
+                baseReturnUrl = defaultReturnUrl;
+            }
+        }
+
+        const hasQuery = baseReturnUrl.includes('?');
+        const successUrl = `${baseReturnUrl}${hasQuery ? '&' : '?'}payment=success&session_id={CHECKOUT_SESSION_ID}`;
+        const cancelUrl = `${baseReturnUrl}${hasQuery ? '&' : '?'}payment=cancel`;
+
         const session = await stripe.checkout.sessions.create({
             mode: 'payment',
             payment_method_types: ['card'],
-            success_url: `${getClientOrigin(req)}/profile?payment=success&session_id={CHECKOUT_SESSION_ID}`,
-            cancel_url: `${getClientOrigin(req)}/profile?payment=cancel`,
+            success_url: successUrl,
+            cancel_url: cancelUrl,
             line_items: [
                 {
                     quantity: 1,
@@ -225,6 +247,9 @@ exports.confirmCheckoutSession = async (req, res) => {
 
     if (!session_id) {
         return res.status(400).json({ message: 'Hiányzó session_id.' });
+    }
+    if (String(session_id).includes('{CHECKOUT_SESSION_ID}')) {
+        return res.status(400).json({ message: 'Hibás session_id.' });
     }
 
     try {

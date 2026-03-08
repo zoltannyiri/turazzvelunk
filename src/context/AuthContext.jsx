@@ -1,4 +1,4 @@
-import React, { createContext, useState, useEffect } from 'react';
+import React, { createContext, useState, useEffect, useCallback } from 'react';
 
 export const AuthContext = createContext();
 
@@ -15,15 +15,39 @@ export const AuthProvider = ({ children }) => {
     });
     const [loading, setLoading] = useState(true);
 
-    useEffect(() => {
-        const savedUser = localStorage.getItem('user');
-        if (savedUser) {
-            setLoading(false);
-            return;
+    const parseJwt = (token) => {
+        try {
+            const base64Url = token.split('.')[1];
+            if (!base64Url) return null;
+            const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+            const jsonPayload = decodeURIComponent(
+                atob(base64)
+                    .split('')
+                    .map((c) => `%${(`00${c.charCodeAt(0).toString(16)}`).slice(-2)}`)
+                    .join('')
+            );
+            return JSON.parse(jsonPayload);
+        } catch (err) {
+            return null;
         }
+    };
 
+    const isTokenExpired = (token) => {
+        const payload = parseJwt(token);
+        if (!payload?.exp) return false;
+        return Date.now() >= payload.exp * 1000;
+    };
+
+    const logout = useCallback(() => {
+        setUser(null);
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+    }, []);
+
+    useEffect(() => {
         const token = localStorage.getItem('token');
-        if (!token) {
+        if (!token || isTokenExpired(token)) {
+            logout();
             setLoading(false);
             return;
         }
@@ -37,20 +61,16 @@ export const AuthProvider = ({ children }) => {
                     setUser(data);
                     localStorage.setItem('user', JSON.stringify(data));
                 } else {
-                    localStorage.removeItem('token');
-                    localStorage.removeItem('user');
-                    setUser(null);
+                    logout();
                 }
             })
             .catch(() => {
-                localStorage.removeItem('token');
-                localStorage.removeItem('user');
-                setUser(null);
+                logout();
             })
             .finally(() => {
                 setLoading(false);
             });
-    }, []);
+    }, [logout]);
 
     const login = (userData) => {
         setUser(userData.user);
@@ -58,16 +78,24 @@ export const AuthProvider = ({ children }) => {
         localStorage.setItem('user', JSON.stringify(userData.user));
     };
 
-    const logout = () => {
-        setUser(null);
-        localStorage.removeItem('token');
-        localStorage.removeItem('user');
-    };
-
     const updateUser = (nextUser) => {
         setUser(nextUser);
         localStorage.setItem('user', JSON.stringify(nextUser));
     };
+
+    useEffect(() => {
+        const originalFetch = window.fetch;
+        window.fetch = async (...args) => {
+            const response = await originalFetch(...args);
+            if (response && (response.status === 401 || response.status === 403)) {
+                logout();
+            }
+            return response;
+        };
+        return () => {
+            window.fetch = originalFetch;
+        };
+    }, [logout]);
 
     return (
         <AuthContext.Provider value={{ user, login, logout, updateUser, loading }}>

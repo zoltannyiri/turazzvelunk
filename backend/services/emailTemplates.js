@@ -64,11 +64,44 @@ const buildRegistrationEmail = ({ name }) => {
     return { subject, text, html };
 };
 
+const buildAccountDeletedEmail = ({ name }) => {
+    const safeName = escapeHtml(name || '');
+    const subject = 'Fiók törlése a Túrázz Velünk oldalról';
+    const text = `Szia ${safeName}!\n\nA fiókodat töröltük a Túrázz Velünk oldalon.\nA törlés végleges, a fiók nem állítható vissza.\n`;
+    const html = `
+        <div style="background: #f4f7fb; padding: 32px 16px; font-family: 'Trebuchet MS', 'Segoe UI', Arial, sans-serif; color: #1f2933;">
+            <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width: 640px; margin: 0 auto; border-collapse: collapse;">
+                <tr>
+                    <td style="background: #0f172a; padding: 24px 28px; border-radius: 16px 16px 0 0;">
+                        <div style="color: #f8fafc; font-size: 20px; font-weight: 700; letter-spacing: 0.4px;">Túrázz Velünk</div>
+                        <div style="color: #94a3b8; font-size: 13px; margin-top: 6px;">Fiók törlése</div>
+                    </td>
+                </tr>
+                <tr>
+                    <td style="background: #ffffff; padding: 28px; border-left: 1px solid #e2e8f0; border-right: 1px solid #e2e8f0;">
+                        <h2 style="margin: 0 0 12px; font-size: 22px; color: #0f172a;">Szia ${safeName}!</h2>
+                        <p style="margin: 0 0 16px; color: #334155;">A fiókodat töröltük a Túrázz Velünk oldalon.</p>
+                        <div style="background: #f8fafc; border: 1px solid #e2e8f0; padding: 16px; border-radius: 12px;">
+                            <div style="font-size: 13px; color: #64748b;">A törlés végleges, a fiók nem állítható vissza.</div>
+                        </div>
+                    </td>
+                </tr>
+                <tr>
+                    <td style="background: #e2e8f0; padding: 16px 28px; border-radius: 0 0 16px 16px; font-size: 12px; color: #64748b;">
+                        Köszönjük, hogy velünk túráztál.
+                    </td>
+                </tr>
+            </table>
+        </div>
+    `;
+
+    return { subject, text, html };
+};
 const buildBookingEmail = ({ name, tourTitle, startDate, endDate, totalPrice }) => {
     const safeName = escapeHtml(name || '');
     const safeTitle = escapeHtml(tourTitle || '');
     const subject = `Foglalás visszaigazolás: ${safeTitle}`;
-    const text = `Szia ${safeName}!\n\nA foglalásod rögzítve lett.\nTúra: ${safeTitle}\nIdőpont: ${formatDate(startDate)} - ${formatDate(endDate)}\nVégösszeg: ${formatPrice(totalPrice)}\n`;
+    const text = `Szia ${safeName}!\n\nA foglalásod rögzítve lett.\nTúra: ${safeTitle}\nIdőpont: ${formatDate(startDate)} - ${formatDate(endDate)}\n`;
     const html = `
         <div style="background: #f4f7fb; padding: 32px 16px; font-family: 'Trebuchet MS', 'Segoe UI', Arial, sans-serif; color: #1f2933;">
             <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width: 640px; margin: 0 auto; border-collapse: collapse;">
@@ -90,10 +123,6 @@ const buildBookingEmail = ({ name, tourTitle, startDate, endDate, totalPrice }) 
                             <tr>
                                 <td style="padding: 12px 16px; font-size: 13px; color: #64748b;">Időpont</td>
                                 <td style="padding: 12px 16px; font-size: 14px; color: #0f172a;">${formatDate(startDate)} - ${formatDate(endDate)}</td>
-                            </tr>
-                            <tr>
-                                <td style="padding: 12px 16px; font-size: 13px; color: #64748b;">Végösszeg</td>
-                                <td style="padding: 12px 16px; font-size: 14px; color: #0f172a; font-weight: 600;">${formatPrice(totalPrice)}</td>
                             </tr>
                         </table>
                         <div style="margin-top: 18px; background: #ecfeff; border: 1px solid #a5f3fc; color: #155e75; padding: 12px 16px; border-radius: 10px; font-size: 13px;">
@@ -122,7 +151,7 @@ const buildBookingCancelledEmail = ({ name, tourTitle }) => {
     const safeName = escapeHtml(name || '');
     const safeTitle = escapeHtml(tourTitle || '');
     const subject = `Lejelentkezés visszaigazolás: ${safeTitle}`;
-    const text = `Szia ${safeName}!\n\nA lejelentkezésed rögzítve lett.\nTúra: ${safeTitle}\n`;
+    const text = `Szia ${safeName}!\n\nA jelentkezésed törölve lett.\nTúra: ${safeTitle}\n`;
     const html = `
         <div style="background: #f4f7fb; padding: 32px 16px; font-family: 'Trebuchet MS', 'Segoe UI', Arial, sans-serif; color: #1f2933;">
             <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width: 640px; margin: 0 auto; border-collapse: collapse;">
@@ -135,7 +164,7 @@ const buildBookingCancelledEmail = ({ name, tourTitle }) => {
                 <tr>
                     <td style="background: #ffffff; padding: 28px; border-left: 1px solid #e2e8f0; border-right: 1px solid #e2e8f0;">
                         <h2 style="margin: 0 0 12px; font-size: 22px; color: #0f172a;">Szia ${safeName}!</h2>
-                        <p style="margin: 0 0 16px; color: #334155;">A lejelentkezésed rögzítve lett.</p>
+                        <p style="margin: 0 0 16px; color: #334155;">A jelentkezésed törölve lett</p>
                         <div style="background: #f8fafc; border: 1px solid #e2e8f0; padding: 16px; border-radius: 12px;">
                             <div style="font-size: 13px; color: #64748b;">Túra</div>
                             <div style="font-size: 15px; font-weight: 700; color: #0f172a;">${safeTitle}</div>
@@ -145,6 +174,88 @@ const buildBookingCancelledEmail = ({ name, tourTitle }) => {
                 <tr>
                     <td style="background: #e2e8f0; padding: 16px 28px; border-radius: 0 0 16px 16px; font-size: 12px; color: #64748b;">
                         Ha tévedésből mondtad le, írj nekünk bátran.
+                    </td>
+                </tr>
+            </table>
+        </div>
+    `;
+
+    return { subject, text, html };
+};
+
+const buildAdminRemovedBookingEmail = ({ name, tourTitle }) => {
+    const safeName = escapeHtml(name || '');
+    const safeTitle = escapeHtml(tourTitle || '');
+    const subject = `Jelentkezésed törölve lett: ${safeTitle}`;
+    const text = `Szia ${safeName}!\n\nJelentkezésed törölve lett.\nTúra: ${safeTitle}\n`;
+    const html = `
+        <div style="background: #f4f7fb; padding: 32px 16px; font-family: 'Trebuchet MS', 'Segoe UI', Arial, sans-serif; color: #1f2933;">
+            <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width: 640px; margin: 0 auto; border-collapse: collapse;">
+                <tr>
+                    <td style="background: #0f172a; padding: 24px 28px; border-radius: 16px 16px 0 0;">
+                        <div style="color: #f8fafc; font-size: 20px; font-weight: 700; letter-spacing: 0.4px;">Túrázz Velünk</div>
+                        <div style="color: #94a3b8; font-size: 13px; margin-top: 6px;">Jelentkezés törölve</div>
+                    </td>
+                </tr>
+                <tr>
+                    <td style="background: #ffffff; padding: 28px; border-left: 1px solid #e2e8f0; border-right: 1px solid #e2e8f0;">
+                        <h2 style="margin: 0 0 12px; font-size: 22px; color: #0f172a;">Szia ${safeName}!</h2>
+                        <p style="margin: 0 0 16px; color: #334155;">Jelentkezésed törölve lett.</p>
+                        <div style="background: #f8fafc; border: 1px solid #e2e8f0; padding: 16px; border-radius: 12px;">
+                            <div style="font-size: 13px; color: #64748b;">Túra</div>
+                            <div style="font-size: 15px; font-weight: 700; color: #0f172a;">${safeTitle}</div>
+                        </div>
+                    </td>
+                </tr>
+                <tr>
+                    <td style="background: #e2e8f0; padding: 16px 28px; border-radius: 0 0 16px 16px; font-size: 12px; color: #64748b;">
+                        Ha kérdésed van, válaszolj erre az emailre.
+                    </td>
+                </tr>
+            </table>
+        </div>
+    `;
+
+    return { subject, text, html };
+};
+
+const buildCancellationRequestEmail = ({ name, tourTitle, reason }) => {
+    const safeName = escapeHtml(name || '');
+    const safeTitle = escapeHtml(tourTitle || '');
+    const safeReason = formatMultiline(reason || '');
+    const subject = `Lejelentkezési kérelem rögzítve: ${safeTitle}`;
+    const text = `Szia ${safeName}!\n\nA lejelentkezési kérelmedet rögzítettük.\nTúra: ${safeTitle}\nIndok: ${reason || '-'}\n\nHamarosan visszajelzünk.`;
+    const html = `
+        <div style="background: #f4f7fb; padding: 32px 16px; font-family: 'Trebuchet MS', 'Segoe UI', Arial, sans-serif; color: #1f2933;">
+            <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width: 640px; margin: 0 auto; border-collapse: collapse;">
+                <tr>
+                    <td style="background: #0f172a; padding: 24px 28px; border-radius: 16px 16px 0 0;">
+                        <div style="color: #f8fafc; font-size: 20px; font-weight: 700; letter-spacing: 0.4px;">Túrázz Velünk</div>
+                        <div style="color: #94a3b8; font-size: 13px; margin-top: 6px;">Lejelentkezési kérelem</div>
+                    </td>
+                </tr>
+                <tr>
+                    <td style="background: #ffffff; padding: 28px; border-left: 1px solid #e2e8f0; border-right: 1px solid #e2e8f0;">
+                        <h2 style="margin: 0 0 12px; font-size: 22px; color: #0f172a;">Szia ${safeName}!</h2>
+                        <p style="margin: 0 0 16px; color: #334155;">A lejelentkezési kérelmedet rögzítettük.</p>
+                        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="border-collapse: collapse; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px;">
+                            <tr>
+                                <td style="padding: 12px 16px; font-size: 13px; color: #64748b;">Túra</td>
+                                <td style="padding: 12px 16px; font-size: 14px; color: #0f172a; font-weight: 600;">${safeTitle}</td>
+                            </tr>
+                            <tr>
+                                <td style="padding: 12px 16px; font-size: 13px; color: #64748b;">Indok</td>
+                                <td style="padding: 12px 16px; font-size: 14px; color: #0f172a;">${safeReason || '-'}</td>
+                            </tr>
+                        </table>
+                        <div style="margin-top: 18px; background: #ecfeff; border: 1px solid #a5f3fc; color: #155e75; padding: 12px 16px; border-radius: 10px; font-size: 13px;">
+                            Hamarosan visszajelzünk a kérelmedről.
+                        </div>
+                    </td>
+                </tr>
+                <tr>
+                    <td style="background: #e2e8f0; padding: 16px 28px; border-radius: 0 0 16px 16px; font-size: 12px; color: #64748b;">
+                        Köszönjük, hogy velünk túrázol.
                     </td>
                 </tr>
             </table>
@@ -227,4 +338,13 @@ const buildAdminEmail = ({ subject, message }) => {
     return { subject, text, html };
 };
 
-module.exports = { buildRegistrationEmail, buildBookingEmail, buildBookingCancelledEmail, buildPaymentEmail, buildAdminEmail };
+module.exports = {
+    buildRegistrationEmail,
+    buildBookingEmail,
+    buildBookingCancelledEmail,
+    buildAdminRemovedBookingEmail,
+    buildCancellationRequestEmail,
+    buildPaymentEmail,
+    buildAdminEmail,
+    buildAccountDeletedEmail
+};
