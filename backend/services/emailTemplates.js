@@ -14,6 +14,13 @@ const formatDate = (value) => {
     }
 };
 
+const formatDateRange = (startDate, endDate) => {
+    const startText = formatDate(startDate);
+    const endText = formatDate(endDate);
+    if (startText && endText) return `${startText} - ${endText}`;
+    return startText || endText || '';
+};
+
 const formatPrice = (value) => {
     const num = Number(value || 0);
     return `${num.toLocaleString('hu-HU')} Ft`;
@@ -147,11 +154,12 @@ const buildBookingEmail = ({ name, tourTitle, startDate, endDate, totalPrice }) 
     return { subject, text, html };
 };
 
-const buildBookingCancelledEmail = ({ name, tourTitle }) => {
+const buildBookingCancelledEmail = ({ name, tourTitle, startDate, endDate }) => {
     const safeName = escapeHtml(name || '');
     const safeTitle = escapeHtml(tourTitle || '');
+    const dateRange = formatDateRange(startDate, endDate) || '-';
     const subject = `Lejelentkezés visszaigazolás: ${safeTitle}`;
-    const text = `Szia ${safeName}!\n\nA jelentkezésed törölve lett.\nTúra: ${safeTitle}\n`;
+    const text = `Szia ${safeName}!\n\nA jelentkezésed törölve lett.\nTúra: ${safeTitle}\nIdőpont: ${dateRange}\n`;
     const html = `
         <div style="background: #f4f7fb; padding: 32px 16px; font-family: 'Trebuchet MS', 'Segoe UI', Arial, sans-serif; color: #1f2933;">
             <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width: 640px; margin: 0 auto; border-collapse: collapse;">
@@ -168,6 +176,8 @@ const buildBookingCancelledEmail = ({ name, tourTitle }) => {
                         <div style="background: #f8fafc; border: 1px solid #e2e8f0; padding: 16px; border-radius: 12px;">
                             <div style="font-size: 13px; color: #64748b;">Túra</div>
                             <div style="font-size: 15px; font-weight: 700; color: #0f172a;">${safeTitle}</div>
+                            <div style="font-size: 13px; color: #64748b; margin-top: 8px;">Időpont</div>
+                            <div style="font-size: 14px; color: #0f172a;">${dateRange}</div>
                         </div>
                     </td>
                 </tr>
@@ -183,11 +193,13 @@ const buildBookingCancelledEmail = ({ name, tourTitle }) => {
     return { subject, text, html };
 };
 
-const buildAdminRemovedBookingEmail = ({ name, tourTitle }) => {
+const buildAdminRemovedBookingEmail = ({ name, tourTitle, adminName, startDate, endDate }) => {
     const safeName = escapeHtml(name || '');
     const safeTitle = escapeHtml(tourTitle || '');
+    const safeAdmin = escapeHtml(adminName || 'Admin');
+    const dateRange = formatDateRange(startDate, endDate) || '-';
     const subject = `Jelentkezésed törölve lett: ${safeTitle}`;
-    const text = `Szia ${safeName}!\n\nJelentkezésed törölve lett.\nTúra: ${safeTitle}\n`;
+    const text = `Szia ${safeName}!\n\n${safeAdmin} törölte a jelentkezésedet.\nTúra: ${safeTitle}\nIdőpont: ${dateRange}\n`;
     const html = `
         <div style="background: #f4f7fb; padding: 32px 16px; font-family: 'Trebuchet MS', 'Segoe UI', Arial, sans-serif; color: #1f2933;">
             <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width: 640px; margin: 0 auto; border-collapse: collapse;">
@@ -200,10 +212,12 @@ const buildAdminRemovedBookingEmail = ({ name, tourTitle }) => {
                 <tr>
                     <td style="background: #ffffff; padding: 28px; border-left: 1px solid #e2e8f0; border-right: 1px solid #e2e8f0;">
                         <h2 style="margin: 0 0 12px; font-size: 22px; color: #0f172a;">Szia ${safeName}!</h2>
-                        <p style="margin: 0 0 16px; color: #334155;">Jelentkezésed törölve lett.</p>
+                        <p style="margin: 0 0 16px; color: #334155;">${safeAdmin} törölte a jelentkezésedet.</p>
                         <div style="background: #f8fafc; border: 1px solid #e2e8f0; padding: 16px; border-radius: 12px;">
                             <div style="font-size: 13px; color: #64748b;">Túra</div>
                             <div style="font-size: 15px; font-weight: 700; color: #0f172a;">${safeTitle}</div>
+                            <div style="font-size: 13px; color: #64748b; margin-top: 8px;">Időpont</div>
+                            <div style="font-size: 14px; color: #0f172a;">${dateRange}</div>
                         </div>
                     </td>
                 </tr>
@@ -219,12 +233,13 @@ const buildAdminRemovedBookingEmail = ({ name, tourTitle }) => {
     return { subject, text, html };
 };
 
-const buildCancellationRequestEmail = ({ name, tourTitle, reason }) => {
+const buildCancellationRequestEmail = ({ name, tourTitle, reason, startDate, endDate }) => {
     const safeName = escapeHtml(name || '');
     const safeTitle = escapeHtml(tourTitle || '');
     const safeReason = formatMultiline(reason || '');
+    const dateRange = formatDateRange(startDate, endDate) || '-';
     const subject = `Lejelentkezési kérelem rögzítve: ${safeTitle}`;
-    const text = `Szia ${safeName}!\n\nA lejelentkezési kérelmedet rögzítettük.\nTúra: ${safeTitle}\nIndok: ${reason || '-'}\n\nHamarosan visszajelzünk.`;
+    const text = `Szia ${safeName}!\n\nA lejelentkezési kérelmedet rögzítettük.\nTúra: ${safeTitle}\nIdőpont: ${dateRange}\nIndok: ${reason || '-'}\n\nHamarosan visszajelzünk.`;
     const html = `
         <div style="background: #f4f7fb; padding: 32px 16px; font-family: 'Trebuchet MS', 'Segoe UI', Arial, sans-serif; color: #1f2933;">
             <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width: 640px; margin: 0 auto; border-collapse: collapse;">
@@ -242,6 +257,10 @@ const buildCancellationRequestEmail = ({ name, tourTitle, reason }) => {
                             <tr>
                                 <td style="padding: 12px 16px; font-size: 13px; color: #64748b;">Túra</td>
                                 <td style="padding: 12px 16px; font-size: 14px; color: #0f172a; font-weight: 600;">${safeTitle}</td>
+                            </tr>
+                            <tr>
+                                <td style="padding: 12px 16px; font-size: 13px; color: #64748b;">Időpont</td>
+                                <td style="padding: 12px 16px; font-size: 14px; color: #0f172a;">${dateRange}</td>
                             </tr>
                             <tr>
                                 <td style="padding: 12px 16px; font-size: 13px; color: #64748b;">Indok</td>
@@ -265,11 +284,61 @@ const buildCancellationRequestEmail = ({ name, tourTitle, reason }) => {
     return { subject, text, html };
 };
 
-const buildPaymentEmail = ({ name, tourTitle, amount }) => {
+const buildAdminCancellationRequestEmail = ({ userName, userEmail, tourTitle, reason, startDate, endDate }) => {
+    const safeName = escapeHtml(userName || '');
+    const safeEmail = escapeHtml(userEmail || '');
+    const safeTitle = escapeHtml(tourTitle || '');
+    const safeReason = formatMultiline(reason || '');
+    const dateRange = formatDateRange(startDate, endDate) || '-';
+    const subject = `Lejelentkezési kérelem érkezett: ${safeTitle}`;
+    const text = `Lejelentkezési kérelem érkezett.\nFelhasználó: ${userName || '-'} (${userEmail || 'n/a'})\nTúra: ${safeTitle}\nIdőpont: ${dateRange}\nIndok: ${reason || '-'}`;
+    const html = `
+        <div style="background: #f4f7fb; padding: 32px 16px; font-family: 'Trebuchet MS', 'Segoe UI', Arial, sans-serif; color: #1f2933;">
+            <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width: 640px; margin: 0 auto; border-collapse: collapse;">
+                <tr>
+                    <td style="background: #0f172a; padding: 24px 28px; border-radius: 16px 16px 0 0;">
+                        <div style="color: #f8fafc; font-size: 20px; font-weight: 700; letter-spacing: 0.4px;">Túrázz Velünk</div>
+                        <div style="color: #94a3b8; font-size: 13px; margin-top: 6px;">Lejelentkezési kérelem</div>
+                    </td>
+                </tr>
+                <tr>
+                    <td style="background: #ffffff; padding: 28px; border-left: 1px solid #e2e8f0; border-right: 1px solid #e2e8f0;">
+                        <h2 style="margin: 0 0 12px; font-size: 22px; color: #0f172a;">Lejelentkezési kérelem érkezett</h2>
+                        <p style="margin: 0 0 16px; color: #334155;">Felhasználó: ${safeName}${safeEmail ? ` (${safeEmail})` : ''}</p>
+                        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="border-collapse: collapse; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px;">
+                            <tr>
+                                <td style="padding: 12px 16px; font-size: 13px; color: #64748b;">Túra</td>
+                                <td style="padding: 12px 16px; font-size: 14px; color: #0f172a; font-weight: 600;">${safeTitle}</td>
+                            </tr>
+                            <tr>
+                                <td style="padding: 12px 16px; font-size: 13px; color: #64748b;">Időpont</td>
+                                <td style="padding: 12px 16px; font-size: 14px; color: #0f172a;">${dateRange}</td>
+                            </tr>
+                            <tr>
+                                <td style="padding: 12px 16px; font-size: 13px; color: #64748b;">Indok</td>
+                                <td style="padding: 12px 16px; font-size: 14px; color: #0f172a;">${safeReason || '-'}</td>
+                            </tr>
+                        </table>
+                    </td>
+                </tr>
+                <tr>
+                    <td style="background: #e2e8f0; padding: 16px 28px; border-radius: 0 0 16px 16px; font-size: 12px; color: #64748b;">
+                        Ez az üzenet a Túrázz Velünk adminisztrációjától érkezett.
+                    </td>
+                </tr>
+            </table>
+        </div>
+    `;
+
+    return { subject, text, html };
+};
+
+const buildPaymentEmail = ({ name, tourTitle, amount, startDate, endDate }) => {
     const safeName = escapeHtml(name || '');
     const safeTitle = escapeHtml(tourTitle || '');
+    const dateRange = formatDateRange(startDate, endDate) || '-';
     const subject = `Sikeres befizetés: ${safeTitle}`;
-    const text = `Szia ${safeName}!\n\nA befizetésed sikeres volt.\nTúra: ${safeTitle}\nÖsszeg: ${formatPrice(amount)}\n`;
+    const text = `Szia ${safeName}!\n\nA befizetésed sikeres volt.\nTúra: ${safeTitle}\nIdőpont: ${dateRange}\nÖsszeg: ${formatPrice(amount)}\n`;
     const html = `
         <div style="background: #f4f7fb; padding: 32px 16px; font-family: 'Trebuchet MS', 'Segoe UI', Arial, sans-serif; color: #1f2933;">
             <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width: 640px; margin: 0 auto; border-collapse: collapse;">
@@ -289,6 +358,10 @@ const buildPaymentEmail = ({ name, tourTitle, amount }) => {
                                 <td style="padding: 12px 16px; font-size: 14px; color: #0f172a; font-weight: 600;">${safeTitle}</td>
                             </tr>
                             <tr>
+                                <td style="padding: 12px 16px; font-size: 13px; color: #64748b;">Időpont</td>
+                                <td style="padding: 12px 16px; font-size: 14px; color: #0f172a;">${dateRange}</td>
+                            </tr>
+                            <tr>
                                 <td style="padding: 12px 16px; font-size: 13px; color: #64748b;">Összeg</td>
                                 <td style="padding: 12px 16px; font-size: 14px; color: #0f172a; font-weight: 600;">${formatPrice(amount)}</td>
                             </tr>
@@ -298,6 +371,53 @@ const buildPaymentEmail = ({ name, tourTitle, amount }) => {
                 <tr>
                     <td style="background: #e2e8f0; padding: 16px 28px; border-radius: 0 0 16px 16px; font-size: 12px; color: #64748b;">
                         Köszönjük, hogy velünk túrázol!
+                    </td>
+                </tr>
+            </table>
+        </div>
+    `;
+
+    return { subject, text, html };
+};
+
+const buildAdminPaymentEmail = ({ userName, tourTitle, amount, startDate, endDate }) => {
+    const safeName = escapeHtml(userName || '');
+    const safeTitle = escapeHtml(tourTitle || '');
+    const dateRange = formatDateRange(startDate, endDate) || '-';
+    const subject = `Befizetés: ${safeTitle}`;
+    const text = `${safeName} befizette a túrát.\nTúra: ${safeTitle}\nIdőpont: ${dateRange}\nÖsszeg: ${formatPrice(amount)}\n`;
+    const html = `
+        <div style="background: #f4f7fb; padding: 32px 16px; font-family: 'Trebuchet MS', 'Segoe UI', Arial, sans-serif; color: #1f2933;">
+            <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width: 640px; margin: 0 auto; border-collapse: collapse;">
+                <tr>
+                    <td style="background: #0f172a; padding: 24px 28px; border-radius: 16px 16px 0 0;">
+                        <div style="color: #f8fafc; font-size: 20px; font-weight: 700; letter-spacing: 0.4px;">Túrázz Velünk</div>
+                        <div style="color: #94a3b8; font-size: 13px; margin-top: 6px;">Közlemény</div>
+                    </td>
+                </tr>
+                <tr>
+                    <td style="background: #ffffff; padding: 28px; border-left: 1px solid #e2e8f0; border-right: 1px solid #e2e8f0;">
+                        <h2 style="margin: 0 0 12px; font-size: 22px; color: #0f172a;">Befizetés: ${safeTitle}</h2>
+                        <p style="margin: 0 0 16px; color: #334155;">${safeName} befizette a túrát.</p>
+                        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="border-collapse: collapse; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px;">
+                            <tr>
+                                <td style="padding: 12px 16px; font-size: 13px; color: #64748b;">Túra</td>
+                                <td style="padding: 12px 16px; font-size: 14px; color: #0f172a; font-weight: 600;">${safeTitle}</td>
+                            </tr>
+                            <tr>
+                                <td style="padding: 12px 16px; font-size: 13px; color: #64748b;">Időpont</td>
+                                <td style="padding: 12px 16px; font-size: 14px; color: #0f172a;">${dateRange}</td>
+                            </tr>
+                            <tr>
+                                <td style="padding: 12px 16px; font-size: 13px; color: #64748b;">Összeg</td>
+                                <td style="padding: 12px 16px; font-size: 14px; color: #0f172a; font-weight: 600;">${formatPrice(amount)}</td>
+                            </tr>
+                        </table>
+                    </td>
+                </tr>
+                <tr>
+                    <td style="background: #e2e8f0; padding: 16px 28px; border-radius: 0 0 16px 16px; font-size: 12px; color: #64748b;">
+                        Ez az üzenet a Túrázz Velünk adminisztrációjától érkezett.
                     </td>
                 </tr>
             </table>
@@ -344,7 +464,9 @@ module.exports = {
     buildBookingCancelledEmail,
     buildAdminRemovedBookingEmail,
     buildCancellationRequestEmail,
+    buildAdminCancellationRequestEmail,
     buildPaymentEmail,
+    buildAdminPaymentEmail,
     buildAdminEmail,
     buildAccountDeletedEmail
 };

@@ -4,7 +4,8 @@ const {
     sendBookingCancelledEmail,
     sendAdminRemovedBookingEmail,
     sendCancellationRequestEmail,
-    sendAdminNotification
+    sendAdminNotification,
+    sendAdminCancellationRequestNotification
 } = require('../services/emailService');
 const { logActivity } = require('../services/activityService');
 
@@ -21,6 +22,12 @@ exports.createBooking = async (req, res) => {
             return res.status(404).json({ message: "Túra nem található." });
         }
         const tour = tourRows[0];
+        const now = new Date();
+        const startDate = tour.start_date ? new Date(tour.start_date) : null;
+        const endDate = tour.end_date ? new Date(tour.end_date) : null;
+        if (startDate && endDate && now >= startDate && now <= endDate) {
+            return res.status(400).json({ message: "Folyamatban lévő túrára nem lehet jelentkezni." });
+        }
         const maxParticipants = tour.max_participants;
         if (maxParticipants) {
             const [countRows] = await db.query(
@@ -201,7 +208,7 @@ exports.deleteBooking = async (req, res) => {
             return res.status(400).json({ message: "Fizetett jelentkezést csak lejelentkezési kérelemmel lehet visszavonni." });
         }
         try {
-            const [tourRows] = await db.query('SELECT title FROM tours WHERE id = ?', [booking[0].tour_id]);
+            const [tourRows] = await db.query('SELECT title, start_date, end_date FROM tours WHERE id = ?', [booking[0].tour_id]);
             const [userRows] = await db.query('SELECT name, email FROM users WHERE id = ?', [userId]);
             const title = tourRows[0]?.title || 'ismeretlen túra';
             const userName = userRows[0]?.name || 'Ismeretlen felhasználó';
@@ -216,7 +223,9 @@ exports.deleteBooking = async (req, res) => {
                 await sendBookingCancelledEmail({
                     to: userRows[0].email,
                     name: userRows[0].name,
-                    tourTitle: title
+                    tourTitle: title,
+                    startDate: tourRows[0]?.start_date,
+                    endDate: tourRows[0]?.end_date
                 });
             }
             await sendAdminNotification({
@@ -300,7 +309,7 @@ exports.removeBookingByTourId = async (req, res) => {
             return res.status(400).json({ message: "Fizetett jelentkezést csak lejelentkezési kérelemmel lehet visszavonni." });
         }
         try {
-            const [tourRows] = await db.query('SELECT title FROM tours WHERE id = ?', [req.params.tourId]);
+            const [tourRows] = await db.query('SELECT title, start_date, end_date FROM tours WHERE id = ?', [req.params.tourId]);
             const [userRows] = await db.query('SELECT name, email FROM users WHERE id = ?', [req.user.id]);
             const title = tourRows[0]?.title || 'ismeretlen túra';
             const userName = userRows[0]?.name || 'Ismeretlen felhasználó';
@@ -315,7 +324,9 @@ exports.removeBookingByTourId = async (req, res) => {
                 await sendBookingCancelledEmail({
                     to: userRows[0].email,
                     name: userRows[0].name,
-                    tourTitle: title
+                    tourTitle: title,
+                    startDate: tourRows[0]?.start_date,
+                    endDate: tourRows[0]?.end_date
                 });
             }
             await sendAdminNotification({
@@ -447,7 +458,7 @@ exports.createCancellationRequest = async (req, res) => {
             [bookingId, req.user.id, reason.trim()]
         );
         try {
-            const [tourRows] = await db.query('SELECT title FROM tours WHERE id = ?', [booking[0].tour_id]);
+            const [tourRows] = await db.query('SELECT title, start_date, end_date FROM tours WHERE id = ?', [booking[0].tour_id]);
             const [userRows] = await db.query('SELECT name, email FROM users WHERE id = ?', [req.user.id]);
             const title = tourRows[0]?.title || 'ismeretlen túra';
             const userName = userRows[0]?.name || 'Ismeretlen felhasználó';
@@ -464,12 +475,18 @@ exports.createCancellationRequest = async (req, res) => {
                     to: userEmail,
                     name: userName,
                     tourTitle: title,
-                    reason: reason.trim()
+                    reason: reason.trim(),
+                    startDate: tourRows[0]?.start_date,
+                    endDate: tourRows[0]?.end_date
                 });
             }
-            await sendAdminNotification({
-                subject: `Lejelentkezési kérelem érkezett: ${title}`,
-                message: `${userName} (${userEmail || 'n/a'}) lejelentkezési kérelmet küldött.\nIndok: ${reason.trim()}`
+            await sendAdminCancellationRequestNotification({
+                userName,
+                userEmail,
+                tourTitle: title,
+                reason: reason.trim(),
+                startDate: tourRows[0]?.start_date,
+                endDate: tourRows[0]?.end_date
             });
         } catch (logErr) {
             console.error('Tevékenységnapló hiba:', logErr.message);
@@ -528,7 +545,7 @@ exports.updateCancellationRequestStatus = async (req, res) => {
                 });
             }
             try {
-                const [tourRows] = await db.query('SELECT title FROM tours WHERE id = ?', [bookingRows[0].tour_id]);
+                const [tourRows] = await db.query('SELECT title, start_date, end_date FROM tours WHERE id = ?', [bookingRows[0].tour_id]);
                 const [userRows] = await db.query('SELECT name, email FROM users WHERE id = ?', [bookingRows[0].user_id]);
                 const title = tourRows[0]?.title || 'ismeretlen túra';
                 const userName = userRows[0]?.name || 'Ismeretlen felhasználó';
@@ -550,7 +567,9 @@ exports.updateCancellationRequestStatus = async (req, res) => {
                     await sendBookingCancelledEmail({
                         to: userRows[0].email,
                         name: userRows[0].name,
-                        tourTitle: title
+                        tourTitle: title,
+                        startDate: tourRows[0]?.start_date,
+                        endDate: tourRows[0]?.end_date
                     });
                 }
                 await sendAdminNotification({
@@ -589,7 +608,7 @@ exports.adminDeleteBooking = async (req, res) => {
     const { id } = req.params;
     try {
         const [rows] = await db.query(
-            `SELECT b.id, b.tour_id, b.user_id, t.title AS tour_title,
+            `SELECT b.id, b.tour_id, b.user_id, t.title AS tour_title, t.start_date, t.end_date,
                     u.name AS user_name, u.email AS user_email
              FROM bookings b
              JOIN tours t ON b.tour_id = t.id
@@ -619,7 +638,10 @@ exports.adminDeleteBooking = async (req, res) => {
             await sendAdminRemovedBookingEmail({
                 to: booking.user_email,
                 name: booking.user_name,
-                tourTitle: booking.tour_title || 'ismeretlen túra'
+                tourTitle: booking.tour_title || 'ismeretlen túra',
+                adminName,
+                startDate: booking.start_date,
+                endDate: booking.end_date
             });
         }
         await sendAdminNotification({
@@ -646,7 +668,7 @@ exports.getBookingsByTourId = async (req, res) => {
     const { tourId } = req.params;
     try {
         const [rows] = await db.query(
-            `SELECT b.id, b.status, b.booked_at, b.user_id,
+            `SELECT b.id, b.status, b.payment_status, b.booked_at, b.user_id,
                     u.name AS user_name, u.email
              FROM bookings b
              JOIN users u ON b.user_id = u.id
@@ -664,7 +686,7 @@ exports.getBookingsByUserId = async (req, res) => {
     const { userId } = req.params;
     try {
         const [rows] = await db.query(
-            `SELECT b.id, b.status, b.booked_at, b.tour_id,
+            `SELECT b.id, b.status, b.payment_status, b.booked_at, b.tour_id,
                     t.title, t.location, t.start_date, t.end_date
              FROM bookings b
              JOIN tours t ON b.tour_id = t.id

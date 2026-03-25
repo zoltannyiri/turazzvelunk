@@ -406,6 +406,7 @@ const AdminDashboard = () => {
 
   const getBookingStatusLabel = (booking) => {
     if (booking?.payment_status === 'paid') return 'Fizetve';
+    if (booking?.status === 'confirmed') return 'Jelentkezve';
     return booking?.status || '';
   };
 
@@ -1275,8 +1276,16 @@ const AdminDashboard = () => {
                     <h2 className="text-2xl font-black text-emerald-950">Lejelentkezési kérelmek</h2>
                     <div className="text-xs text-slate-400 font-bold uppercase tracking-widest">Teljes lista</div>
                   </div>
-                  <div className="px-4 py-2 rounded-full bg-emerald-50 text-emerald-700 text-xs font-black uppercase tracking-widest">
-                    {pendingCancelCount} pending
+                  <div className="flex items-center gap-3">
+                    <button
+                      onClick={fetchCancelRequests}
+                      className="px-4 py-2 rounded-2xl text-xs font-black uppercase tracking-widest bg-emerald-600 text-white shadow-lg shadow-emerald-600/20 hover:bg-emerald-700 transition"
+                    >
+                      Frissítés
+                    </button>
+                    <div className="px-4 py-2 rounded-full bg-emerald-50 text-emerald-700 text-xs font-black uppercase tracking-widest">
+                      {pendingCancelCount} pending
+                    </div>
                   </div>
                 </div>
                 <div className="px-8 pb-4">
@@ -1363,7 +1372,15 @@ const AdminDashboard = () => {
                     <h2 className="text-2xl font-black text-emerald-950">Felhasználók</h2>
                     <div className="text-xs text-slate-400 font-bold uppercase tracking-widest">Jogosultságok és túrák</div>
                   </div>
-                  <div className="text-xs font-black uppercase tracking-widest text-emerald-600">{users.length} db</div>
+                  <div className="flex items-center gap-3">
+                    <button
+                      onClick={fetchUsers}
+                      className="px-4 py-2 rounded-2xl text-xs font-black uppercase tracking-widest bg-emerald-600 text-white shadow-lg shadow-emerald-600/20 hover:bg-emerald-700 transition"
+                    >
+                      Frissítés
+                    </button>
+                    <div className="text-xs font-black uppercase tracking-widest text-emerald-600">{users.length} db</div>
+                  </div>
                 </div>
                 <div className="px-8 pb-8">
                   {usersLoading ? (

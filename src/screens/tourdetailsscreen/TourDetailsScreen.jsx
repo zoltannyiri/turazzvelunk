@@ -263,6 +263,19 @@ const TourDetailsScreen = () => {
   const isTourFull = tour?.max_participants
     ? Number(tour.booked_count || 0) >= Number(tour.max_participants)
     : false;
+  const isTourInProgress = (() => {
+    if (!tour?.start_date || !tour?.end_date) return false;
+    const now = new Date();
+    const start = new Date(tour.start_date);
+    const end = new Date(tour.end_date);
+    return now >= start && now <= end;
+  })();
+  const isTourEnded = (() => {
+    if (!tour?.end_date) return false;
+    const now = new Date();
+    const end = new Date(tour.end_date);
+    return now > end;
+  })();
   const avatarBase = (import.meta.env.VITE_API_URL || '').replace(/\/api\/?$/, '');
   const basePrice = Number(tour?.price || 0);
   const extraPrice = selectedEquipmentIds.reduce((sum, equipmentId) => {
@@ -493,6 +506,7 @@ const TourDetailsScreen = () => {
         toast.warn("Lejelentkezve a túráról.");
         setIsBooked(false);
         fetchTourData();
+        navigate('/profile');
       }
     } catch (err) {
       toast.error("Hiba a lejelentkezéskor.");
@@ -1104,6 +1118,11 @@ const TourDetailsScreen = () => {
                   <div className="text-4xl font-black italic tracking-tighter">
                     {displayTotal.toLocaleString()} <span className="text-lg not-italic text-emerald-500">Ft</span>
                   </div>
+                  {paymentStatus === 'paid' && (
+                    <div className="mt-2 text-xs font-black uppercase tracking-widest text-red-400">
+                      Fizetve
+                    </div>
+                  )}
                   {displayExtra > 0 && (
                     <div className="text-[10px] font-black uppercase tracking-widest text-emerald-300 mt-2">
                       Alapár: {basePrice.toLocaleString()} Ft · Extra: {displayExtra.toLocaleString()} Ft
@@ -1381,9 +1400,9 @@ const TourDetailsScreen = () => {
                     )}
                     <button 
                       onClick={handleBooking}
-                      disabled={isTourFull || !user || bookingSubmitting}
+                      disabled={isTourEnded || isTourInProgress || isTourFull || !user || bookingSubmitting}
                       className={`w-full py-4 rounded-2xl font-black text-sm transition-all flex items-center justify-center gap-2 uppercase tracking-widest ${
-                        isTourFull || bookingSubmitting
+                        isTourEnded || isTourInProgress || isTourFull || bookingSubmitting
                           ? 'bg-slate-800 text-slate-500 cursor-not-allowed'
                           : user 
                             ? 'bg-emerald-500 hover:bg-emerald-400 text-slate-900 shadow-lg shadow-emerald-500/20' 
@@ -1396,13 +1415,17 @@ const TourDetailsScreen = () => {
                           aria-hidden="true"
                         ></span>
                       )}
-                      {isTourFull
-                        ? 'A túra betelt'
-                        : !user
-                          ? 'Bejelentkezés szükséges'
-                          : bookingSubmitting
-                            ? 'Jelentkezés...'
-                            : 'Jelentkezem most'}
+                      {isTourEnded
+                        ? 'A túra véget ért'
+                        : isTourInProgress
+                          ? 'A túra már elkezdődött'
+                          : isTourFull
+                            ? 'A túra betelt'
+                            : !user
+                              ? 'Bejelentkezés szükséges'
+                              : bookingSubmitting
+                                ? 'Jelentkezés...'
+                                : 'Jelentkezem most'}
                     </button>
                   </div>
                 )}
@@ -1410,7 +1433,7 @@ const TourDetailsScreen = () => {
             </div>
 
             <div className="flex items-center justify-center gap-2 text-slate-400 font-bold text-[9px] uppercase tracking-widest bg-white py-3 rounded-2xl border border-slate-100 shadow-sm">
-                <ShieldCheck size={14} className="text-emerald-500" /> 100% Biztonságos foglalás
+                <ShieldCheck size={14} className="text-emerald-500" /> Biztonságos foglalás
             </div>
           </div>
         </div>

@@ -1,7 +1,7 @@
 const Stripe = require('stripe');
 const db = require('../config/db');
 const { logActivity } = require('../services/activityService');
-const { sendPaymentEmail, sendAdminNotification } = require('../services/emailService');
+const { sendPaymentEmail, sendAdminPaymentNotification } = require('../services/emailService');
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || '', {
     apiVersion: '2024-06-20'
@@ -25,7 +25,7 @@ const shouldSkipWebhook = async (event) => {
 
 const finalizePaidBooking = async ({ payment, booking }) => {
     try {
-        const [tourRows] = await db.query('SELECT title FROM tours WHERE id = ?', [payment.tour_id]);
+        const [tourRows] = await db.query('SELECT title, start_date, end_date FROM tours WHERE id = ?', [payment.tour_id]);
         const [userRows] = await db.query('SELECT name, email FROM users WHERE id = ?', [payment.user_id]);
         const title = tourRows[0]?.title || 'ismeretlen túra';
         const userName = userRows[0]?.name || 'Ismeretlen felhasználó';
@@ -41,12 +41,17 @@ const finalizePaidBooking = async ({ payment, booking }) => {
                 to: userRows[0].email,
                 name: userName,
                 tourTitle: title,
-                amount: booking?.total_price || payment.amount
+                amount: booking?.total_price || payment.amount,
+                startDate: tourRows[0]?.start_date,
+                endDate: tourRows[0]?.end_date
             });
         }
-        await sendAdminNotification({
-            subject: `Befizetés: ${title}`,
-            message: `${userName} befizette a túrát. Összeg: ${Number(payment.amount || 0).toLocaleString('hu-HU')} Ft.`
+        await sendAdminPaymentNotification({
+            userName,
+            tourTitle: title,
+            amount: payment.amount || 0,
+            startDate: tourRows[0]?.start_date,
+            endDate: tourRows[0]?.end_date
         });
     } catch (logErr) {
         console.error('Tevékenységnapló hiba:', logErr.message);
@@ -273,7 +278,7 @@ exports.confirmCheckoutSession = async (req, res) => {
                         ['paid', bookingId]
                     );
                     try {
-                        const [tourRows] = await db.query('SELECT title FROM tours WHERE id = ?', [bookingRows[0]?.tour_id]);
+                        const [tourRows] = await db.query('SELECT title, start_date, end_date FROM tours WHERE id = ?', [bookingRows[0]?.tour_id]);
                         const [userRows] = await db.query('SELECT name, email FROM users WHERE id = ?', [user_id]);
                         const title = tourRows[0]?.title || 'ismeretlen túra';
                         const userName = userRows[0]?.name || 'Ismeretlen felhasználó';
@@ -289,12 +294,17 @@ exports.confirmCheckoutSession = async (req, res) => {
                                 to: userRows[0].email,
                                 name: userName,
                                 tourTitle: title,
-                                amount: bookingRows[0]?.total_price || 0
+                                amount: bookingRows[0]?.total_price || 0,
+                                startDate: tourRows[0]?.start_date,
+                                endDate: tourRows[0]?.end_date
                             });
                         }
-                        await sendAdminNotification({
-                            subject: `Befizetés: ${title}`,
-                            message: `${userName} befizette a túrát.`
+                        await sendAdminPaymentNotification({
+                            userName,
+                            tourTitle: title,
+                            amount: bookingRows[0]?.total_price || 0,
+                            startDate: tourRows[0]?.start_date,
+                            endDate: tourRows[0]?.end_date
                         });
                     } catch (logErr) {
                         console.error('Tevékenységnapló hiba:', logErr.message);
