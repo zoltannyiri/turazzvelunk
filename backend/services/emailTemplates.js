@@ -233,6 +233,51 @@ const buildAdminRemovedBookingEmail = ({ name, tourTitle, adminName, startDate, 
     return { subject, text, html };
 };
 
+const buildAdminRemovedBookingNotificationEmail = ({ adminName, userName, userEmail, tourTitle, startDate, endDate }) => {
+    const safeAdmin = escapeHtml(adminName || 'Admin');
+    const safeUser = escapeHtml(userName || '');
+    const safeEmail = escapeHtml(userEmail || '');
+    const safeTitle = escapeHtml(tourTitle || '');
+    const dateRange = formatDateRange(startDate, endDate) || '-';
+    const subject = `Admin törlés: ${safeTitle}`;
+    const text = `Admin törlés történt.\nAdmin: ${adminName || '-'}\nFelhasználó: ${userName || '-'} (${userEmail || 'n/a'})\nTúra: ${safeTitle}\nIdőpont: ${dateRange}`;
+    const html = `
+        <div style="background: #f4f7fb; padding: 32px 16px; font-family: 'Trebuchet MS', 'Segoe UI', Arial, sans-serif; color: #1f2933;">
+            <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width: 640px; margin: 0 auto; border-collapse: collapse;">
+                <tr>
+                    <td style="background: #0f172a; padding: 24px 28px; border-radius: 16px 16px 0 0;">
+                        <div style="color: #f8fafc; font-size: 20px; font-weight: 700; letter-spacing: 0.4px;">Túrázz Velünk</div>
+                        <div style="color: #94a3b8; font-size: 13px; margin-top: 6px;">Közlemény</div>
+                    </td>
+                </tr>
+                <tr>
+                    <td style="background: #ffffff; padding: 28px; border-left: 1px solid #e2e8f0; border-right: 1px solid #e2e8f0;">
+                        <h2 style="margin: 0 0 12px; font-size: 22px; color: #0f172a;">Admin törlés: ${safeTitle}</h2>
+                        <p style="margin: 0 0 16px; color: #334155;">${safeAdmin} törölte ${safeUser}${safeEmail ? ` (${safeEmail})` : ''} jelentkezését.</p>
+                        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="border-collapse: collapse; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px;">
+                            <tr>
+                                <td style="padding: 12px 16px; font-size: 13px; color: #64748b;">Túra</td>
+                                <td style="padding: 12px 16px; font-size: 14px; color: #0f172a; font-weight: 600;">${safeTitle}</td>
+                            </tr>
+                            <tr>
+                                <td style="padding: 12px 16px; font-size: 13px; color: #64748b;">Időpont</td>
+                                <td style="padding: 12px 16px; font-size: 14px; color: #0f172a;">${dateRange}</td>
+                            </tr>
+                        </table>
+                    </td>
+                </tr>
+                <tr>
+                    <td style="background: #e2e8f0; padding: 16px 28px; border-radius: 0 0 16px 16px; font-size: 12px; color: #64748b;">
+                        Ez az üzenet a Túrázz Velünk adminisztrációjától érkezett.
+                    </td>
+                </tr>
+            </table>
+        </div>
+    `;
+
+    return { subject, text, html };
+};
+
 const buildCancellationRequestEmail = ({ name, tourTitle, reason, startDate, endDate }) => {
     const safeName = escapeHtml(name || '');
     const safeTitle = escapeHtml(tourTitle || '');
@@ -317,6 +362,50 @@ const buildAdminCancellationRequestEmail = ({ userName, userEmail, tourTitle, re
                             <tr>
                                 <td style="padding: 12px 16px; font-size: 13px; color: #64748b;">Indok</td>
                                 <td style="padding: 12px 16px; font-size: 14px; color: #0f172a;">${safeReason || '-'}</td>
+                            </tr>
+                        </table>
+                    </td>
+                </tr>
+                <tr>
+                    <td style="background: #e2e8f0; padding: 16px 28px; border-radius: 0 0 16px 16px; font-size: 12px; color: #64748b;">
+                        Ez az üzenet a Túrázz Velünk adminisztrációjától érkezett.
+                    </td>
+                </tr>
+            </table>
+        </div>
+    `;
+
+    return { subject, text, html };
+};
+
+const buildAdminCancellationApprovedEmail = ({ userName, userEmail, tourTitle, startDate, endDate }) => {
+    const safeName = escapeHtml(userName || '');
+    const safeEmail = escapeHtml(userEmail || '');
+    const safeTitle = escapeHtml(tourTitle || '');
+    const dateRange = formatDateRange(startDate, endDate) || '-';
+    const subject = `Lejelentkezés (jóváhagyva): ${safeTitle}`;
+    const text = `Lejelentkezés jóváhagyva.\nFelhasználó: ${userName || '-'} (${userEmail || 'n/a'})\nTúra: ${safeTitle}\nIdőpont: ${dateRange}`;
+    const html = `
+        <div style="background: #f4f7fb; padding: 32px 16px; font-family: 'Trebuchet MS', 'Segoe UI', Arial, sans-serif; color: #1f2933;">
+            <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width: 640px; margin: 0 auto; border-collapse: collapse;">
+                <tr>
+                    <td style="background: #0f172a; padding: 24px 28px; border-radius: 16px 16px 0 0;">
+                        <div style="color: #f8fafc; font-size: 20px; font-weight: 700; letter-spacing: 0.4px;">Túrázz Velünk</div>
+                        <div style="color: #94a3b8; font-size: 13px; margin-top: 6px;">Közlemény</div>
+                    </td>
+                </tr>
+                <tr>
+                    <td style="background: #ffffff; padding: 28px; border-left: 1px solid #e2e8f0; border-right: 1px solid #e2e8f0;">
+                        <h2 style="margin: 0 0 12px; font-size: 22px; color: #0f172a;">Lejelentkezés (jóváhagyva): ${safeTitle}</h2>
+                        <p style="margin: 0 0 16px; color: #334155;">${safeName}${safeEmail ? ` (${safeEmail})` : ''} lejelentkezett a túráról.</p>
+                        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="border-collapse: collapse; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px;">
+                            <tr>
+                                <td style="padding: 12px 16px; font-size: 13px; color: #64748b;">Túra</td>
+                                <td style="padding: 12px 16px; font-size: 14px; color: #0f172a; font-weight: 600;">${safeTitle}</td>
+                            </tr>
+                            <tr>
+                                <td style="padding: 12px 16px; font-size: 13px; color: #64748b;">Időpont</td>
+                                <td style="padding: 12px 16px; font-size: 14px; color: #0f172a;">${dateRange}</td>
                             </tr>
                         </table>
                     </td>
@@ -463,8 +552,10 @@ module.exports = {
     buildBookingEmail,
     buildBookingCancelledEmail,
     buildAdminRemovedBookingEmail,
+    buildAdminRemovedBookingNotificationEmail,
     buildCancellationRequestEmail,
     buildAdminCancellationRequestEmail,
+    buildAdminCancellationApprovedEmail,
     buildPaymentEmail,
     buildAdminPaymentEmail,
     buildAdminEmail,

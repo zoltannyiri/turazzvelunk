@@ -5,7 +5,9 @@ const {
     sendAdminRemovedBookingEmail,
     sendCancellationRequestEmail,
     sendAdminNotification,
-    sendAdminCancellationRequestNotification
+    sendAdminCancellationRequestNotification,
+    sendAdminCancellationApprovedNotification,
+    sendAdminRemovedBookingNotification
 } = require('../services/emailService');
 const { logActivity } = require('../services/activityService');
 
@@ -572,9 +574,12 @@ exports.updateCancellationRequestStatus = async (req, res) => {
                         endDate: tourRows[0]?.end_date
                     });
                 }
-                await sendAdminNotification({
-                    subject: `Lejelentkezés (jóváhagyva): ${title}`,
-                    message: `${userName} (${userRows[0]?.email || 'n/a'}) lejelentkezett a túráról.`
+                await sendAdminCancellationApprovedNotification({
+                    userName,
+                    userEmail: userRows[0]?.email || '',
+                    tourTitle: title,
+                    startDate: tourRows[0]?.start_date,
+                    endDate: tourRows[0]?.end_date
                 });
             } catch (logErr) {
                 console.error('Tevékenységnapló hiba:', logErr.message);
@@ -644,9 +649,13 @@ exports.adminDeleteBooking = async (req, res) => {
                 endDate: booking.end_date
             });
         }
-        await sendAdminNotification({
-            subject: `Admin törlés: ${booking.tour_title || 'ismeretlen túra'}`,
-            message: `${adminName} törölte ${booking.user_name} (${booking.user_email || 'n/a'}) jelentkezését.`
+        await sendAdminRemovedBookingNotification({
+            adminName,
+            userName: booking.user_name,
+            userEmail: booking.user_email || '',
+            tourTitle: booking.tour_title || 'ismeretlen túra',
+            startDate: booking.start_date,
+            endDate: booking.end_date
         });
         await db.query('DELETE FROM booking_cancel_requests WHERE booking_id = ?', [id]);
         await db.query('DELETE FROM bookings WHERE id = ?', [id]);

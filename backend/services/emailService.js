@@ -5,8 +5,10 @@ const {
     buildBookingEmail,
     buildBookingCancelledEmail,
     buildAdminRemovedBookingEmail,
+    buildAdminRemovedBookingNotificationEmail,
     buildCancellationRequestEmail,
     buildAdminCancellationRequestEmail,
+    buildAdminCancellationApprovedEmail,
     buildPaymentEmail,
     buildAdminPaymentEmail,
     buildAdminEmail,
@@ -63,6 +65,18 @@ const sendAdminRemovedBookingEmail = async ({ to, name, tourTitle, adminName, st
     return sendMail({ to, subject, text, html });
 };
 
+const sendAdminRemovedBookingNotificationEmail = async ({ to, adminName, userName, userEmail, tourTitle, startDate, endDate }) => {
+    const { subject, text, html } = buildAdminRemovedBookingNotificationEmail({
+        adminName,
+        userName,
+        userEmail,
+        tourTitle,
+        startDate,
+        endDate
+    });
+    return sendMail({ to, subject, text, html });
+};
+
 const sendCancellationRequestEmail = async ({ to, name, tourTitle, reason, startDate, endDate }) => {
     const { subject, text, html } = buildCancellationRequestEmail({
         name,
@@ -80,6 +94,17 @@ const sendAdminCancellationRequestEmail = async ({ to, userName, userEmail, tour
         userEmail,
         tourTitle,
         reason,
+        startDate,
+        endDate
+    });
+    return sendMail({ to, subject, text, html });
+};
+
+const sendAdminCancellationApprovedEmail = async ({ to, userName, userEmail, tourTitle, startDate, endDate }) => {
+    const { subject, text, html } = buildAdminCancellationApprovedEmail({
+        userName,
+        userEmail,
+        tourTitle,
         startDate,
         endDate
     });
@@ -152,18 +177,53 @@ const sendAdminCancellationRequestNotification = async ({ userName, userEmail, t
     );
 };
 
+const sendAdminCancellationApprovedNotification = async ({ userName, userEmail, tourTitle, startDate, endDate }) => {
+    const recipients = await getAdminRecipients();
+    if (!recipients.length) return;
+    await Promise.all(
+        recipients.map((email) => sendAdminCancellationApprovedEmail({
+            to: email,
+            userName,
+            userEmail,
+            tourTitle,
+            startDate,
+            endDate
+        }))
+    );
+};
+
+const sendAdminRemovedBookingNotification = async ({ adminName, userName, userEmail, tourTitle, startDate, endDate }) => {
+    const recipients = await getAdminRecipients();
+    if (!recipients.length) return;
+    await Promise.all(
+        recipients.map((email) => sendAdminRemovedBookingNotificationEmail({
+            to: email,
+            adminName,
+            userName,
+            userEmail,
+            tourTitle,
+            startDate,
+            endDate
+        }))
+    );
+};
+
 module.exports = {
     sendRegistrationEmail,
     sendBookingEmail,
     sendBookingCancelledEmail,
     sendAdminRemovedBookingEmail,
+    sendAdminRemovedBookingNotificationEmail,
     sendCancellationRequestEmail,
     sendAdminCancellationRequestEmail,
+    sendAdminCancellationApprovedEmail,
     sendPaymentEmail,
     sendAdminPaymentEmail,
     sendAdminEmail,
     sendAdminNotification,
     sendAdminCancellationRequestNotification,
+    sendAdminCancellationApprovedNotification,
+    sendAdminRemovedBookingNotification,
     sendAdminPaymentNotification,
     sendAccountDeletedEmail
 };
