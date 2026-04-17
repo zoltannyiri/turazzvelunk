@@ -30,6 +30,7 @@ const TourDetailsScreen = () => {
   const [activeTab, setActiveTab] = useState('details');
   const paymentHandledRef = useRef(false);
   const paymentTargetRef = useRef(null);
+  const selfCancelRef = useRef(false);
 
   const [posts, setPosts] = useState([]);
   const [postsLoading, setPostsLoading] = useState(false);
@@ -368,6 +369,11 @@ const TourDetailsScreen = () => {
         setIsBooked(false);
         setChatMessages([]);
         setActiveTab('details');
+        if (!selfCancelRef.current) {
+          toast.warn('Lejelentkezve a túráról.');
+        }
+        selfCancelRef.current = false;
+        navigate('/profile', { replace: true });
         toast.info('Kikerültél a túra csevegéséből.');
       }
       if (payload.status === 'confirmed') {
@@ -503,6 +509,7 @@ const TourDetailsScreen = () => {
         headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
       });
       if (res.ok) {
+        selfCancelRef.current = true;
         toast.warn("Lejelentkezve a túráról.");
         setIsBooked(false);
         fetchTourData();

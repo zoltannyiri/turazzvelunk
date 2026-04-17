@@ -4,6 +4,7 @@ const {
     sendBookingCancelledEmail,
     sendAdminRemovedBookingEmail,
     sendCancellationRequestEmail,
+    sendCancellationRejectedEmail,
     sendAdminNotification,
     sendAdminCancellationRequestNotification,
     sendAdminCancellationApprovedNotification,
@@ -589,7 +590,8 @@ exports.updateCancellationRequestStatus = async (req, res) => {
             try {
                 const [bookingRows] = await db.query('SELECT tour_id, user_id FROM bookings WHERE id = ?', [rows[0].booking_id]);
                 if (bookingRows.length > 0) {
-                    const [tourRows] = await db.query('SELECT title FROM tours WHERE id = ?', [bookingRows[0].tour_id]);
+                    const [tourRows] = await db.query('SELECT title, start_date, end_date FROM tours WHERE id = ?', [bookingRows[0].tour_id]);
+                    const [userRows] = await db.query('SELECT name, email FROM users WHERE id = ?', [bookingRows[0].user_id]);
                     const title = tourRows[0]?.title || 'ismeretlen túra';
                     await logActivity({
                         type: 'booking_cancel_rejected',
@@ -598,6 +600,15 @@ exports.updateCancellationRequestStatus = async (req, res) => {
                         tourId: bookingRows[0].tour_id,
                         bookingId: rows[0].booking_id
                     });
+                    if (userRows.length > 0) {
+                        await sendCancellationRejectedEmail({
+                            to: userRows[0].email,
+                            name: userRows[0].name,
+                            tourTitle: title,
+                            startDate: tourRows[0]?.start_date,
+                            endDate: tourRows[0]?.end_date
+                        });
+                    }
                 }
             } catch (logErr) {
                 console.error('Tevékenységnapló hiba:', logErr.message);

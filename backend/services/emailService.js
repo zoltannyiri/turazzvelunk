@@ -7,6 +7,7 @@ const {
     buildAdminRemovedBookingEmail,
     buildAdminRemovedBookingNotificationEmail,
     buildCancellationRequestEmail,
+    buildCancellationRejectedEmail,
     buildAdminCancellationRequestEmail,
     buildAdminCancellationApprovedEmail,
     buildPaymentEmail,
@@ -82,6 +83,16 @@ const sendCancellationRequestEmail = async ({ to, name, tourTitle, reason, start
         name,
         tourTitle,
         reason,
+        startDate,
+        endDate
+    });
+    return sendMail({ to, subject, text, html });
+};
+
+const sendCancellationRejectedEmail = async ({ to, name, tourTitle, startDate, endDate }) => {
+    const { subject, text, html } = buildCancellationRejectedEmail({
+        name,
+        tourTitle,
         startDate,
         endDate
     });
@@ -215,6 +226,7 @@ module.exports = {
     sendAdminRemovedBookingEmail,
     sendAdminRemovedBookingNotificationEmail,
     sendCancellationRequestEmail,
+    sendCancellationRejectedEmail,
     sendAdminCancellationRequestEmail,
     sendAdminCancellationApprovedEmail,
     sendPaymentEmail,
