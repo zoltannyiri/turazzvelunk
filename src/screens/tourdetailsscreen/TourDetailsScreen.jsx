@@ -3,10 +3,11 @@ import { useParams, Link, useNavigate, useLocation } from 'react-router-dom';
 import { AuthContext } from '../../context/AuthContext';
 import { 
   Clock, MapPin, Calendar, Users, ArrowLeft, 
-  Zap, Info, ShieldCheck, CheckCircle2, UserMinus, Sparkles, MessageCircle, ThumbsUp, X
+  Zap, Info, ShieldCheck, CheckCircle2, UserMinus, MessageCircle, ThumbsUp, X
 } from 'lucide-react';
 import { toast } from 'react-toastify';
 import { io } from 'socket.io-client';
+import { formatPrice } from '../../utils/formatPrice';
 
 const TourDetailsScreen = () => {
   const { id } = useParams();
@@ -277,6 +278,9 @@ const TourDetailsScreen = () => {
     const end = new Date(tour.end_date);
     return now > end;
   })();
+  const bookedEquipmentOptions = isTourEnded
+    ? equipmentOptions.filter((item) => selectedEquipmentIds.some((equipmentId) => Number(equipmentId) === Number(item.id)))
+    : equipmentOptions;
   const avatarBase = (import.meta.env.VITE_API_URL || '').replace(/\/api\/?$/, '');
   const basePrice = Number(tour?.price || 0);
   const extraPrice = selectedEquipmentIds.reduce((sum, equipmentId) => {
@@ -296,7 +300,7 @@ const TourDetailsScreen = () => {
     }
     return false;
   })();
-  const isUpdateDisabled = paymentStatus === 'paid' || !equipmentInitialized || !isEquipmentDirty;
+  const isUpdateDisabled = isTourEnded || paymentStatus === 'paid' || !equipmentInitialized || !isEquipmentDirty;
 
   const handleUpdateEquipment = async () => {
     if (!bookingId || isUpdateDisabled) return;
@@ -830,10 +834,12 @@ const TourDetailsScreen = () => {
                 {[
                   { icon: <Clock size={18}/>, label: 'Idő', val: `${tour.duration} nap` },
                   { icon: <Zap size={18}/>, label: 'Szint', val: tour.difficulty },
-                  { icon: <Users size={18}/>, label: 'Helyek', val: `${tour.booked_count || 0}/${tour.max_participants}` },
-                  { icon: <Sparkles size={18}/>, label: 'Nehézség', val: tour.difficulty_level ? `${tour.difficulty_level}/10` : '-' },
-                  { icon: <MapPin size={18}/>, label: 'Kategória', val: tour.category || '-' },
-                  { icon: <Info size={18}/>, label: 'Alkategória', val: tour.subcategory || '-' }
+                  {
+                    icon: <Users size={18}/>,
+                    label: 'Elérhető helyek',
+                    val: `${Math.max(0, Number(tour.max_participants || 0) - Number(tour.booked_count || 0))} fő`
+                  },
+                  { icon: <MapPin size={18}/>, label: 'Kategória', val: tour.category || '-' }
                 ].map((item, i) => (
                   <div key={i} className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm flex flex-col items-center text-center">
                     <div className="text-emerald-500 mb-1">{item.icon}</div>
@@ -1123,7 +1129,7 @@ const TourDetailsScreen = () => {
                 <div className="mb-6">
                   <div className="text-emerald-400 font-bold uppercase tracking-widest text-[9px] mb-1">Részvételi díj</div>
                   <div className="text-4xl font-black italic tracking-tighter">
-                    {displayTotal.toLocaleString()} <span className="text-lg not-italic text-emerald-500">Ft</span>
+                    {formatPrice(displayTotal)} <span className="text-lg not-italic text-emerald-500">Ft</span>
                   </div>
                   {paymentStatus === 'paid' && (
                     <div className="mt-2 text-xs font-black uppercase tracking-widest text-red-400">
@@ -1132,7 +1138,7 @@ const TourDetailsScreen = () => {
                   )}
                   {displayExtra > 0 && (
                     <div className="text-[10px] font-black uppercase tracking-widest text-emerald-300 mt-2">
-                      Alapár: {basePrice.toLocaleString()} Ft · Extra: {displayExtra.toLocaleString()} Ft
+                      Alapár: {formatPrice(basePrice)} Ft · Extra: {formatPrice(displayExtra)} Ft
                     </div>
                   )}
                   {isBooked && bookingStatus === 'confirmed' && paymentStatus !== 'paid' && (
@@ -1223,23 +1229,25 @@ const TourDetailsScreen = () => {
                           {cancelBookingSubmitting ? 'Lejelentkezés...' : 'Lejelentkezés'}
                         </button>
                       )}
-                      <div className="bg-white/5 border border-white/10 rounded-2xl p-4 text-xs space-y-3">
-                        <div className="text-[10px] font-black uppercase tracking-widest text-slate-400">Eszközök módosítása</div>
-                        <div className="text-slate-300">
+                      <div hidden={isTourEnded && bookedEquipmentOptions.length === 0} className="bg-white/5 border border-white/10 rounded-2xl p-4 text-xs space-y-3">
+                        <div className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+                          {isTourEnded ? 'Használt eszközök' : 'Eszközök módosítása'}
+                        </div>
+                        <div hidden={isTourEnded} className="text-slate-300">
                           Pipáld ki, amit megtartanál. A gomb csak változtatás után aktív. Fizetés után módosítás nem engedett.
                         </div>
-                        {equipmentOptions.length > 0 && (
+                        {bookedEquipmentOptions.length > 0 && (
                           <div className="space-y-2">
-                            {equipmentOptions.map((item) => (
+                            {bookedEquipmentOptions.map((item) => (
                               <label key={item.id} className="flex items-center justify-between gap-3">
                                 <div className="flex items-center gap-2">
                                   <input
                                     type="checkbox"
                                     className="accent-emerald-500"
-                                    disabled={paymentStatus === 'paid'}
+                                    disabled={isTourEnded || paymentStatus === 'paid'}
                                     checked={selectedEquipmentIds.includes(item.id)}
                                     onChange={(e) => {
-                                      if (paymentStatus === 'paid') return;
+                                      if (isTourEnded || paymentStatus === 'paid') return;
                                       setSelectedEquipmentIds((prev) =>
                                         e.target.checked
                                           ? [...new Set([...prev, item.id])]
@@ -1254,12 +1262,13 @@ const TourDetailsScreen = () => {
                                     )}
                                   </div>
                                 </div>
-                                <span className="text-emerald-300 font-black">{Number(item.price || 0).toLocaleString()} Ft</span>
+                                <span className="text-emerald-300 font-black">{formatPrice(item.price)} Ft</span>
                               </label>
                             ))}
                           </div>
                         )}
                         <button
+                          hidden={isTourEnded}
                           onClick={handleUpdateEquipment}
                           disabled={isUpdateDisabled}
                           className={`w-full py-3 rounded-xl font-black text-xs uppercase tracking-widest border transition ${
@@ -1270,12 +1279,12 @@ const TourDetailsScreen = () => {
                         >
                           Eszközök frissítése
                         </button>
-                        {paymentStatus === 'paid' && (
+                        {!isTourEnded && paymentStatus === 'paid' && (
                           <div className="text-amber-300 font-black uppercase tracking-widest text-[10px]">
                             Fizetés után az eszközök nem módosíthatók.
                           </div>
                         )}
-                        {!paymentStatus && (!equipmentInitialized || !isEquipmentDirty) && (
+                        {!isTourEnded && !paymentStatus && (!equipmentInitialized || !isEquipmentDirty) && (
                           <div className="text-[10px] font-black uppercase tracking-widest text-slate-400">
                             Nincs változtatás.
                           </div>
@@ -1302,23 +1311,25 @@ const TourDetailsScreen = () => {
                         <UserMinus size={18} />
                         {cancelBookingSubmitting ? 'Lejelentkezés...' : 'Lejelentkezés'}
                       </button>
-                      <div className="bg-white/5 border border-white/10 rounded-2xl p-4 text-xs space-y-3">
-                        <div className="text-[10px] font-black uppercase tracking-widest text-slate-400">Eszközök módosítása</div>
-                        <div className="text-slate-300">
+                      <div hidden={isTourEnded && bookedEquipmentOptions.length === 0} className="bg-white/5 border border-white/10 rounded-2xl p-4 text-xs space-y-3">
+                        <div className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+                          {isTourEnded ? 'Használt eszközök' : 'Eszközök módosítása'}
+                        </div>
+                        <div hidden={isTourEnded} className="text-slate-300">
                           Pipáld ki, amit megtartanál. A gomb csak változtatás után aktív. Fizetés után módosítás nem engedett.
                         </div>
-                        {equipmentOptions.length > 0 && (
+                        {bookedEquipmentOptions.length > 0 && (
                           <div className="space-y-2">
-                            {equipmentOptions.map((item) => (
+                            {bookedEquipmentOptions.map((item) => (
                               <label key={item.id} className="flex items-center justify-between gap-3">
                                 <div className="flex items-center gap-2">
                                   <input
                                     type="checkbox"
                                     className="accent-emerald-500"
-                                    disabled={paymentStatus === 'paid'}
+                                    disabled={isTourEnded || paymentStatus === 'paid'}
                                     checked={selectedEquipmentIds.includes(item.id)}
                                     onChange={(e) => {
-                                      if (paymentStatus === 'paid') return;
+                                      if (isTourEnded || paymentStatus === 'paid') return;
                                       setSelectedEquipmentIds((prev) =>
                                         e.target.checked
                                           ? [...new Set([...prev, item.id])]
@@ -1333,12 +1344,13 @@ const TourDetailsScreen = () => {
                                     )}
                                   </div>
                                 </div>
-                                <span className="text-emerald-300 font-black">{Number(item.price || 0).toLocaleString()} Ft</span>
+                                <span className="text-emerald-300 font-black">{formatPrice(item.price)} Ft</span>
                               </label>
                             ))}
                           </div>
                         )}
                         <button
+                          hidden={isTourEnded}
                           onClick={handleUpdateEquipment}
                           disabled={isUpdateDisabled}
                           className={`w-full py-3 rounded-xl font-black text-xs uppercase tracking-widest border transition ${
@@ -1349,12 +1361,12 @@ const TourDetailsScreen = () => {
                         >
                           Eszközök frissítése
                         </button>
-                        {paymentStatus === 'paid' && (
+                        {!isTourEnded && paymentStatus === 'paid' && (
                           <div className="text-amber-300 font-black uppercase tracking-widest text-[10px]">
                             Fizetés után az eszközök nem módosíthatók.
                           </div>
                         )}
-                        {!paymentStatus && (!equipmentInitialized || !isEquipmentDirty) && (
+                        {!isTourEnded && !paymentStatus && (!equipmentInitialized || !isEquipmentDirty) && (
                           <div className="text-[10px] font-black uppercase tracking-widest text-slate-400">
                             Nincs változtatás.
                           </div>
@@ -1365,7 +1377,7 @@ const TourDetailsScreen = () => {
                 ) : (
                   <div className="space-y-4">
                     {equipmentOptions.length > 0 && (
-                      <div className="bg-white/5 border border-white/10 rounded-2xl p-4 text-xs space-y-3">
+                      <div hidden={isTourEnded} className="bg-white/5 border border-white/10 rounded-2xl p-4 text-xs space-y-3">
                         <div className="text-[10px] font-black uppercase tracking-widest text-slate-400">Bérelhető eszközök</div>
                         <div className="text-slate-300 leading-relaxed">
                           Eszközöket a túra időszakára tudsz bérelni. A készlet korlátozott.
@@ -1394,7 +1406,7 @@ const TourDetailsScreen = () => {
                               </div>
                             </div>
                             <div className="text-right">
-                              <div className="text-emerald-300 font-black">{Number(item.price || 0).toLocaleString()} Ft</div>
+                              <div className="text-emerald-300 font-black">{formatPrice(item.price)} Ft</div>
                               {Number(item.available_quantity || 0) > 0 ? (
                                 <div className="text-[10px] text-slate-400">Elérhető: {Number(item.available_quantity || 0)} db</div>
                               ) : (

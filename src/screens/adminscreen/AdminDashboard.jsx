@@ -10,11 +10,23 @@ import { toast } from 'react-toastify';
 import DatePicker, { registerLocale } from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 import { hu } from "date-fns/locale";
+import { formatPrice, formatPriceInput, parsePriceInput } from '../../utils/formatPrice';
 
 registerLocale('hu', hu);
 import "../../App.css";
 
 ChartJS.register(ArcElement, Tooltip, Legend);
+
+const getBookingRevenue = (booking) => {
+  const storedTotal = Number(booking?.total_price);
+  if (booking?.total_price !== null && booking?.total_price !== undefined && Number.isFinite(storedTotal)) {
+    return storedTotal;
+  }
+
+  const basePrice = Number(booking?.price || 0);
+  const extraPrice = Number(booking?.extra_price || 0);
+  return (Number.isFinite(basePrice) ? basePrice : 0) + (Number.isFinite(extraPrice) ? extraPrice : 0);
+};
 
 const AdminDashboard = () => {
   const navigate = useNavigate();
@@ -31,6 +43,8 @@ const AdminDashboard = () => {
   const [toursLoading, setToursLoading] = useState(true);
   const [equipment, setEquipment] = useState([]);
   const [equipmentLoading, setEquipmentLoading] = useState(true);
+  const [selectedEquipmentIds, setSelectedEquipmentIds] = useState([]);
+  const [lockedEquipmentIds, setLockedEquipmentIds] = useState([]);
   const [bookingSearch, setBookingSearch] = useState('');
   const [bookingStatusFilter, setBookingStatusFilter] = useState('all');
   const [bookingPaymentFilter, setBookingPaymentFilter] = useState('all');
@@ -89,7 +103,6 @@ const AdminDashboard = () => {
     price: '', 
     duration: '', 
     difficulty: 'Könnyű',
-    difficulty_level: 5,
     category: 'Hegyi túrák',
     subcategory: 'Hazai - Külföldi túrák',
     image_url: '', 
@@ -285,7 +298,6 @@ const AdminDashboard = () => {
           image_url: booking.image_url,
           duration: booking.duration,
           difficulty: booking.difficulty,
-          difficulty_level: booking.difficulty_level,
           category: booking.category,
           subcategory: booking.subcategory,
           max_participants: booking.max_participants,
@@ -330,10 +342,24 @@ const AdminDashboard = () => {
     }, {});
   }, [tours]);
 
+  const emailEligibleTours = useMemo(() => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    return tours.filter((tour) => {
+      if (!tour.end_date) return true;
+      const endDate = new Date(tour.end_date);
+      if (Number.isNaN(endDate.getTime())) return false;
+      endDate.setHours(0, 0, 0, 0);
+      return endDate >= today;
+    });
+  }, [tours]);
+
   const tourParticipants = useMemo(() => {
     if (!emailTourId) return [];
     const tourId = Number(emailTourId);
     if (!tourId) return [];
+    if (!emailEligibleTours.some((tour) => Number(tour.id) === tourId)) return [];
     const raw = groupedBookings[tourId]?.participants || [];
     const confirmed = raw.filter((participant) => participant.status === 'confirmed');
     const seen = new Set();
@@ -343,7 +369,7 @@ const AdminDashboard = () => {
       seen.add(key);
       return true;
     });
-  }, [emailTourId, groupedBookings]);
+  }, [emailTourId, emailEligibleTours, groupedBookings]);
 
   const allRecipients = useMemo(() => {
     return users.map((user) => user.email).filter(Boolean);
@@ -367,7 +393,7 @@ const AdminDashboard = () => {
 
     return bookings.reduce((acc, booking) => {
       const category = tourCategoryMap[booking.tour_id] || 'Egyéb';
-      acc[category] = (acc[category] || 0) + (booking.price || 0);
+      acc[category] = (acc[category] || 0) + getBookingRevenue(booking);
       return acc;
     }, {});
   }, [bookings, tours]);
@@ -648,9 +674,17 @@ const AdminDashboard = () => {
           return acc;
         }, {});
         setNewTour((prev) => ({ ...prev, equipment_prices: map }));
+        setSelectedEquipmentIds(data.map((item) => Number(item.id)));
+        setLockedEquipmentIds(
+          data
+            .filter((item) => Number(item.booked_quantity || 0) > 0)
+            .map((item) => Number(item.id))
+        );
       }
     } catch (err) {
       setNewTour((prev) => ({ ...prev, equipment_prices: {} }));
+      setSelectedEquipmentIds([]);
+      setLockedEquipmentIds([]);
     }
   };
 
@@ -675,21 +709,23 @@ const AdminDashboard = () => {
     
     const payload = {
       ...newTour,
-      difficulty_level: Number(newTour.difficulty_level || 0) || null,
+      price: parsePriceInput(newTour.price),
       start_date: formatDate(newTour.start_date),
       end_date: formatDate(newTour.end_date),
       duration: calculateDuration(newTour.start_date, newTour.end_date),
       max_participants: parseInt(newTour.max_participants),
-      equipment_prices: equipment.map((item) => ({
-        equipment_id: item.id,
-        price: Number(newTour.equipment_prices?.[item.id] || 0)
-      }))
+      equipment_prices: equipment
+        .filter((item) => selectedEquipmentIds.includes(Number(item.id)))
+        .map((item) => ({
+          equipment_id: Number(item.id),
+          price: parsePriceInput(newTour.equipment_prices?.[item.id])
+        }))
     };
 
     if (newTour.start_date instanceof Date) {
       const startDate = new Date(newTour.start_date);
       startDate.setHours(0, 0, 0, 0);
-      if (startDate < today) {
+      if (!editingTourId && startDate < today) {
         toast.error('A túra kezdete nem lehet korábbi a mai dátumnál.');
         return;
       }
@@ -708,15 +744,19 @@ const AdminDashboard = () => {
       },
       body: JSON.stringify(payload)
     });
+    const data = await res.json();
 
     if (res.ok) {
       toast.success(editingTourId ? "💾 Túra frissítve!" : "🚀 Új túra létrehozva!");
       setIsModalOpen(false);
       setEditingTourId(null);
       setNewTour(initialTourState);
+      setSelectedEquipmentIds([]);
+      setLockedEquipmentIds([]);
       fetchBookings();
+      fetchTours();
     } else {
-      toast.error("Hiba történt a mentés során!");
+      toast.error(data.message || data.error || "Hiba történt a mentés során!");
     }
   };
 
@@ -774,7 +814,7 @@ const AdminDashboard = () => {
   const totalBookings = bookings.length;
   const totalUsers = users.length;
   const totalRevenue = useMemo(() => {
-    return bookings.reduce((sum, booking) => sum + (booking.price || 0), 0);
+    return bookings.reduce((sum, booking) => sum + getBookingRevenue(booking), 0);
   }, [bookings]);
 
   const pendingCancelCount = useMemo(() => {
@@ -891,13 +931,15 @@ const AdminDashboard = () => {
             <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
               <div>
                 <h1 className="text-4xl md:text-5xl font-black text-emerald-950 tracking-tighter italic">Admin Dashboard</h1>
-                <div className="text-xs text-slate-400 font-black uppercase tracking-[0.3em] mt-2">Turazz Velunk</div>
+                <div className="text-xs text-slate-400 font-black uppercase tracking-[0.3em] mt-2">Túrázz Velünk</div>
               </div>
               {activeTab === 'tours' && (
                 <button 
                   className="bg-emerald-600 hover:bg-emerald-700 text-white px-8 py-4 rounded-[2rem] font-black flex items-center gap-3 transition-all shadow-2xl shadow-emerald-600/20 active:scale-95"
                   onClick={() => {
                     setEditingTourId(null);
+                    setSelectedEquipmentIds([]);
+                    setLockedEquipmentIds([]);
                     const equipmentMap = equipment.reduce((acc, item) => {
                       acc[item.id] = 0;
                       return acc;
@@ -928,7 +970,7 @@ const AdminDashboard = () => {
                   </div>
                   <div className="bg-white rounded-[2.5rem] border border-slate-100 p-6 shadow-sm">
                     <div className="text-[10px] uppercase tracking-widest text-slate-400 font-black">Bevétel</div>
-                    <div className="text-3xl font-black text-emerald-950 mt-2">{totalRevenue.toLocaleString()} Ft</div>
+                    <div className="text-3xl font-black text-emerald-950 mt-2">{formatPrice(totalRevenue)} Ft</div>
                   </div>
                 </div>
 
@@ -939,7 +981,7 @@ const AdminDashboard = () => {
                         <div className="text-[10px] font-black uppercase tracking-widest text-slate-400">Összes bevétel</div>
                         <div className="text-xl font-black text-emerald-950">Kategóriák szerint</div>
                       </div>
-                      <div className="text-xs font-black text-emerald-600">{totalRevenue.toLocaleString()} Ft</div>
+                      <div className="text-xs font-black text-emerald-600">{formatPrice(totalRevenue)} Ft</div>
                     </div>
                     {Object.keys(categoryRevenue).length === 0 ? (
                       <div className="text-center text-slate-400 font-bold py-10">Nincs adat.</div>
@@ -950,7 +992,14 @@ const AdminDashboard = () => {
                           options={{
                             responsive: true,
                             maintainAspectRatio: false,
-                            plugins: { legend: { position: 'bottom' } }
+                            plugins: {
+                              legend: { position: 'bottom' },
+                              tooltip: {
+                                callbacks: {
+                                  label: (context) => `${context.label}: ${formatPrice(context.raw)} Ft`
+                                }
+                              }
+                            }
                           }}
                         />
                       </div>
@@ -1020,8 +1069,8 @@ const AdminDashboard = () => {
                                       <span className="flex items-center gap-1"><Users size={14} /> {participants.length} Fő</span>
                                       <span>Max: {tour.max_participants || 0} fő</span>
                                       <span>Pending: {pendingCount} fő</span>
-                                      <span className="flex items-center gap-1"><DollarSign size={14} /> {tour.price?.toLocaleString()} Ft</span>
-                                      <span>Nehézség: {tour.difficulty_level ?? tour.difficulty}</span>
+                                      <span className="flex items-center gap-1"><DollarSign size={14} /> {formatPrice(tour.price)} Ft</span>
+                                      <span>Nehézség: {tour.difficulty}</span>
                                       {tour.subcategory && <span>{tour.subcategory}</span>}
                                       {tour.start_date && tour.end_date && (
                                         <span>{new Date(tour.start_date).toLocaleDateString()} - {new Date(tour.end_date).toLocaleDateString()}</span>
@@ -1061,6 +1110,8 @@ const AdminDashboard = () => {
                                     onClick={(e) => {
                                       e.stopPropagation();
                                       setEditingTourId(tour.id);
+                                      setSelectedEquipmentIds([]);
+                                      setLockedEquipmentIds([]);
                                       setNewTour({
                                         title: tour.title || '',
                                         location: tour.location || '',
@@ -1068,7 +1119,6 @@ const AdminDashboard = () => {
                                         price: tour.price || '',
                                         duration: tour.duration || '',
                                         difficulty: tour.difficulty || 'Könnyű',
-                                        difficulty_level: tour.difficulty_level || 5,
                                         category: tour.category || 'Hegyi túrák',
                                         subcategory: tour.subcategory || 'Hazai - Külföldi túrák',
                                         image_url: tour.image_url || '',
@@ -1714,7 +1764,7 @@ const AdminDashboard = () => {
                               className="w-full mt-2 p-3 bg-white border border-slate-100 rounded-2xl"
                             >
                               <option value="">Válassz túrát...</option>
-                              {tours.map((tour) => (
+                              {emailEligibleTours.map((tour) => (
                                 <option key={tour.id} value={tour.id}>
                                   {tour.title}
                                 </option>
@@ -2042,13 +2092,7 @@ const AdminDashboard = () => {
               </div>
 
               <div>
-                <label className="text-[10px] font-black uppercase text-slate-400 ml-4">Nehézség (1-10)</label>
-                <input type="number" min="1" max="10" value={newTour.difficulty_level} className="w-full p-4 bg-slate-50 border-none rounded-2xl mt-1"
-                  onChange={e => setNewTour({...newTour, difficulty_level: e.target.value})} />
-              </div>
-
-              <div>
-                <label className="text-[10px] font-black uppercase text-slate-400 ml-4">Nehézség (szöveg)</label>
+                <label className="text-[10px] font-black uppercase text-slate-400 ml-4">Nehézség</label>
                 <select value={newTour.difficulty} className="w-full p-4 bg-slate-50 border-none rounded-2xl mt-1 focus:ring-2 focus:ring-emerald-500 transition font-bold"
                   onChange={e => setNewTour({...newTour, difficulty: e.target.value})}>
                   <option value="Könnyű">Könnyű</option>
@@ -2057,7 +2101,7 @@ const AdminDashboard = () => {
                 </select>
               </div>
 
-              <div className="md:col-span-2">
+              <div className="md:col-span-1">
                 <label className="text-[10px] font-black uppercase text-slate-400 ml-4 italic">Időtartam (Intervallum)</label>
                 <div className="relative mt-1">
                   <DatePicker
@@ -2113,12 +2157,17 @@ const AdminDashboard = () => {
               </div>
               <div>
                 <label className="text-[10px] font-black uppercase text-slate-400 ml-4">Ár (Ft)</label>
-                <input type="number" required value={newTour.price} className="w-full p-4 bg-slate-50 border-none rounded-2xl mt-1" 
-                  onChange={e => setNewTour({...newTour, price: e.target.value})} />
+                <input type="text" inputMode="numeric" required value={formatPriceInput(newTour.price)} className="w-full p-4 bg-slate-50 border-none rounded-2xl mt-1"
+                  onChange={e => setNewTour({...newTour, price: formatPriceInput(e.target.value)})} />
               </div>
 
               <div className="md:col-span-2">
-                <label className="text-[10px] font-black uppercase text-slate-400 ml-4">Eszköz árak (Ft)</label>
+                <div className="flex items-center justify-between gap-4 px-4">
+                  <label className="text-[10px] font-black uppercase text-slate-400">Csatolt eszközök és árak (Ft)</label>
+                  <span className="text-[10px] font-black uppercase text-emerald-600">
+                    {selectedEquipmentIds.length} kiválasztva
+                  </span>
+                </div>
                 <div className="mt-2 grid gap-3">
                   {equipmentLoading ? (
                     <div className="text-xs text-slate-400 font-bold">Betöltés...</div>
@@ -2127,25 +2176,54 @@ const AdminDashboard = () => {
                   ) : (
                     equipment.map((item) => (
                       <div key={item.id} className="flex flex-col md:flex-row md:items-center gap-3">
+                        <input
+                          type="checkbox"
+                          checked={selectedEquipmentIds.includes(Number(item.id))}
+                          disabled={lockedEquipmentIds.includes(Number(item.id))}
+                          aria-label={`${item.name} csatolása a túrához`}
+                          title={lockedEquipmentIds.includes(Number(item.id)) ? 'Aktív foglalás miatt nem távolítható el' : ''}
+                          className="h-5 w-5 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500 disabled:cursor-not-allowed disabled:opacity-50"
+                          onChange={(e) => {
+                            const equipmentId = Number(item.id);
+                            setSelectedEquipmentIds((prev) => e.target.checked
+                              ? [...new Set([...prev, equipmentId])]
+                              : prev.filter((id) => id !== equipmentId));
+                          }}
+                        />
                         <div className="flex-1 font-bold text-slate-700">{item.name}</div>
+                        {lockedEquipmentIds.includes(Number(item.id)) && (
+                          <div className="text-[10px] font-black uppercase tracking-widest text-amber-600">
+                            Foglalásban
+                          </div>
+                        )}
                         <div className="text-xs text-slate-400 font-bold">
                           Elérhető: {Number(equipmentAvailability[item.id] ?? item.total_quantity ?? 0)} db
                         </div>
-                        <input
-                          type="number"
-                          className="w-full md:w-48 p-3 bg-slate-50 border-none rounded-2xl"
-                          value={newTour.equipment_prices?.[item.id] ?? 0}
-                          disabled={Number(equipmentAvailability[item.id] ?? item.total_quantity ?? 0) <= 0}
-                          onChange={(e) =>
-                            setNewTour((prev) => ({
-                              ...prev,
-                              equipment_prices: {
-                                ...(prev.equipment_prices || {}),
-                                [item.id]: e.target.value
-                              }
-                            }))
-                          }
-                        />
+                        <div className="relative w-full md:w-48">
+                          <input
+                            type="text"
+                            inputMode="numeric"
+                            aria-label={`${item.name} ára Forintban`}
+                            className="w-full p-3 pr-16 bg-slate-50 border-none rounded-2xl"
+                            value={formatPriceInput(newTour.equipment_prices?.[item.id] ?? 0)}
+                            disabled={
+                              !selectedEquipmentIds.includes(Number(item.id)) ||
+                              lockedEquipmentIds.includes(Number(item.id))
+                            }
+                            onChange={(e) =>
+                              setNewTour((prev) => ({
+                                ...prev,
+                                equipment_prices: {
+                                  ...(prev.equipment_prices || {}),
+                                  [item.id]: formatPriceInput(e.target.value)
+                                }
+                              }))
+                            }
+                          />
+                          <span className="absolute right-4 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400 pointer-events-none">
+                            Forint
+                          </span>
+                        </div>
                         {Number(equipmentAvailability[item.id] ?? item.total_quantity ?? 0) <= 0 && (
                           <div className="text-[10px] font-black uppercase tracking-widest text-red-500">Nem elérhető</div>
                         )}

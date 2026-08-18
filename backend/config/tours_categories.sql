@@ -1,4 +1,3 @@
 ALTER TABLE tours
   ADD COLUMN category VARCHAR(64) NULL,
-  ADD COLUMN subcategory VARCHAR(64) NULL,
-  ADD COLUMN difficulty_level TINYINT NULL;
+  ADD COLUMN subcategory VARCHAR(64) NULL;

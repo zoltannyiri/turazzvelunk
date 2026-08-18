@@ -12,6 +12,7 @@ import { X, ChevronLeft, ChevronRight, MapPin, Euro, Clock, Sparkles, Calendar a
 import { AuthContext } from "../../context/AuthContext";
 import { toast } from 'react-toastify';
 import './CalendarScreen.css';
+import { formatPrice, formatPriceInput, parsePriceInput } from '../../utils/formatPrice';
 
 const CalendarScreen = () => {
     const navigate = useNavigate();
@@ -24,7 +25,7 @@ const CalendarScreen = () => {
 
     const initialTourState = {
         title: '', location: '', description: '', price: '', duration: '', 
-        difficulty: 'Könnyű', difficulty_level: 5,
+        difficulty: 'Könnyű',
         category: 'Hegyi túrák', subcategory: 'Hazai - Külföldi túrák',
         image_url: '', start_date: '', end_date: '', max_participants: ''
     };
@@ -36,7 +37,11 @@ const CalendarScreen = () => {
         try {
             const res = await fetch(`${import.meta.env.VITE_API_URL}/tours`);
             const data = await res.json();
-            setTours(data.map(t => ({
+            const today = moment().startOf('day');
+            const activeTours = Array.isArray(data)
+                ? data.filter((tour) => !tour.end_date || moment(tour.end_date).isSameOrAfter(today, 'day'))
+                : [];
+            setTours(activeTours.map(t => ({
                 id: t.id,
                 title: t.title,
                 start: t.start_date,
@@ -62,7 +67,7 @@ const CalendarScreen = () => {
         const formatDate = (date) => (date instanceof Date ? moment(date).format('YYYY-MM-DD') : date);
         const payload = {
             ...newTour,
-            difficulty_level: Number(newTour.difficulty_level || 0) || null,
+            price: parsePriceInput(newTour.price),
             duration: calculatedDuration,
             start_date: formatDate(newTour.start_date),
             end_date: formatDate(newTour.end_date),
@@ -144,7 +149,7 @@ const CalendarScreen = () => {
                     <div className="tooltip-content">
                         <div className="flex justify-between items-center mb-4">
                             <span className="text-[10px] font-black uppercase text-emerald-600 bg-emerald-50 px-2 py-1 rounded-md">{hoveredEvent.difficulty}</span>
-                            <span className="tooltip-price-tag">{hoveredEvent.price?.toLocaleString()} Ft</span>
+                            <span className="tooltip-price-tag">{formatPrice(hoveredEvent.price)} Ft</span>
                         </div>
                         <h3 className="font-black text-slate-900 text-xl mb-4">{hoveredEvent.title}</h3>
                     </div>
@@ -180,23 +185,19 @@ const CalendarScreen = () => {
                                 <input type="text" value={newTour.subcategory} className="form-input-premium" onChange={e => setNewTour({...newTour, subcategory: e.target.value})} />
                             </div>
                             <div>
-                                <label className="form-label-premium">Nehézség (1-10)</label>
-                                <input type="number" min="1" max="10" value={newTour.difficulty_level} className="form-input-premium" onChange={e => setNewTour({...newTour, difficulty_level: e.target.value})} />
-                            </div>
-                            <div>
-                                <label className="form-label-premium">Nehézség (szöveg)</label>
+                                <label className="form-label-premium">Nehézség</label>
                                 <select value={newTour.difficulty} className="form-input-premium" onChange={e => setNewTour({...newTour, difficulty: e.target.value})}>
                                     <option>Könnyű</option><option>Közepes</option><option>Nehéz</option>
                                 </select>
                             </div>
-                            <div className="md:col-span-2">
+                            <div className="md:col-span-1">
                                 <label className="form-label-premium">Időtartam (Intervallum)</label>
                                 <div className="relative">
                                     <DatePicker selectsRange startDate={newTour.start_date} endDate={newTour.end_date} onChange={(u) => setNewTour({...newTour, start_date: u[0], end_date: u[1]})} className="form-input-premium font-bold" dateFormat="yyyy. MM. dd." />
                                     <CalIcon className="absolute right-4 top-5 text-emerald-500/50" size={20} />
                                 </div>
                             </div>
-                            <div><label className="form-label-premium">Ár (Ft)</label><input type="number" value={newTour.price} className="form-input-premium" onChange={e => setNewTour({...newTour, price: e.target.value})} /></div>
+                            <div><label className="form-label-premium">Ár (Ft)</label><input type="text" inputMode="numeric" value={formatPriceInput(newTour.price)} className="form-input-premium" onChange={e => setNewTour({...newTour, price: formatPriceInput(e.target.value)})} /></div>
                             <div>
                               <label className="form-label-premium text-[10px]">Maximális létszám</label>
                               <input 

@@ -13,7 +13,7 @@ const transporter = nodemailer.createTransport({
     }
 });
 
-const defaultFrom = process.env.EMAIL_FROM || 'Turazz Velunk <no-reply@turazzvelunk.local>';
+const defaultFrom = process.env.EMAIL_FROM || 'Túrázz Velünk <no-reply@turazzvelunk.local>';
 
 const sendMail = async ({ to, subject, html, text, replyTo, from }) => {
     if (!process.env.SMTP_HOST || !process.env.SMTP_USER || !process.env.SMTP_PASS) {

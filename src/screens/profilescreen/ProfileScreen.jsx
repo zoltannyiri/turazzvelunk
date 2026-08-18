@@ -5,6 +5,7 @@ import {
   MapPin, Calendar, CreditCard, ChevronRight, 
   Settings, LogOut, Mountain, Clock, CheckCircle2, AlertCircle, Camera
 } from 'lucide-react';
+import { formatPrice } from '../../utils/formatPrice';
 
 	const ProfileScreen = () => {
     const { user, logout, updateUser, loading: authLoading } = useContext(AuthContext);
@@ -333,7 +334,7 @@ import {
                         </h3>
                         <div className="flex gap-6 text-gray-400 font-bold text-xs uppercase pt-2">
                           <span className="flex items-center gap-1"><Calendar size={14} /> {new Date(booking.booked_at).toLocaleDateString()}</span>
-                          <span className="flex items-center gap-1"><CreditCard size={14} /> {(booking.total_price ?? booking.price).toLocaleString()} Ft</span>
+                          <span className="flex items-center gap-1"><CreditCard size={14} /> {formatPrice(booking.total_price ?? booking.price)} Ft</span>
                         </div>
                       </div>
 

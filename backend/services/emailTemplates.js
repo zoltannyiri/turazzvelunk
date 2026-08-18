@@ -23,7 +23,11 @@ const formatDateRange = (startDate, endDate) => {
 
 const formatPrice = (value) => {
     const num = Number(value || 0);
-    return `${num.toLocaleString('hu-HU')} Ft`;
+    const formatted = num.toLocaleString('hu-HU', {
+        useGrouping: true,
+        maximumFractionDigits: 2
+    }).replace(/[\u00a0\u202f]/g, ' ');
+    return `${formatted} Ft`;
 };
 
 const formatMultiline = (value) => {

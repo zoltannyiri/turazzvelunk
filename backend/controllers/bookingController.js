@@ -259,7 +259,7 @@ exports.getAllBookings = async (req, res) => {
             SELECT 
                 b.*, 
                 t.title, t.location, t.price, t.description, t.image_url, 
-                t.duration, t.difficulty, t.difficulty_level, t.category, t.subcategory, t.start_date, t.end_date,
+                t.duration, t.difficulty, t.category, t.subcategory, t.start_date, t.end_date,
                 t.max_participants,
                 u.name AS user_name, u.email 
             FROM bookings b

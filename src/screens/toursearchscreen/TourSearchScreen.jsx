@@ -8,6 +8,7 @@ import {
 import DatePicker, { registerLocale } from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 import { hu } from "date-fns/locale";
+import { formatPrice } from '../../utils/formatPrice';
 
 registerLocale('hu', hu);
 
@@ -20,7 +21,6 @@ const TourSearchScreen = () => {
   const [maxPrice, setMaxPrice] = useState("");
   const [category, setCategory] = useState("Mind");
   const [subcategory, setSubcategory] = useState("Mind");
-  const [maxDifficulty, setMaxDifficulty] = useState("");
   const [dateRange, setDateRange] = useState([null, null]);
   const [startDate, endDate] = dateRange;
 
@@ -77,8 +77,6 @@ const TourSearchScreen = () => {
                             tour.location.toLowerCase().includes(searchTerm.toLowerCase());
       const matchesCategory = category === "Mind" || (tour.category || "").toLowerCase() === category.toLowerCase();
       const matchesSubcategory = subcategory === "Mind" || (tour.subcategory || "").toLowerCase() === subcategory.toLowerCase();
-      const difficultyLevel = tour.difficulty_level ?? (typeof tour.difficulty === "number" ? tour.difficulty : null);
-      const matchesDifficulty = !maxDifficulty || (typeof difficultyLevel === "number" && difficultyLevel <= parseInt(maxDifficulty));
       const matchesPrice = !maxPrice || tour.price <= parseInt(maxPrice);
       
       let matchesDate = true;
@@ -86,9 +84,9 @@ const TourSearchScreen = () => {
         const tourStart = new Date(tour.start_date);
         matchesDate = tourStart >= startDate && tourStart <= endDate;
       }
-      return matchesSearch && matchesCategory && matchesSubcategory && matchesDifficulty && matchesPrice && matchesDate;
+      return matchesSearch && matchesCategory && matchesSubcategory && matchesPrice && matchesDate;
     });
-  }, [tours, searchTerm, category, subcategory, maxDifficulty, maxPrice, startDate, endDate]);
+  }, [tours, searchTerm, category, subcategory, maxPrice, startDate, endDate]);
 
   if (loading) return <div className="min-h-screen flex items-center justify-center bg-[#fcfdfe]"><div className="animate-spin rounded-full h-10 w-10 border-t-2 border-emerald-600"></div></div>;
 
@@ -207,22 +205,9 @@ const TourSearchScreen = () => {
               </select>
             </div>
 
-            <div className="md:col-span-2 relative group">
-              <Zap className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-emerald-400 transition-colors" size={20} />
-              <input 
-                type="number" 
-                min="1"
-                max="10"
-                placeholder="Max nehézség (1-10)" 
-                className="w-full bg-black/20 border-none rounded-3xl py-4 pl-14 text-white placeholder:text-slate-400 text-sm font-bold outline-none focus:ring-2 focus:ring-emerald-500/50 transition-all shadow-inner"
-                value={maxDifficulty}
-                onChange={(e) => setMaxDifficulty(e.target.value)}
-              />
-            </div>
-
             <div className="md:col-span-1 flex items-center justify-center">
               <button 
-                onClick={() => { setSearchTerm(""); setMaxPrice(""); setCategory("Mind"); setSubcategory("Mind"); setMaxDifficulty(""); setDateRange([null, null]); }}
+                onClick={() => { setSearchTerm(""); setMaxPrice(""); setCategory("Mind"); setSubcategory("Mind"); setDateRange([null, null]); }}
                 className="p-4 text-white/50 hover:text-white hover:bg-white/10 rounded-full transition-all active:scale-90"
                 title="Szűrők törlése"
               >
@@ -257,7 +242,7 @@ const TourSearchScreen = () => {
                 <div className="relative h-56 overflow-hidden">
                   <img src={tour.image_url} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" alt={tour.title} />
                   <div className="absolute top-5 right-5 bg-white/80 backdrop-blur-md pl-2 pr-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-tighter shadow-sm flex items-center gap-1.5">
-                    <Zap size={12} className="text-amber-500" /> {tour.difficulty_level ?? tour.difficulty}
+                    <Zap size={12} className="text-amber-500" /> {tour.difficulty}
                   </div>
                   <div className="absolute bottom-0 left-0 w-full p-5 bg-gradient-to-t from-slate-900/80 to-transparent">
                     <div className="text-white text-xs font-bold flex items-center gap-1.5">
@@ -295,7 +280,7 @@ const TourSearchScreen = () => {
                   <div className="pt-5 border-t border-slate-100 flex justify-between items-center mt-4">
                     <div>
                       <div className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-0.5">Részvételi díj</div>
-                      <div className="text-2xl font-black text-slate-900 tracking-tight">{tour.price?.toLocaleString()} <span className="text-sm font-bold text-slate-500">Ft</span></div>
+                      <div className="text-2xl font-black text-slate-900 tracking-tight">{formatPrice(tour.price)} <span className="text-sm font-bold text-slate-500">Ft</span></div>
                     </div>
                     <div className="w-12 h-12 bg-slate-900 text-white rounded-2xl flex items-center justify-center group-hover:bg-emerald-600 group-hover:scale-110 transition-all shadow-lg">
                       <ArrowRight size={20} />

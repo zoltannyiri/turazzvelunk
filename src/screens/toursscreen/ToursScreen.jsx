@@ -1,10 +1,25 @@
 import React, { useState, useEffect } from 'react';
 import TourCard from '../../components/TourCard';
-import { Search, Filter, SlidersHorizontal, Map } from 'lucide-react';
+import { Archive, CalendarDays, Search, SlidersHorizontal } from 'lucide-react';
+
+const getLocalDateKey = (value) => {
+  if (!value) return null;
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return null;
+
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
+const getTodayKey = () => getLocalDateKey(new Date());
 
 const ToursScreen = () => {
   const [tours, setTours] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [view, setView] = useState('active');
   const [searchTerm, setSearchTerm] = useState("");
 
   useEffect(() => {
@@ -21,10 +36,25 @@ const ToursScreen = () => {
   }, []);
 
   // Keresés szűrése (név vagy helyszín alapján)
-  const filteredTours = Array.isArray(tours) ? tours.filter(tour => 
-    tour.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    tour.location.toLowerCase().includes(searchTerm.toLowerCase())
-  ) : [];
+  const todayKey = getTodayKey();
+  const activeTours = Array.isArray(tours)
+    ? tours.filter(tour => {
+        const endDateKey = getLocalDateKey(tour.end_date);
+        return !endDateKey || endDateKey >= todayKey;
+      })
+    : [];
+  const archivedTours = Array.isArray(tours)
+    ? tours.filter(tour => {
+        const endDateKey = getLocalDateKey(tour.end_date);
+        return endDateKey && endDateKey < todayKey;
+      })
+    : [];
+  const visibleTours = view === 'archive' ? archivedTours : activeTours;
+  const normalizedSearchTerm = searchTerm.trim().toLowerCase();
+  const filteredTours = visibleTours.filter(tour =>
+    tour.title?.toLowerCase().includes(normalizedSearchTerm) ||
+    tour.location?.toLowerCase().includes(normalizedSearchTerm)
+  );
 
   return (
     <div className="bg-gray-50 min-h-screen pb-20">
@@ -53,11 +83,17 @@ const ToursScreen = () => {
             <button className="flex items-center gap-2 bg-white border border-gray-200 px-6 py-4 rounded-2xl font-bold text-gray-700 hover:bg-gray-50 transition flex-1 justify-center">
               <SlidersHorizontal size={18} /> Szűrők
             </button>
-            <button className="flex items-center gap-2 bg-emerald-600 text-white px-6 py-4 rounded-2xl font-bold hover:bg-emerald-700 transition flex-1 justify-center">
-              <Map size={18} /> Térkép
-            </button>
           </div>
         </div>
+      </div>
+
+      <div className={'max-w-7xl mx-auto px-6 mt-8 flex gap-2'}>
+        <button type={'button'} onClick={() => setView('active')} aria-pressed={view === 'active'} className={view === 'active' ? 'rounded-xl bg-emerald-600 px-5 py-3 font-bold text-white' : 'rounded-xl bg-white px-5 py-3 font-bold text-slate-600'}>
+          <CalendarDays className={'inline mr-2'} size={18} /> {'Akt\u00edv t\u00far\u00e1k'} ({activeTours.length})
+        </button>
+        <button type={'button'} onClick={() => setView('archive')} aria-pressed={view === 'archive'} className={view === 'archive' ? 'rounded-xl bg-slate-800 px-5 py-3 font-bold text-white' : 'rounded-xl bg-white px-5 py-3 font-bold text-slate-600'}>
+          <Archive className={'inline mr-2'} size={18} /> {'Arch\u00edvum'} ({archivedTours.length})
+        </button>
       </div>
 
       {/* --- TOURS GRID --- */}

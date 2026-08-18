@@ -51,11 +51,19 @@ exports.getTourEquipmentOptions = async (req, res) => {
         const tour = tourRows[0];
         const [rows] = await db.query(
             `SELECT e.id, e.name, e.description, e.total_quantity,
-                    COALESCE(tp.price, 0) AS price,
+                    COALESCE(tp.price, tour_booked.booked_price, 0) AS price,
+                    COALESCE(tour_booked.qty, 0) AS booked_quantity,
                     COALESCE(reserved.qty, 0) AS reserved_quantity
              FROM equipment e
              LEFT JOIN tour_equipment_prices tp
                ON tp.equipment_id = e.id AND tp.tour_id = ?
+             LEFT JOIN (
+               SELECT be.equipment_id, SUM(be.quantity) AS qty, MAX(be.price) AS booked_price
+               FROM booking_equipments be
+               JOIN bookings b ON b.id = be.booking_id
+               WHERE b.tour_id = ? AND b.status <> 'cancelled'
+               GROUP BY be.equipment_id
+             ) tour_booked ON tour_booked.equipment_id = e.id
              LEFT JOIN (
                SELECT be.equipment_id, SUM(be.quantity) AS qty
                FROM booking_equipments be
@@ -65,8 +73,9 @@ exports.getTourEquipmentOptions = async (req, res) => {
                  AND t.start_date <= ? AND t.end_date >= ?
                GROUP BY be.equipment_id
              ) reserved ON reserved.equipment_id = e.id
+             WHERE tp.id IS NOT NULL OR COALESCE(tour_booked.qty, 0) > 0
              ORDER BY e.name ASC`,
-            [tour.id, tour.end_date, tour.start_date]
+            [tour.id, tour.id, tour.end_date, tour.start_date]
         );
 
         const data = rows.map((row) => ({
@@ -81,7 +90,7 @@ exports.getTourEquipmentOptions = async (req, res) => {
 };
 
 exports.createTour = async (req, res) => {
-    const { title, location, description, price, duration, difficulty, difficulty_level, category, subcategory, image_url, start_date, end_date, max_participants, equipment_prices } = req.body;
+    const { title, location, description, price, duration, difficulty, category, subcategory, image_url, start_date, end_date, max_participants, equipment_prices } = req.body;
     const durationValue = duration === "" || duration === null || duration === undefined ? null : Number(duration);
     if (start_date) {
         const today = new Date();
@@ -94,8 +103,8 @@ exports.createTour = async (req, res) => {
     }
     try {
         const [result] = await db.query(
-            'INSERT INTO tours (title, location, description, price, duration, difficulty, difficulty_level, category, subcategory, image_url, start_date, end_date, max_participants) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-            [title, location, description, price, durationValue, difficulty, difficulty_level, category, subcategory, image_url, start_date, end_date, max_participants]
+            'INSERT INTO tours (title, location, description, price, duration, difficulty, category, subcategory, image_url, start_date, end_date, max_participants) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+            [title, location, description, price, durationValue, difficulty, category, subcategory, image_url, start_date, end_date, max_participants]
         );
 
         const tourId = result.insertId;
@@ -123,27 +132,52 @@ exports.updateTour = async (req, res) => {
         return res.status(400).json({ message: "Nincs módosítandó adat!" });
     }
     try {
-        if (updates.start_date) {
-            const today = new Date();
-            today.setHours(0, 0, 0, 0);
-            const startDate = new Date(updates.start_date);
-            startDate.setHours(0, 0, 0, 0);
-            if (startDate < today) {
-                return res.status(400).json({ message: "A túra kezdete nem lehet korábbi a mai dátumnál." });
-            }
-        }
         if ("duration" in updates) {
             let d = updates.duration;
             d = (d === "" || d === null || d === undefined) ? null : Number(d);
             updates.duration = (d !== null && Number.isFinite(d)) ? d : null;
             }
-        if ("difficulty_level" in updates) {
-            const lvl = Number(updates.difficulty_level);
-            updates.difficulty_level = Number.isFinite(lvl) ? lvl : null;
-        }
         const equipmentPrices = Array.isArray(updates.equipment_prices) ? updates.equipment_prices : null;
         if ("equipment_prices" in updates) {
             delete updates.equipment_prices;
+        }
+        if (equipmentPrices) {
+            const submittedEquipment = new Map(
+                equipmentPrices
+                    .map((item) => [Number(item?.equipment_id), item])
+                    .filter(([equipmentId]) => Number.isFinite(equipmentId))
+            );
+            const [bookedEquipment] = await db.query(
+                `SELECT be.equipment_id, e.name, SUM(be.quantity) AS booked_quantity,
+                        COALESCE(MAX(tp.price), MAX(be.price), 0) AS protected_price
+                 FROM booking_equipments be
+                 JOIN bookings b ON b.id = be.booking_id
+                 JOIN equipment e ON e.id = be.equipment_id
+                 LEFT JOIN tour_equipment_prices tp
+                   ON tp.tour_id = b.tour_id AND tp.equipment_id = be.equipment_id
+                 WHERE b.tour_id = ? AND b.status <> 'cancelled'
+                 GROUP BY be.equipment_id, e.name`,
+                [id]
+            );
+            const blockedRemovals = bookedEquipment.filter(
+                (item) => !submittedEquipment.has(Number(item.equipment_id))
+            );
+            if (blockedRemovals.length > 0) {
+                const equipmentNames = blockedRemovals.map((item) => item.name).join(', ');
+                return res.status(409).json({
+                    message: `Nem távolítható el, mert aktív foglalás tartozik hozzá: ${equipmentNames}.`
+                });
+            }
+            const blockedPriceChanges = bookedEquipment.filter((item) => {
+                const submitted = submittedEquipment.get(Number(item.equipment_id));
+                return Number(submitted?.price || 0) !== Number(item.protected_price || 0);
+            });
+            if (blockedPriceChanges.length > 0) {
+                const equipmentNames = blockedPriceChanges.map((item) => item.name).join(', ');
+                return res.status(409).json({
+                    message: `Nem módosítható az ára, mert aktív foglalás tartozik hozzá: ${equipmentNames}.`
+                });
+            }
         }
         const fields = [];
         const values = [];

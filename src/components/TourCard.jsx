@@ -1,6 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { Clock, MapPin, ArrowRight, Calendar } from 'lucide-react';
+import { formatPrice } from '../utils/formatPrice';
 
 const TourCard = ({ tour }) => {
   const bookedCount = Number(tour.booked_count || 0);
@@ -13,7 +14,6 @@ const TourCard = ({ tour }) => {
     if (!start || !end) return "Hamarosan...";
     const s = new Date(start);
     const e = new Date(end);
-    const options = { day: 'numeric' };
     const monthOptions = { month: 'long' };
     if (s.getMonth() === e.getMonth() && s.getFullYear() === e.getFullYear()) {
       return `${s.getFullYear()}. ${s.toLocaleDateString('hu-HU', monthOptions)} ${s.getDate()} - ${e.getDate()}.`;
@@ -38,7 +38,7 @@ const TourCard = ({ tour }) => {
           </div>
         )}
         <div className="absolute bottom-4 right-4 bg-emerald-600 text-white px-4 py-2 rounded-2xl font-black shadow-lg">
-          {new Intl.NumberFormat('hu-HU').format(tour.price || 0)} Ft
+          {formatPrice(tour.price)} Ft
         </div>
       </div>
 
