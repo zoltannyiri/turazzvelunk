@@ -12,6 +12,7 @@ router.put('/:id/equipment', protect, bookingController.updateBookingEquipment);
 router.get('/check/:tourId', protect, bookingController.checkIfBooked);
 router.get('/status/:tourId', protect, bookingController.getBookingStatusByTourId);
 router.get('/tour/:tourId/participants', protect, bookingController.getTourParticipants);
+router.get('/tour/:tourId/waitlist', protect, bookingController.getTourWaitlist);
 router.delete('/cancel/:tourId', protect, bookingController.removeBookingByTourId);
 router.post('/:id/cancel-request', protect, bookingController.createCancellationRequest);
 
@@ -20,6 +21,7 @@ router.get('/all', protect, adminOnly, bookingController.getAllBookings);
 router.get('/admin/tours/:tourId', protect, adminOnly, bookingController.getBookingsByTourId);
 router.get('/admin/users/:userId', protect, adminOnly, bookingController.getBookingsByUserId);
 router.put('/:id/status', protect, adminOnly, bookingController.updateBookingStatus);
+router.put('/waitlist/:id/promote', protect, adminOnly, bookingController.promoteWaitlistBooking);
 router.delete('/admin/:id', protect, adminOnly, bookingController.adminDeleteBooking);
 router.get('/cancel-requests', protect, adminOnly, bookingController.getCancellationRequests);
 router.put('/cancel-requests/:id', protect, adminOnly, bookingController.updateCancellationRequestStatus);

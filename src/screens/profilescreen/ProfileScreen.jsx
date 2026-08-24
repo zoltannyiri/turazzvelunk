@@ -3,7 +3,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { AuthContext } from '../../context/AuthContext';
 import { 
   MapPin, Calendar, CreditCard, ChevronRight, 
-  Settings, LogOut, Mountain, Clock, CheckCircle2, AlertCircle, Camera
+  Settings, LogOut, Mountain, Clock, CheckCircle2, AlertCircle, Camera, XCircle
 } from 'lucide-react';
 import { formatPrice } from '../../utils/formatPrice';
 
@@ -297,7 +297,7 @@ import { formatPrice } from '../../utils/formatPrice';
             
             <div className="bg-emerald-600 p-8 rounded-[2.5rem] text-white shadow-xl shadow-emerald-600/20">
               <Mountain className="mb-4 opacity-50" size={32} />
-              <div className="text-4xl font-black">{bookings.length}</div>
+              <div className="text-4xl font-black">{bookings.filter(b => b.status !== 'cancelled').length}</div>
               <div className="font-bold opacity-80">Aktív jelentkezés</div>
             </div>
 
@@ -339,25 +339,51 @@ import { formatPrice } from '../../utils/formatPrice';
                       </div>
 
                       <div className="flex flex-col items-center md:items-end gap-3">
-                        {booking.status === 'pending' ? (
+                        {booking.status === 'waitlist' ? (
+                          <div className="flex items-center gap-2 px-5 py-2 bg-amber-50 text-amber-700 rounded-full border border-amber-300 font-black text-xs uppercase tracking-tighter">
+                            <Clock size={14} /> Várólistán
+                          </div>
+                        ) : booking.status === 'pending' ? (
+                          <div className="flex items-center gap-2 px-5 py-2 bg-amber-50 text-amber-600 rounded-full border border-amber-200 font-black text-xs uppercase tracking-tighter">
+                            <Clock size={14} /> Jóváhagyásra vár
+                          </div>
+                        ) : booking.status === 'confirmed' ? (
                           <div className="flex items-center gap-2 px-5 py-2 bg-emerald-50 text-emerald-600 rounded-full border border-emerald-100 font-black text-xs uppercase tracking-tighter">
                             <CheckCircle2 size={14} /> Elfogadva
                           </div>
+                        ) : booking.status === 'cancelled' ? (
+                          <div className="flex items-center gap-2 px-5 py-2 bg-rose-50 text-rose-600 rounded-full border border-rose-200 font-black text-xs uppercase tracking-tighter">
+                            <XCircle size={14} /> Lejelentkezve
+                          </div>
                         ) : (
-                          <div className="flex items-center gap-2 px-5 py-2 bg-emerald-50 text-emerald-600 rounded-full border border-emerald-100 font-black text-xs uppercase tracking-tighter">
-                            <CheckCircle2 size={14} /> Elfogadva
+                          <div className="flex items-center gap-2 px-5 py-2 bg-slate-100 text-slate-600 rounded-full border border-slate-200 font-black text-xs uppercase tracking-tighter">
+                            {booking.status}
+                          </div>
+                        )}
+                        {booking.status === 'waitlist' && (
+                          <div className="text-[10px] font-bold text-amber-700/90">
+                            Értesítünk, ha bekerülsz
+                          </div>
+                        )}
+                        {booking.status === 'pending' && (
+                          <div className="text-[10px] font-bold text-amber-600/90">
+                            Jóváhagyás után fizethető
                           </div>
                         )}
                         {booking.status === 'confirmed' && booking.payment_status !== 'paid' && (
                           <button
                             onClick={() => handlePay(booking.id)}
-                            className="px-5 py-2 bg-emerald-600 text-white rounded-full font-black text-xs uppercase tracking-widest hover:bg-emerald-700 transition"
+                            className="px-5 py-2 bg-emerald-600 text-white rounded-full font-black text-xs uppercase tracking-widest hover:bg-emerald-700 transition shadow-md shadow-emerald-600/20"
                           >
                             Fizetés
                           </button>
                         )}
                         {booking.payment_status === 'paid' && (
-                          <div className="text-[10px] font-black uppercase tracking-widest text-emerald-600">
+                          <div className={`font-black uppercase tracking-widest ${
+                            booking.status === 'cancelled'
+                              ? 'px-4 py-1.5 bg-rose-600 text-white text-[11px] rounded-full shadow-md shadow-rose-600/20'
+                              : 'text-[10px] text-emerald-600'
+                          }`}>
                             Fizetve
                           </div>
                         )}

@@ -58,7 +58,19 @@ export const AuthProvider = ({ children }) => {
             .then((res) => res.json())
             .then((data) => {
                 if (data && data.id) {
-                    setUser(data);
+                    setUser((prev) => {
+                        if (
+                            prev &&
+                            prev.id === data.id &&
+                            prev.email === data.email &&
+                            prev.role === data.role &&
+                            prev.name === data.name &&
+                            prev.avatar === data.avatar
+                        ) {
+                            return prev;
+                        }
+                        return data;
+                    });
                     localStorage.setItem('user', JSON.stringify(data));
                 } else {
                     logout();

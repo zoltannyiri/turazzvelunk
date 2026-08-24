@@ -3,6 +3,10 @@ const { sendMail } = require('../emailSender/mailer');
 const {
     buildRegistrationEmail,
     buildBookingEmail,
+    buildBookingApprovedEmail,
+    buildWaitlistJoinedEmail,
+    buildAdminWaitlistNotificationEmail,
+    buildWaitlistPromotedEmail,
     buildBookingCancelledEmail,
     buildAdminRemovedBookingEmail,
     buildAdminRemovedBookingNotificationEmail,
@@ -26,6 +30,17 @@ const getAdminRecipients = async () => {
 
 const sendRegistrationEmail = async ({ to, name }) => {
     const { subject, text, html } = buildRegistrationEmail({ name });
+    return sendMail({ to, subject, text, html });
+};
+
+const sendBookingApprovedEmail = async ({ to, name, tourTitle, startDate, endDate, totalPrice }) => {
+    const { subject, text, html } = buildBookingApprovedEmail({
+        name,
+        tourTitle,
+        startDate,
+        endDate,
+        totalPrice
+    });
     return sendMail({ to, subject, text, html });
 };
 
@@ -219,9 +234,61 @@ const sendAdminRemovedBookingNotification = async ({ adminName, userName, userEm
     );
 };
 
+
+const sendWaitlistJoinedEmail = async ({ to, name, tourTitle, startDate, endDate }) => {
+    const { subject, text, html } = buildWaitlistJoinedEmail({
+        name,
+        tourTitle,
+        startDate,
+        endDate
+    });
+    return sendMail({ to, subject, text, html });
+};
+
+const sendAdminWaitlistEmail = async ({ to, userName, userEmail, tourTitle, startDate, endDate }) => {
+    const { subject, text, html } = buildAdminWaitlistNotificationEmail({
+        userName,
+        userEmail,
+        tourTitle,
+        startDate,
+        endDate
+    });
+    return sendMail({ to, subject, text, html });
+};
+
+const sendAdminWaitlistNotification = async ({ userName, userEmail, tourTitle, startDate, endDate }) => {
+    const recipients = await getAdminRecipients();
+    if (!recipients.length) return;
+    await Promise.all(
+        recipients.map((email) => sendAdminWaitlistEmail({
+            to: email,
+            userName,
+            userEmail,
+            tourTitle,
+            startDate,
+            endDate
+        }))
+    );
+};
+
+const sendWaitlistPromotedEmail = async ({ to, name, tourTitle, startDate, endDate, totalPrice }) => {
+    const { subject, text, html } = buildWaitlistPromotedEmail({
+        name,
+        tourTitle,
+        startDate,
+        endDate,
+        totalPrice
+    });
+    return sendMail({ to, subject, text, html });
+};
+
 module.exports = {
     sendRegistrationEmail,
     sendBookingEmail,
+    sendBookingApprovedEmail,
+    sendWaitlistJoinedEmail,
+    sendAdminWaitlistNotification,
+    sendWaitlistPromotedEmail,
     sendBookingCancelledEmail,
     sendAdminRemovedBookingEmail,
     sendAdminRemovedBookingNotificationEmail,

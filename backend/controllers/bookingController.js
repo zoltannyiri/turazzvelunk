@@ -1,6 +1,10 @@
 const db = require('../config/db');
 const {
     sendBookingEmail,
+    sendBookingApprovedEmail,
+    sendWaitlistJoinedEmail,
+    sendAdminWaitlistNotification,
+    sendWaitlistPromotedEmail,
     sendBookingCancelledEmail,
     sendAdminRemovedBookingEmail,
     sendCancellationRequestEmail,
@@ -32,14 +36,15 @@ exports.createBooking = async (req, res) => {
             return res.status(400).json({ message: "Folyamatban lévő túrára nem lehet jelentkezni." });
         }
         const maxParticipants = tour.max_participants;
+        let isFull = false;
         if (maxParticipants) {
             const [countRows] = await db.query(
-                'SELECT COUNT(*) AS bookedCount FROM bookings WHERE tour_id = ? AND status <> ?',
-                [tour_id, 'cancelled']
+                "SELECT COUNT(*) AS bookedCount FROM bookings WHERE tour_id = ? AND status <> 'cancelled' AND status <> 'waitlist'",
+                [tour_id]
             );
             const bookedCount = countRows[0]?.bookedCount || 0;
             if (bookedCount >= maxParticipants) {
-                return res.status(400).json({ message: "A túra betelt." });
+                isFull = true;
             }
         }
         const [existing] = await db.query(
@@ -47,6 +52,9 @@ exports.createBooking = async (req, res) => {
             [user_id, tour_id, 'cancelled']
         );
         if (existing.length > 0) {
+            if (existing[0].status === 'waitlist') {
+                return res.status(400).json({ message: "Már feliratkoztál a várólistára erre a túrára!" });
+            }
             return res.status(400).json({ message: "Erre a túrára már jelentkeztél!" });
         }
         const selectedEquipmentIds = Array.isArray(equipment_ids)
@@ -56,7 +64,7 @@ exports.createBooking = async (req, res) => {
         let extraTotal = 0;
         if (selectedEquipmentIds.length > 0) {
             const [equipRows] = await db.query(
-                `SELECT e.id, e.total_quantity,
+                `SELECT e.id, e.name, e.total_quantity,
                         COALESCE(tp.price, 0) AS price,
                         COALESCE(reserved.qty, 0) AS reserved_quantity
                  FROM equipment e
@@ -67,7 +75,7 @@ exports.createBooking = async (req, res) => {
                    FROM booking_equipments be
                    JOIN bookings b ON b.id = be.booking_id
                    JOIN tours t ON t.id = b.tour_id
-                   WHERE b.status <> 'cancelled'
+                   WHERE b.status <> 'cancelled' AND b.status <> 'waitlist'
                      AND t.start_date <= ? AND t.end_date >= ?
                    GROUP BY be.equipment_id
                  ) reserved ON reserved.equipment_id = e.id
@@ -78,7 +86,7 @@ exports.createBooking = async (req, res) => {
             for (const row of equipRows) {
                 const available = Math.max(0, Number(row.total_quantity || 0) - Number(row.reserved_quantity || 0));
                 if (available <= 0) {
-                    return res.status(400).json({ message: `A(z) ${row.id} eszköz elfogyott erre az időszakra.` });
+                    return res.status(400).json({ message: `A(z) "${row.name}" eszköz sajnos elfogyott erre a túrára.` });
                 }
                 extraTotal += Number(row.price || 0);
             }
@@ -87,6 +95,7 @@ exports.createBooking = async (req, res) => {
         const basePrice = Number(tour.price || 0);
         const totalPrice = basePrice + extraTotal;
 
+        const initialStatus = isFull ? 'waitlist' : 'pending';
         const [bookingResult] = await db.query(
             `INSERT INTO bookings (
                 user_id, tour_id, status,
@@ -95,7 +104,7 @@ exports.createBooking = async (req, res) => {
             [
                 user_id,
                 tour_id,
-                'confirmed',
+                initialStatus,
                 extraTotal,
                 totalPrice,
                 0,
@@ -108,13 +117,23 @@ exports.createBooking = async (req, res) => {
         try {
             const [userRows] = await db.query('SELECT name, email FROM users WHERE id = ?', [user_id]);
             const userName = userRows[0]?.name || 'Ismeretlen felhasználó';
-            await logActivity({
-                type: 'booking_created',
-                message: `${userName} jelentkezett a túrára: ${tour.title}`,
-                userId: user_id,
-                tourId: tour_id,
-                bookingId
-            });
+            if (isFull) {
+                await logActivity({
+                    type: 'waitlist_joined',
+                    message: `${userName} feliratkozott a várólistára: ${tour.title}`,
+                    userId: user_id,
+                    tourId: tour_id,
+                    bookingId
+                });
+            } else {
+                await logActivity({
+                    type: 'booking_created',
+                    message: `${userName} jelentkezett a túrára: ${tour.title} (jóváhagyásra vár)`,
+                    userId: user_id,
+                    tourId: tour_id,
+                    bookingId
+                });
+            }
         } catch (logErr) {
             console.error('Tevékenységnapló hiba:', logErr.message);
         }
@@ -145,23 +164,48 @@ exports.createBooking = async (req, res) => {
                 [user_id]
             );
             if (userRows.length > 0) {
-                await sendBookingEmail({
-                    to: userRows[0].email,
-                    name: userRows[0].name,
-                    tourTitle: tour.title,
-                    startDate: tour.start_date,
-                    endDate: tour.end_date,
-                    totalPrice
-                });
-                await sendAdminNotification({
-                    subject: `Új túra jelentkezés: ${tour.title}`,
-                    message: `${userRows[0].name} (${userRows[0].email}) jelentkezett a túrára.`
-                });
+                if (isFull) {
+                    await sendWaitlistJoinedEmail({
+                        to: userRows[0].email,
+                        name: userRows[0].name,
+                        tourTitle: tour.title,
+                        startDate: tour.start_date,
+                        endDate: tour.end_date
+                    });
+                    await sendAdminWaitlistNotification({
+                        userName: userRows[0].name,
+                        userEmail: userRows[0].email,
+                        tourTitle: tour.title,
+                        startDate: tour.start_date,
+                        endDate: tour.end_date
+                    });
+                } else {
+                    await sendBookingEmail({
+                        to: userRows[0].email,
+                        name: userRows[0].name,
+                        tourTitle: tour.title,
+                        startDate: tour.start_date,
+                        endDate: tour.end_date,
+                        totalPrice
+                    });
+                    await sendAdminNotification({
+                        subject: `Új túra jelentkezés jóváhagyásra vár: ${tour.title}`,
+                        message: `${userRows[0].name} (${userRows[0].email}) jelentkezett a(z) ${tour.title} túrára. Kérlek lépj be az admin felületre a jóváhagyáshoz.`
+                    });
+                }
             }
         } catch (emailErr) {
             console.error('Foglalas email hiba:', emailErr.message);
         }
-        res.status(201).json({ message: "Sikeres jelentkezés a túrára!" });
+        if (isFull) {
+            res.status(201).json({
+                message: "A túra betelt, de sikeresen felkerültél a várólistára!",
+                status: 'waitlist',
+                isWaitlist: true
+            });
+        } else {
+            res.status(201).json({ message: "Sikeres jelentkezés a túrára!" });
+        }
     } catch (err) {
         res.status(500).json({ error: err.message });
     }
@@ -170,10 +214,6 @@ exports.createBooking = async (req, res) => {
 exports.getMyBookings = async (req, res) => {
     const user_id = req.user.id;
     try {
-        await db.query(
-            'UPDATE bookings SET status = ? WHERE user_id = ? AND status = ?',
-            ['confirmed', user_id, 'pending']
-        );
         const [myBookings] = await db.query(
             `SELECT bookings.id, bookings.status, bookings.booked_at, bookings.payment_status, bookings.paid_at,
                          bookings.extra_price, bookings.total_price, bookings.refund_amount, bookings.refund_status,
@@ -277,20 +317,75 @@ exports.updateBookingStatus = async (req, res) => {
     const { id } = req.params;
     const { status } = req.body;
     try {
-        const [rows] = await db.query('SELECT tour_id, user_id FROM bookings WHERE id = ?', [id]);
-        if (rows.length === 0) {
+        const [bookingRows] = await db.query(
+            `SELECT b.id, b.tour_id, b.user_id, b.status AS current_status, b.total_price,
+                    u.name AS user_name, u.email AS user_email,
+                    t.title AS tour_title, t.start_date, t.end_date, t.price AS tour_price
+             FROM bookings b
+             JOIN users u ON u.id = b.user_id
+             JOIN tours t ON t.id = b.tour_id
+             WHERE b.id = ?`,
+            [id]
+        );
+        if (bookingRows.length === 0) {
             return res.status(404).json({ message: "Foglalás nem található." });
         }
+        const booking = bookingRows[0];
         await db.query('UPDATE bookings SET status = ? WHERE id = ?', [status, id]);
+
+        if (status === 'confirmed' && booking.current_status !== 'confirmed') {
+            try {
+                if (booking.current_status === 'waitlist') {
+                    await logActivity({
+                        type: 'waitlist_promoted',
+                        message: `${booking.user_name} át lett helyezve a várólistáról a résztvevők közé: ${booking.tour_title}`,
+                        userId: booking.user_id,
+                        tourId: booking.tour_id,
+                        bookingId: Number(id)
+                    });
+                    if (booking.user_email) {
+                        await sendWaitlistPromotedEmail({
+                            to: booking.user_email,
+                            name: booking.user_name,
+                            tourTitle: booking.tour_title,
+                            startDate: booking.start_date,
+                            endDate: booking.end_date,
+                            totalPrice: booking.total_price || booking.tour_price
+                        });
+                    }
+                } else {
+                    await logActivity({
+                        type: 'booking_approved',
+                        message: `${booking.user_name} jelentkezése jóváhagyva a túrára: ${booking.tour_title}`,
+                        userId: booking.user_id,
+                        tourId: booking.tour_id,
+                        bookingId: Number(id)
+                    });
+                    if (booking.user_email) {
+                        await sendBookingApprovedEmail({
+                            to: booking.user_email,
+                            name: booking.user_name,
+                            tourTitle: booking.tour_title,
+                            startDate: booking.start_date,
+                            endDate: booking.end_date,
+                            totalPrice: booking.total_price || booking.tour_price
+                        });
+                    }
+                }
+            } catch (notifyErr) {
+                console.error('Jóváhagyási email küldési hiba:', notifyErr.message);
+            }
+        }
+
         const io = req.app.get('io');
         if (io) {
-            io.to(`tour:${rows[0].tour_id}`).emit('tour-chat-membership', {
-                tourId: rows[0].tour_id,
-                userId: rows[0].user_id,
+            io.to(`tour:${booking.tour_id}`).emit('tour-chat-membership', {
+                tourId: booking.tour_id,
+                userId: booking.user_id,
                 status: status === 'confirmed' ? 'confirmed' : 'removed'
             });
         }
-        res.json({ message: "Státusz sikeresen frissítve!" });
+        res.json({ message: status === 'confirmed' ? "Jelentkezés elfogadva és értesítő email elküldve!" : "Státusz sikeresen frissítve!" });
     } catch (err) {
         res.status(500).json({ error: err.message });
     }
@@ -368,26 +463,24 @@ exports.checkIfBooked = async (req, res) => {
 
 exports.getBookingStatusByTourId = async (req, res) => {
     try {
-        await db.query(
-            'UPDATE bookings SET status = ? WHERE user_id = ? AND tour_id = ? AND status = ?',
-            ['confirmed', req.user.id, req.params.tourId, 'pending']
+        const [rows] = await db.query(
+            `SELECT b.id, b.status, b.payment_status,
+                    b.extra_price, b.total_price,
+                    b.refund_amount, b.refund_status,
+                    (
+                        SELECT r.status FROM booking_cancel_requests r
+                        WHERE r.booking_id = b.id
+                        ORDER BY r.created_at DESC
+                        LIMIT 1
+                    ) AS cancel_request_status
+             FROM bookings b
+             WHERE b.user_id = ? AND b.tour_id = ?
+             ORDER BY b.booked_at DESC
+             LIMIT 1`,
+            [req.user.id, req.params.tourId]
         );
-                const [rows] = await db.query(
-                        `SELECT b.id, b.status, b.payment_status,
-                                        b.extra_price, b.total_price,
-                                        b.refund_amount, b.refund_status,
-                                        (
-                                            SELECT r.status FROM booking_cancel_requests r
-                                            WHERE r.booking_id = b.id
-                                            ORDER BY r.created_at DESC
-                                            LIMIT 1
-                                        ) AS cancel_request_status
-                         FROM bookings b
-                         WHERE b.user_id = ? AND b.tour_id = ? AND b.status <> ?`,
-                        [req.user.id, req.params.tourId, 'cancelled']
-                );
         if (rows.length === 0) {
-            return res.json({ isBooked: false });
+            return res.json({ isBooked: false, status: null, payment_status: null });
         }
         const bookingId = rows[0].id;
         const [equipRows] = await db.query(
@@ -398,7 +491,7 @@ exports.getBookingStatusByTourId = async (req, res) => {
         );
 
         res.json({
-            isBooked: true,
+            isBooked: rows[0].status !== 'cancelled',
             bookingId,
             status: rows[0].status,
             payment_status: rows[0].payment_status || null,
@@ -751,31 +844,31 @@ exports.updateBookingEquipment = async (req, res) => {
 
         let extraTotal = 0;
         if (equipmentIds.length > 0) {
-                        const [equipRows] = await db.query(
-                                `SELECT e.id, e.total_quantity,
-                                                COALESCE(tp.price, 0) AS price,
-                                                COALESCE(reserved.qty, 0) AS reserved_quantity
-                                 FROM equipment e
-                                 LEFT JOIN tour_equipment_prices tp
-                                     ON tp.equipment_id = e.id AND tp.tour_id = ?
-                                 LEFT JOIN (
-                                     SELECT be.equipment_id, SUM(be.quantity) AS qty
-                                     FROM booking_equipments be
-                                     JOIN bookings b ON b.id = be.booking_id
-                                     JOIN tours t ON t.id = b.tour_id
-                                     WHERE b.status <> 'cancelled'
-                                         AND b.id <> ?
-                                         AND t.start_date <= ? AND t.end_date >= ?
-                                     GROUP BY be.equipment_id
-                                 ) reserved ON reserved.equipment_id = e.id
-                                 WHERE e.id IN (${equipmentIds.map(() => '?').join(',')})`,
-                                [booking.tour_id, bookingId, booking.end_date, booking.start_date, ...equipmentIds]
-                        );
+            const [equipRows] = await db.query(
+                `SELECT e.id, e.name, e.total_quantity,
+                        COALESCE(tp.price, 0) AS price,
+                        COALESCE(reserved.qty, 0) AS reserved_quantity
+                 FROM equipment e
+                 LEFT JOIN tour_equipment_prices tp
+                     ON tp.equipment_id = e.id AND tp.tour_id = ?
+                 LEFT JOIN (
+                     SELECT be.equipment_id, SUM(be.quantity) AS qty
+                     FROM booking_equipments be
+                     JOIN bookings b ON b.id = be.booking_id
+                     JOIN tours t ON t.id = b.tour_id
+                     WHERE b.status <> 'cancelled' AND b.status <> 'waitlist'
+                         AND b.id <> ?
+                         AND t.start_date <= ? AND t.end_date >= ?
+                     GROUP BY be.equipment_id
+                 ) reserved ON reserved.equipment_id = e.id
+                 WHERE e.id IN (${equipmentIds.map(() => '?').join(',')})`,
+                [booking.tour_id, bookingId, booking.end_date, booking.start_date, ...equipmentIds]
+            );
 
             for (const row of equipRows) {
                 const available = Math.max(0, Number(row.total_quantity || 0) - Number(row.reserved_quantity || 0));
                 if (available <= 0) {
-                    return res.status(400).json({ message: `A(z) ${row.id} eszköz elfogyott erre az időszakra.` });
+                    return res.status(400).json({ message: `A(z) "${row.name}" eszköz sajnos elfogyott erre a túrára.` });
                 }
                 extraTotal += Number(row.price || 0);
             }
@@ -820,6 +913,91 @@ exports.updateBookingEquipment = async (req, res) => {
             extra_price: extraTotal,
             total_price: newTotal
         });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+};
+
+exports.promoteWaitlistBooking = async (req, res) => {
+    const bookingId = req.params.id;
+    try {
+        const [bookingRows] = await db.query(
+            `SELECT b.*, b.status AS current_status, t.title AS tour_title, t.start_date, t.end_date, t.price AS tour_price, u.name AS user_name, u.email AS user_email
+             FROM bookings b
+             JOIN tours t ON b.tour_id = t.id
+             JOIN users u ON b.user_id = u.id
+             WHERE b.id = ?`,
+            [bookingId]
+        );
+        if (bookingRows.length === 0) {
+            return res.status(404).json({ message: "Foglalás nem található." });
+        }
+        const booking = bookingRows[0];
+        if (booking.current_status !== 'waitlist') {
+            return res.status(400).json({ message: "Ez a foglalás nem szerepel a várólistán." });
+        }
+
+        await db.query('UPDATE bookings SET status = ? WHERE id = ?', ['confirmed', bookingId]);
+
+        try {
+            await logActivity({
+                type: 'waitlist_promoted',
+                message: `${booking.user_name} át lett helyezve a várólistáról a résztvevők közé: ${booking.tour_title}`,
+                userId: booking.user_id,
+                tourId: booking.tour_id,
+                bookingId: Number(bookingId)
+            });
+        } catch (logErr) {
+            console.error('Tevékenységnapló hiba:', logErr.message);
+        }
+
+        try {
+            if (booking.user_email) {
+                await sendWaitlistPromotedEmail({
+                    to: booking.user_email,
+                    name: booking.user_name,
+                    tourTitle: booking.tour_title,
+                    startDate: booking.start_date,
+                    endDate: booking.end_date,
+                    totalPrice: booking.total_price || booking.tour_price
+                });
+            }
+        } catch (emailErr) {
+            console.error('Waitlist promoted email error:', emailErr.message);
+        }
+
+        try {
+            const io = req.app.get('io');
+            if (io) {
+                io.emit('tour-chat-membership', {
+                    tourId: booking.tour_id,
+                    userId: booking.user_id,
+                    status: 'confirmed'
+                });
+            }
+        } catch (ioErr) {
+            console.error('WebSocket emit error:', ioErr.message);
+        }
+
+        res.json({ message: "A felhasználó sikeresen átmozgatva a résztvevők közé és az értesítő email elküldve!" });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+};
+
+exports.getTourWaitlist = async (req, res) => {
+    const { tourId } = req.params;
+    try {
+        const [rows] = await db.query(
+            `SELECT b.id, b.user_id, b.tour_id, b.status, b.booked_at, b.total_price,
+                    u.name AS user_name, u.email AS user_email, u.avatar_url
+             FROM bookings b
+             JOIN users u ON b.user_id = u.id
+             WHERE b.tour_id = ? AND b.status = 'waitlist'
+             ORDER BY b.booked_at ASC`,
+            [tourId]
+        );
+        res.json(rows);
     } catch (err) {
         res.status(500).json({ error: err.message });
     }

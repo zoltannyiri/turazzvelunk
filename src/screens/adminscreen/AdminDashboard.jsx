@@ -4,7 +4,7 @@ import { Pie } from 'react-chartjs-2';
 import { Chart as ChartJS, ArcElement, Tooltip, Legend } from 'chart.js';
 import { 
   CheckCircle, Users, DollarSign, 
-  ChevronDown, ChevronUp, Plus, Edit3, Trash2, Calendar, MessageSquareText, XCircle, LayoutGrid, ListChecks, UserCog, Mail, Activity, AlertTriangle
+  ChevronDown, ChevronUp, Plus, Edit3, Trash2, Calendar, MessageSquareText, XCircle, LayoutGrid, ListChecks, UserCog, Mail, Activity, AlertTriangle, Clock, ArrowRight, UserMinus
 } from 'lucide-react';
 import { toast } from 'react-toastify';
 import DatePicker, { registerLocale } from "react-datepicker";
@@ -28,6 +28,14 @@ const getBookingRevenue = (booking) => {
   return (Number.isFinite(basePrice) ? basePrice : 0) + (Number.isFinite(extraPrice) ? extraPrice : 0);
 };
 
+const formatHungarianDate = (dateString) => {
+  if (!dateString) return "";
+  const date = new Date(dateString);
+  if (isNaN(date.getTime())) return "";
+  const months = ["Január", "Február", "Március", "Április", "Május", "Június", "Július", "Augusztus", "Szeptember", "Október", "November", "December"];
+  return `${date.getFullYear()}. ${months[date.getMonth()]} ${String(date.getDate()).padStart(2, '0')}.`;
+};
+
 const AdminDashboard = () => {
   const navigate = useNavigate();
   const [bookings, setBookings] = useState([]);
@@ -43,6 +51,8 @@ const AdminDashboard = () => {
   const [toursLoading, setToursLoading] = useState(true);
   const [equipment, setEquipment] = useState([]);
   const [equipmentLoading, setEquipmentLoading] = useState(true);
+  const [waitlistSearch, setWaitlistSearch] = useState('');
+  const [selectedWaitlistTourId, setSelectedWaitlistTourId] = useState(null);
   const [selectedEquipmentIds, setSelectedEquipmentIds] = useState([]);
   const [lockedEquipmentIds, setLockedEquipmentIds] = useState([]);
   const [bookingSearch, setBookingSearch] = useState('');
@@ -113,71 +123,101 @@ const AdminDashboard = () => {
   };
   const [newTour, setNewTour] = useState(initialTourState);
 
-  const fetchBookings = useCallback(async () => {
+  const fetchBookings = useCallback(async (isSilent = false) => {
     try {
       const res = await fetch(`${import.meta.env.VITE_API_URL}/bookings/all`, {
         headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
       });
       const data = await res.json();
-      setBookings(data);
+      if (res.ok) {
+        setBookings(Array.isArray(data) ? data : []);
+      } else if (!isSilent) {
+        toast.error(data.message || 'Hiba a lista frissítésekor!');
+      }
     } catch (err) {
-      toast.error("Hiba a lista frissítésekor!");
+      if (!isSilent) {
+        toast.error('Hiba a lista frissítésekor!');
+      }
     }
   }, []);
 
-  const fetchCancelRequests = useCallback(async () => {
+  const fetchCancelRequests = useCallback(async (isSilent = false) => {
     try {
       const res = await fetch(`${import.meta.env.VITE_API_URL}/bookings/cancel-requests`, {
         headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
       });
       const data = await res.json();
-      setCancelRequests(Array.isArray(data) ? data : []);
+      if (res.ok) {
+        setCancelRequests(Array.isArray(data) ? data : []);
+      } else if (!isSilent) {
+        toast.error(data.message || 'Hiba a lejelentkezési kérelmek betöltésekor!');
+      }
     } catch (err) {
-      toast.error("Hiba a lejelentkezési kérelmek betöltésekor!");
+      if (!isSilent) {
+        toast.error('Hiba a lejelentkezési kérelmek betöltésekor!');
+      }
     }
   }, []);
 
-  const fetchTours = useCallback(async () => {
+  const fetchTours = useCallback(async (isSilent = false) => {
     try {
       const res = await fetch(`${import.meta.env.VITE_API_URL}/tours`);
       const data = await res.json();
-      setTours(Array.isArray(data) ? data : []);
+      if (res.ok) {
+        setTours(Array.isArray(data) ? data : []);
+      } else if (!isSilent) {
+        toast.error('Hiba a túrák betöltésekor!');
+      }
       setToursLoading(false);
     } catch (err) {
-      toast.error("Hiba a túrák betöltésekor!");
+      if (!isSilent) {
+        toast.error('Hiba a túrák betöltésekor!');
+      }
       setToursLoading(false);
     }
   }, []);
 
-  const fetchUsers = useCallback(async () => {
+  const fetchUsers = useCallback(async (isSilent = false) => {
     try {
       const res = await fetch(`${import.meta.env.VITE_API_URL}/auth/users`, {
         headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
       });
       const data = await res.json();
-      setUsers(Array.isArray(data) ? data : []);
+      if (res.ok) {
+        setUsers(Array.isArray(data) ? data : []);
+      } else if (!isSilent) {
+        toast.error(data.message || 'Hiba a felhasználók betöltésekor!');
+      }
       setUsersLoading(false);
     } catch (err) {
-      toast.error("Hiba a felhasználók betöltésekor!");
+      if (!isSilent) {
+        toast.error('Hiba a felhasználók betöltésekor!');
+      }
       setUsersLoading(false);
     }
   }, []);
 
-  const fetchEquipment = useCallback(async () => {
+  const fetchEquipment = useCallback(async (isSilent = false) => {
     try {
       const res = await fetch(`${import.meta.env.VITE_API_URL}/equipment`, {
         headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
       });
       const data = await res.json();
-      setEquipment(Array.isArray(data) ? data : []);
+      if (res.ok) {
+        setEquipment(Array.isArray(data) ? data : []);
+      } else if (!isSilent) {
+        toast.error(data.message || 'Hiba az eszközök betöltésekor!');
+      }
       setEquipmentLoading(false);
     } catch (err) {
-      toast.error("Hiba az eszközök betöltésekor!");
+      if (!isSilent) {
+        toast.error('Hiba az eszközök betöltésekor!');
+      }
       setEquipmentLoading(false);
     }
   }, []);
 
-  const fetchEmailManage = useCallback(async () => {
+  const fetchEmailManage = useCallback(async (isSilent = false) => {
     setEmailManageLoading(true);
     try {
       const [sentRes, inboxRes] = await Promise.all([
@@ -194,23 +234,25 @@ const AdminDashboard = () => {
 
       if (sentRes.ok) {
         setEmailSent(Array.isArray(sentData) ? sentData : []);
-      } else {
-        toast.error(sentData.message || 'Nem sikerult betolteni az elkuldott emaileket.');
+      } else if (!isSilent) {
+        toast.error(sentData.message || 'Nem sikerült betölteni az elküldött emaileket.');
       }
 
       if (inboxRes.ok) {
         setEmailInbox(Array.isArray(inboxData) ? inboxData : []);
-      } else {
-        toast.error(inboxData.message || 'Nem sikerult betolteni a bejovo emaileket.');
+      } else if (!isSilent) {
+        toast.error(inboxData.message || 'Nem sikerült betölteni a bejövő emaileket.');
       }
     } catch (err) {
-      toast.error('Email kezeles betoltese sikertelen.');
+      if (!isSilent) {
+        toast.error('Email kezelés betöltése sikertelen.');
+      }
     } finally {
       setEmailManageLoading(false);
     }
   }, []);
 
-  const fetchActivityLog = useCallback(async () => {
+  const fetchActivityLog = useCallback(async (isSilent = false) => {
     setActivityLoading(true);
     try {
       const res = await fetch(`${import.meta.env.VITE_API_URL}/admin/activity`, {
@@ -219,17 +261,19 @@ const AdminDashboard = () => {
       const data = await res.json();
       if (res.ok) {
         setActivityLog(Array.isArray(data) ? data : []);
-      } else {
-        toast.error(data.message || 'Nem sikerult betolteni a tevekenysegnaplot.');
+      } else if (!isSilent) {
+        toast.error(data.message || 'Nem sikerült betölteni a tevékenységnaplót.');
       }
     } catch (err) {
-      toast.error('Nem sikerult betolteni a tevekenysegnaplot.');
+      if (!isSilent) {
+        toast.error('Nem sikerült betölteni a tevékenységnaplót.');
+      }
     } finally {
       setActivityLoading(false);
     }
   }, []);
 
-  const fetchErrorLogs = useCallback(async () => {
+  const fetchErrorLogs = useCallback(async (isSilent = false) => {
     setErrorLoading(true);
     try {
       const levelQuery = errorLevelFilter ? `?level=${encodeURIComponent(errorLevelFilter)}` : '';
@@ -239,11 +283,13 @@ const AdminDashboard = () => {
       const data = await res.json();
       if (res.ok) {
         setErrorLogs(Array.isArray(data) ? data : []);
-      } else {
+      } else if (!isSilent) {
         toast.error(data.message || 'Nem sikerült betölteni a hibákat.');
       }
     } catch (err) {
-      toast.error('Nem sikerült betölteni a hibákat.');
+      if (!isSilent) {
+        toast.error('Nem sikerült betölteni a hibákat.');
+      }
     } finally {
       setErrorLoading(false);
     }
@@ -259,31 +305,77 @@ const AdminDashboard = () => {
     setEmailModalData(null);
   };
 
+  // Az aktuálisan megnyitott menüponthoz tartozó adatok automatikus célzott frissítése
+  const refreshActiveTabData = useCallback((isSilent = false) => {
+    switch (activeTab) {
+      case 'overview':
+        fetchBookings(isSilent);
+        fetchCancelRequests(isSilent);
+        fetchUsers(isSilent);
+        fetchTours(isSilent);
+        break;
+      case 'tours':
+        fetchTours(isSilent);
+        fetchBookings(isSilent);
+        fetchEquipment(isSilent);
+        break;
+      case 'bookings':
+        fetchBookings(isSilent);
+        fetchTours(isSilent);
+        break;
+      case 'cancellations':
+        fetchCancelRequests(isSilent);
+        fetchBookings(isSilent);
+        break;
+      case 'users':
+        fetchUsers(isSilent);
+        break;
+      case 'activity':
+        fetchActivityLog(isSilent);
+        break;
+      case 'errors':
+        fetchErrorLogs(isSilent);
+        break;
+      case 'email':
+        fetchUsers(isSilent);
+        fetchTours(isSilent);
+        if (emailSection === 'manage') {
+          fetchEmailManage(isSilent);
+        }
+        break;
+      case 'equipment':
+        fetchEquipment(isSilent);
+        break;
+      default:
+        break;
+    }
+  }, [
+    activeTab,
+    emailSection,
+    fetchBookings,
+    fetchCancelRequests,
+    fetchUsers,
+    fetchTours,
+    fetchEquipment,
+    fetchActivityLog,
+    fetchErrorLogs,
+    fetchEmailManage
+  ]);
+
+  // Kezdeti adatok betöltése
   useEffect(() => {
-    fetchBookings();
-    fetchCancelRequests();
-    fetchUsers();
-    fetchTours();
-    fetchEquipment();
+    fetchBookings(true);
+    fetchCancelRequests(true);
+    fetchUsers(true);
+    fetchTours(true);
+    fetchEquipment(true);
   }, [fetchBookings, fetchCancelRequests, fetchUsers, fetchTours, fetchEquipment]);
 
+  // Automatikus frissítés menüpont vagy alszakasz váltásakor
   useEffect(() => {
-    if (activeTab === 'email' && emailSection === 'manage') {
-      fetchEmailManage();
-    }
-  }, [activeTab, emailSection, fetchEmailManage]);
+    refreshActiveTabData(true);
+  }, [refreshActiveTabData]);
 
-  useEffect(() => {
-    if (activeTab === 'activity') {
-      fetchActivityLog();
-    }
-  }, [activeTab, fetchActivityLog]);
-
-  useEffect(() => {
-    if (activeTab === 'errors') {
-      fetchErrorLogs();
-    }
-  }, [activeTab, fetchErrorLogs]);
 
 
   const groupedBookings = useMemo(() => {
@@ -504,9 +596,13 @@ const AdminDashboard = () => {
       },
       body: JSON.stringify({ status: newStatus })
     });
+    const data = await res.json();
     if (res.ok) {
       setBookings(prev => prev.map(b => b.id === id ? { ...b, status: newStatus } : b));
-      toast.success("✔️ Státusz frissítve!");
+      toast.success(data.message || (newStatus === 'confirmed' ? "✔️ Jelentkezés jóváhagyva, értesítő email elküldve!" : "✔️ Státusz frissítve!"));
+      fetchBookings(true);
+    } else {
+      toast.error(data.message || "Hiba a státusz frissítésekor!");
     }
   };
 
@@ -526,6 +622,28 @@ const AdminDashboard = () => {
       fetchBookings();
     } else {
       toast.error(data.message || 'Hiba történt.');
+    }
+  };
+
+  const handlePromoteWaitlistUser = async (bookingId) => {
+    try {
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/bookings/waitlist/${bookingId}/promote`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        }
+      });
+      const data = await res.json();
+      if (res.ok) {
+        toast.success(data.message || "🎉 Felhasználó sikeresen átmozgatva a résztvevők közé!");
+        fetchBookings(true);
+        fetchTours(true);
+      } else {
+        toast.error(data.message || "Hiba az átmozgatáskor.");
+      }
+    } catch (err) {
+      toast.error("Hiba az átmozgatáskor.");
     }
   };
 
@@ -829,10 +947,17 @@ const AdminDashboard = () => {
     ).length;
   }, [bookings]);
 
+  const totalWaitlistCount = useMemo(() => {
+    return bookings.filter(
+      (b) => String(b?.status || '').toLowerCase() === 'waitlist'
+    ).length;
+  }, [bookings]);
+
   const tabs = [
     { id: 'overview', label: 'Áttekintés', icon: LayoutGrid },
     { id: 'tours', label: 'Túrák', icon: Calendar },
     { id: 'bookings', label: 'Jelentkezések', icon: ListChecks },
+    { id: 'waitlists', label: 'Várólisták', icon: Clock },
     { id: 'cancellations', label: 'Lejelentkezések', icon: MessageSquareText },
     { id: 'activity', label: 'Tevékenységnapló', icon: Activity },
     { id: 'errors', label: 'Hibák', icon: AlertTriangle },
@@ -1316,6 +1441,185 @@ const AdminDashboard = () => {
                     </tbody>
                   </table>
                 </div>
+              </div>
+            )}
+
+            {activeTab === 'waitlists' && (
+              <div className="space-y-6">
+                <div className="bg-white p-6 rounded-3xl shadow-sm border border-gray-100 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                  <div>
+                    <h2 className="text-xl font-black text-gray-900 tracking-tight flex items-center gap-2">
+                      <Clock className="text-amber-500" size={24} /> Várólisták kezelése
+                    </h2>
+                    <p className="text-xs text-gray-500 mt-1">
+                      Betelt túrák várólistáján szereplő felhasználók kezelése és manuális átmozgatása a résztvevők közé.
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <input
+                      type="text"
+                      placeholder="Keresés túra, név vagy email alapján..."
+                      value={waitlistSearch}
+                      onChange={(e) => setWaitlistSearch(e.target.value)}
+                      className="px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-2xl text-xs focus:ring-2 focus:ring-amber-500 outline-none w-64 text-gray-800"
+                    />
+                  </div>
+                </div>
+
+                {(() => {
+                  const toursWithWaitlist = tours.map(tour => {
+                    const tourBookings = bookings.filter(b => b.tour_id === tour.id);
+                    const waitlisted = tourBookings.filter(b => b.status === 'waitlist');
+                    const confirmedOrPending = tourBookings.filter(b => b.status !== 'cancelled' && b.status !== 'waitlist');
+                    return {
+                      ...tour,
+                      waitlisted,
+                      confirmedOrPending
+                    };
+                  }).filter(t => {
+                    if (waitlistSearch.trim()) {
+                      const term = waitlistSearch.toLowerCase();
+                      const matchTitle = (t.title || '').toLowerCase().includes(term);
+                      const matchUser = t.waitlisted.some(w => (w.user_name || '').toLowerCase().includes(term) || (w.user_email || '').toLowerCase().includes(term));
+                      return matchTitle || matchUser;
+                    }
+                    return t.waitlisted.length > 0;
+                  });
+
+                  if (toursWithWaitlist.length === 0) {
+                    return (
+                      <div className="bg-white p-12 rounded-3xl text-center border border-gray-100 shadow-sm">
+                        <div className="w-16 h-16 bg-amber-50 text-amber-500 rounded-2xl flex items-center justify-center mx-auto mb-4 border border-amber-100">
+                          <Clock size={32} />
+                        </div>
+                        <h3 className="text-lg font-black text-gray-900">Jelenleg nincs várólistás jelentkező</h3>
+                        <p className="text-xs text-gray-500 max-w-md mx-auto mt-2">
+                          Amikor egy túra betelik és új felhasználók jelentkeznek rá, automatikusan ide kerülnek a várólistára.
+                        </p>
+                      </div>
+                    );
+                  }
+
+                  return (
+                    <div className="space-y-6">
+                      {toursWithWaitlist.map(t => (
+                        <div key={t.id} className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
+                          <div className="p-6 bg-slate-900 text-white flex flex-col md:flex-row md:items-center justify-between gap-4">
+                            <div>
+                              <div className="flex items-center gap-3">
+                                <h3 className="text-lg font-black tracking-tight">{t.title}</h3>
+                                <span className="px-3 py-1 bg-amber-500/20 text-amber-300 border border-amber-500/30 rounded-full text-xs font-black">
+                                  ⏳ Várólista: {t.waitlisted.length} fő
+                                </span>
+                              </div>
+                              <div className="text-xs text-slate-400 mt-1 flex items-center gap-4">
+                                <span>Időpont: {formatHungarianDate(t.start_date)} - {formatHungarianDate(t.end_date)}</span>
+                                <span>Kapacitás: <strong className="text-emerald-400">{t.confirmedOrPending.length} / {t.max_participants || '∞'} fő</strong></span>
+                              </div>
+                            </div>
+                            <Link
+                              to={`/tours/${t.id}`}
+                              className="px-4 py-2 bg-white/10 hover:bg-white/20 text-white rounded-xl text-xs font-bold transition flex items-center gap-2 self-start md:self-auto"
+                            >
+                              Túra megtekintése <ArrowRight size={14} />
+                            </Link>
+                          </div>
+
+                          <div className="p-6 grid grid-cols-1 lg:grid-cols-2 gap-6">
+                            {/* Waitlisted Users */}
+                            <div className="space-y-3">
+                              <div className="flex items-center justify-between">
+                                <h4 className="text-xs font-black uppercase tracking-wider text-amber-600 flex items-center gap-1.5">
+                                  <Clock size={14} /> Várólistások (Sorrendben)
+                                </h4>
+                                <span className="text-[10px] font-bold text-gray-400">Jelentkezési idő szerint</span>
+                              </div>
+                              <div className="space-y-2.5">
+                                {t.waitlisted.map((w, index) => (
+                                  <div key={w.id} className="p-4 bg-amber-50/50 rounded-2xl border border-amber-200/60 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                                    <div className="flex items-center gap-3">
+                                      <div className="w-7 h-7 rounded-xl bg-amber-500 text-slate-950 font-black text-xs flex items-center justify-center shrink-0 shadow-sm">
+                                        #{index + 1}
+                                      </div>
+                                      <div>
+                                        <div className="font-bold text-gray-900 text-sm">{w.user_name}</div>
+                                        <div className="text-xs text-gray-500">{w.user_email}</div>
+                                        <div className="text-[10px] text-amber-700/80 mt-0.5">
+                                          Jelentkezett: {w.booked_at ? new Date(w.booked_at).toLocaleString('hu-HU') : '-'}
+                                        </div>
+                                      </div>
+                                    </div>
+                                    <div className="flex items-center gap-2 shrink-0">
+                                      <button
+                                        onClick={() => handlePromoteWaitlistUser(w.id)}
+                                        className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-black shadow-md shadow-emerald-600/20 transition flex items-center gap-1.5"
+                                        title="Áthelyezés a résztvevők közé és értesítő email küldése"
+                                      >
+                                        <CheckCircle size={14} /> Áthelyezés résztvevőnek
+                                      </button>
+                                      <button
+                                        onClick={() => handleAdminRemoveBooking(w.id)}
+                                        className="p-2 bg-red-50 hover:bg-red-500 text-red-500 hover:text-white rounded-xl border border-red-100 transition"
+                                        title="Eltávolítás a várólistáról"
+                                      >
+                                        <Trash2 size={14} />
+                                      </button>
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+
+                            {/* Current Active Participants */}
+                            <div className="space-y-3">
+                              <div className="flex items-center justify-between">
+                                <h4 className="text-xs font-black uppercase tracking-wider text-emerald-600 flex items-center gap-1.5">
+                                  <Users size={14} /> Jelenlegi résztvevők ({t.confirmedOrPending.length} fő)
+                                </h4>
+                                <span className="text-[10px] font-bold text-gray-400">Helycsinálás törléssel lehetséges</span>
+                              </div>
+                              <div className="space-y-2.5 max-h-[360px] overflow-y-auto pr-1">
+                                {t.confirmedOrPending.length === 0 ? (
+                                  <div className="p-4 bg-gray-50 rounded-2xl text-center text-xs text-gray-400">
+                                    Nincs aktív résztvevő
+                                  </div>
+                                ) : (
+                                  t.confirmedOrPending.map(p => (
+                                    <div key={p.id} className="p-3.5 bg-gray-50 rounded-2xl border border-gray-100 flex items-center justify-between gap-3">
+                                      <div>
+                                        <div className="font-bold text-gray-900 text-xs flex items-center gap-2">
+                                          {p.user_name}
+                                          <span className={`px-2 py-0.5 rounded-md text-[9px] font-black uppercase ${
+                                            p.status === 'confirmed' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'
+                                          }`}>
+                                            {p.status === 'confirmed' ? 'Elfogadva' : 'Jóváhagyásra vár'}
+                                          </span>
+                                          {p.payment_status === 'paid' && (
+                                            <span className="px-2 py-0.5 rounded-md text-[9px] font-black uppercase bg-emerald-600 text-white">
+                                              Fizetve
+                                            </span>
+                                          )}
+                                        </div>
+                                        <div className="text-[11px] text-gray-500">{p.user_email}</div>
+                                      </div>
+                                      <button
+                                        onClick={() => handleAdminRemoveBooking(p.id)}
+                                        className="px-3 py-1.5 bg-red-50 hover:bg-red-500 text-red-500 hover:text-white rounded-xl text-[11px] font-bold border border-red-100 transition flex items-center gap-1 shrink-0"
+                                        title="Résztvevő törlése a túráról a hely felszabadításához"
+                                      >
+                                        <UserMinus size={13} /> Törlés a túráról
+                                      </button>
+                                    </div>
+                                  ))
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  );
+                })()}
               </div>
             )}
 

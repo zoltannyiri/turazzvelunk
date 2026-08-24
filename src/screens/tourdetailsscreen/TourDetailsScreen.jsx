@@ -3,7 +3,7 @@ import { useParams, Link, useNavigate, useLocation } from 'react-router-dom';
 import { AuthContext } from '../../context/AuthContext';
 import { 
   Clock, MapPin, Calendar, Users, ArrowLeft, 
-  Zap, Info, ShieldCheck, CheckCircle2, UserMinus, MessageCircle, ThumbsUp, X
+  Zap, Info, ShieldCheck, CheckCircle2, UserMinus, MessageCircle, ThumbsUp, X, XCircle
 } from 'lucide-react';
 import { toast } from 'react-toastify';
 import { io } from 'socket.io-client';
@@ -77,10 +77,6 @@ const TourDetailsScreen = () => {
       const res = await fetch(`${import.meta.env.VITE_API_URL}/tours/${id}`);
       const data = await res.json();
       setTour(data);
-
-      if (user) {
-        await refreshBookingStatus();
-      }
       setLoading(false);
     } catch (err) {
       console.error(err);
@@ -105,7 +101,18 @@ const TourDetailsScreen = () => {
   useEffect(() => {
     fetchTourData();
     fetchEquipmentOptions();
-  }, [id, user]);
+  }, [id]);
+
+  useEffect(() => {
+    if (user?.id) {
+      refreshBookingStatus();
+    } else {
+      setIsBooked(false);
+      setBookingStatus(null);
+      setBookingId(null);
+      setPaymentStatus(null);
+    }
+  }, [id, user?.id]);
 
   useEffect(() => {
     const params = new URLSearchParams(location.search);
@@ -169,12 +176,12 @@ const TourDetailsScreen = () => {
       setInitialEquipmentIds(checkData.equipment_ids);
       setEquipmentInitialized(true);
     }
-    if (!checkData.isBooked) {
+    if (!checkData.isBooked && checkData.status !== 'cancelled') {
       setEquipmentInitialized(false);
       setInitialEquipmentIds([]);
       setSelectedEquipmentIds([]);
     }
-    if (checkData.isBooked) {
+    if (checkData.isBooked || checkData.status === 'cancelled') {
       setBookingTotals({
         total: Number(checkData.total_price || 0),
         extra: Number(checkData.extra_price || 0)
@@ -184,8 +191,11 @@ const TourDetailsScreen = () => {
   };
 
   useEffect(() => {
+    if (!user || user.role !== 'admin') {
+      setAdminBookings([]);
+      return;
+    }
     const fetchAdminBookings = async () => {
-      if (!user || user.role !== 'admin') return;
       setAdminBookingsLoading(true);
       try {
         const res = await fetch(`${import.meta.env.VITE_API_URL}/bookings/admin/tours/${id}`,
@@ -203,7 +213,7 @@ const TourDetailsScreen = () => {
     };
 
     fetchAdminBookings();
-  }, [id, user]);
+  }, [id, user?.id, user?.role]);
 
   const fetchPosts = async ({ silent = false } = {}) => {
     if (!silent) {
@@ -488,9 +498,15 @@ const TourDetailsScreen = () => {
       });
       const data = await res.json();
       if (res.ok) {
-        toast.success("🎉 Jelentkezés sikeres!");
-        setIsBooked(true);
-        setBookingStatus('confirmed');
+        if (data.isWaitlist || data.status === 'waitlist') {
+          toast.success("⏳ Sikeresen feliratkoztál a várólistára! Ha felszabadul egy hely, emailben értesítünk.");
+          setIsBooked(true);
+          setBookingStatus('waitlist');
+        } else {
+          toast.success("🎉 Jelentkezés elküldve! Az adminisztrátor jóváhagyása után kapni fogsz egy emailt, és megnyílik a fizetés.");
+          setIsBooked(true);
+          setBookingStatus('pending');
+        }
         fetchTourData();
         fetchEquipmentOptions();
         refreshBookingStatus();
@@ -813,7 +829,7 @@ const TourDetailsScreen = () => {
                 activeTab === 'posts' ? 'bg-emerald-600 text-white' : 'text-slate-500 hover:bg-slate-50'
               }`}
             >
-              Bejegyzések
+              Fontos információk
             </button>
             {user && bookingStatus === 'confirmed' && (
               <button
@@ -1132,8 +1148,12 @@ const TourDetailsScreen = () => {
                     {formatPrice(displayTotal)} <span className="text-lg not-italic text-emerald-500">Ft</span>
                   </div>
                   {paymentStatus === 'paid' && (
-                    <div className="mt-2 text-xs font-black uppercase tracking-widest text-red-400">
-                      Fizetve
+                    <div className={`mt-2 inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-black uppercase tracking-widest ${
+                      bookingStatus === 'cancelled'
+                        ? 'bg-rose-600 text-white shadow-md shadow-rose-600/30'
+                        : 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
+                    }`}>
+                      <CheckCircle2 size={14} /> Fizetve
                     </div>
                   )}
                   {displayExtra > 0 && (
@@ -1175,9 +1195,66 @@ const TourDetailsScreen = () => {
                       <span className="text-slate-400 font-bold uppercase">Jelentkezők</span>
                       <span className="font-bold text-emerald-400">{tour.booked_count || 0} / {tour.max_participants} fő</span>
                     </div>
+
+                    {isTourFull && !isTourEnded && (
+                      <div className="py-3 flex items-center justify-center">
+                        <div className="relative select-none transform -rotate-6">
+                          <svg viewBox="0 0 160 160" className="w-28 h-28 drop-shadow-[0_6px_16px_rgba(0,0,0,0.7)]">
+                            {/* Outer thick stamp ring with dark background */}
+                            <circle cx="80" cy="80" r="74" fill="#030712" stroke="#000000" strokeWidth="4" strokeDasharray="10 3 3 3" />
+                            
+                            {/* Secondary inner ring */}
+                            <circle cx="80" cy="80" r="66" fill="#090d16" stroke="#475569" strokeWidth="1.5" strokeDasharray="4 2" />
+                            
+                            {/* Inner fine ring */}
+                            <circle cx="80" cy="80" r="48" fill="none" stroke="#64748b" strokeWidth="1.2" strokeDasharray="2 2" />
+
+                            {/* Curved Top Text */}
+                            <path id="tourWaitlistTopPathBlack" d="M 25,80 A 55,55 0 1,1 135,80" fill="none" />
+                            <text className="text-[9.5px] font-black uppercase tracking-[0.24em] fill-slate-300" textAnchor="middle">
+                              <textPath href="#tourWaitlistTopPathBlack" startOffset="50%">
+                                ★ TÚRÁZZ VELÜNK ★
+                              </textPath>
+                            </text>
+
+                            {/* Curved Bottom Text */}
+                            <path id="tourWaitlistBottomPathBlack" d="M 135,80 A 55,55 0 0,1 25,80" fill="none" />
+                            <text className="text-[8.5px] font-black uppercase tracking-[0.22em] fill-slate-400" textAnchor="middle">
+                              <textPath href="#tourWaitlistBottomPathBlack" startOffset="50%">
+                                HIVATALOS VÁRÓLISTA
+                              </textPath>
+                            </text>
+
+                            {/* Center Stamp Plate */}
+                            <rect x="14" y="64" width="132" height="32" fill="#000000" stroke="#475569" strokeWidth="2" rx="3" />
+                            
+                            {/* Inner decorative line on plate */}
+                            <line x1="18" y1="68" x2="142" y2="68" stroke="#334155" strokeWidth="0.8" />
+                            <line x1="18" y1="92" x2="142" y2="92" stroke="#334155" strokeWidth="0.8" />
+
+                            <text x="80" y="80.5" textAnchor="middle" dominantBaseline="middle" className="text-[13px] font-black uppercase tracking-[0.24em] fill-white">
+                              VÁRÓLISTA
+                            </text>
+                            
+                            {/* Side star ornaments */}
+                            <text x="24" y="80.5" textAnchor="middle" dominantBaseline="middle" className="text-[9px] fill-slate-400">★</text>
+                            <text x="136" y="80.5" textAnchor="middle" dominantBaseline="middle" className="text-[9px] fill-slate-400">★</text>
+                          </svg>
+                        </div>
+                      </div>
+                    )}
+
+                    {Number(tour.waitlist_count || 0) > 0 && (
+                      <div className="flex justify-between py-2 border-t border-white/5">
+                        <span className="text-amber-400 font-bold uppercase flex items-center gap-1">
+                          <Clock size={13} /> Várólista
+                        </span>
+                        <span className="font-bold text-amber-400">{tour.waitlist_count} fő</span>
+                      </div>
+                    )}
                 </div>
 
-                {isBooked ? (
+                {isBooked || bookingStatus === 'cancelled' ? (
                   bookingStatus === 'confirmed' ? (
                     <div className="space-y-4">
                       <div className="w-full py-4 rounded-2xl font-black text-sm bg-emerald-500/10 text-emerald-500 border border-emerald-500/30 flex items-center justify-center gap-2 uppercase tracking-widest">
@@ -1238,33 +1315,68 @@ const TourDetailsScreen = () => {
                         </div>
                         {bookedEquipmentOptions.length > 0 && (
                           <div className="space-y-2">
-                            {bookedEquipmentOptions.map((item) => (
-                              <label key={item.id} className="flex items-center justify-between gap-3">
-                                <div className="flex items-center gap-2">
-                                  <input
-                                    type="checkbox"
-                                    className="accent-emerald-500"
-                                    disabled={isTourEnded || paymentStatus === 'paid'}
-                                    checked={selectedEquipmentIds.includes(item.id)}
-                                    onChange={(e) => {
-                                      if (isTourEnded || paymentStatus === 'paid') return;
-                                      setSelectedEquipmentIds((prev) =>
-                                        e.target.checked
-                                          ? [...new Set([...prev, item.id])]
-                                          : prev.filter((id) => Number(id) !== Number(item.id))
-                                      );
-                                    }}
-                                  />
-                                  <div className="flex flex-col">
-                                    <span className="font-bold text-white">{item.name}</span>
-                                    {item.description && (
-                                      <span className="text-[10px] text-slate-400">{item.description}</span>
+                            {bookedEquipmentOptions.map((item) => {
+                              const isBookedByMe = initialEquipmentIds.some((id) => Number(id) === Number(item.id));
+                              const availableCount = Number(item.available_quantity || 0);
+                              const isAvailable = isBookedByMe || availableCount > 0;
+
+                              return (
+                                <label 
+                                  key={item.id} 
+                                  className={`flex items-center justify-between gap-3 p-2 rounded-xl transition ${
+                                    !isAvailable && !isBookedByMe ? 'opacity-60 bg-red-500/5 cursor-not-allowed' : 'hover:bg-white/5 cursor-pointer'
+                                  }`}
+                                >
+                                  <div className="flex items-center gap-2.5">
+                                    <input
+                                      type="checkbox"
+                                      className="accent-emerald-500 h-4 w-4 rounded"
+                                      disabled={isTourEnded || paymentStatus === 'paid' || (!isAvailable && !isBookedByMe)}
+                                      checked={selectedEquipmentIds.includes(item.id)}
+                                      onChange={(e) => {
+                                        if (isTourEnded || paymentStatus === 'paid') return;
+                                        if (!isAvailable && !isBookedByMe && e.target.checked) return;
+                                        setSelectedEquipmentIds((prev) =>
+                                          e.target.checked
+                                            ? [...new Set([...prev, item.id])]
+                                            : prev.filter((id) => Number(id) !== Number(item.id))
+                                        );
+                                      }}
+                                    />
+                                    <div className="flex flex-col">
+                                      <span className={`font-bold ${!isAvailable && !isBookedByMe ? 'text-slate-400 line-through' : 'text-white'}`}>
+                                        {item.name}
+                                      </span>
+                                      {item.description && (
+                                        <span className="text-[10px] text-slate-400">{item.description}</span>
+                                      )}
+                                    </div>
+                                  </div>
+                                  <div className="text-right shrink-0">
+                                    <div className="text-emerald-300 font-black">{formatPrice(item.price)} Ft</div>
+                                    {isBookedByMe ? (
+                                      <div className="text-[10px] font-bold text-emerald-400">
+                                        Lefoglalva nálad {availableCount > 0 ? `(szabad: ${availableCount} db)` : ''}
+                                      </div>
+                                    ) : isAvailable ? (
+                                      availableCount === 1 ? (
+                                        <div className="text-[10px] font-black uppercase tracking-wider text-amber-300">
+                                          Már csak 1 db!
+                                        </div>
+                                      ) : (
+                                        <div className="text-[10px] text-slate-400">
+                                          Elérhető: {availableCount} db
+                                        </div>
+                                      )
+                                    ) : (
+                                      <div className="mt-0.5 inline-block px-2 py-0.5 bg-red-500/20 text-red-400 border border-red-500/30 rounded text-[9px] font-black uppercase tracking-wider">
+                                        ELFOGYOTT
+                                      </div>
                                     )}
                                   </div>
-                                </div>
-                                <span className="text-emerald-300 font-black">{formatPrice(item.price)} Ft</span>
-                              </label>
-                            ))}
+                                </label>
+                              );
+                            })}
                           </div>
                         )}
                         <button
@@ -1291,8 +1403,16 @@ const TourDetailsScreen = () => {
                         )}
                       </div>
                     </div>
-                  ) : (
+                  ) : bookingStatus === 'waitlist' ? (
                     <div className="space-y-4">
+                      <div className="w-full py-4 px-4 rounded-2xl font-black text-sm bg-amber-500/15 text-amber-300 border border-amber-500/30 flex flex-col items-center justify-center gap-2 text-center">
+                        <div className="flex items-center gap-2 uppercase tracking-widest text-xs font-black text-amber-400">
+                          <Clock size={16} /> Várólistán vagy
+                        </div>
+                        <div className="text-[11px] font-normal text-amber-200/90 leading-relaxed">
+                          A túra betelt, jelenleg a várólistán szerepelsz. Ha felszabadul egy hely és az adminisztrátor átmozgat a résztvevők közé, azonnal értesítő emailt kapsz és megnyílik a fizetés!
+                        </div>
+                      </div>
                       <button
                         onClick={handleCancelBooking}
                         disabled={cancelBookingSubmitting}
@@ -1309,44 +1429,120 @@ const TourDetailsScreen = () => {
                           ></span>
                         )}
                         <UserMinus size={18} />
-                        {cancelBookingSubmitting ? 'Lejelentkezés...' : 'Lejelentkezés'}
+                        {cancelBookingSubmitting ? 'Leiratkozás a várólistáról...' : 'Leiratkozás a várólistáról'}
+                      </button>
+                    </div>
+                  ) : bookingStatus === 'cancelled' ? (
+                    <div className="space-y-4">
+                      <div className="w-full py-4 px-4 rounded-2xl font-black text-sm bg-rose-500/15 text-rose-300 border border-rose-500/30 flex flex-col items-center justify-center gap-2 text-center">
+                        <div className="flex items-center gap-2 uppercase tracking-widest text-xs font-black text-rose-400">
+                          <XCircle size={16} /> Lejelentkezve
+                        </div>
+                        <div className="text-[11px] font-normal text-rose-200/90 leading-relaxed">
+                          Erről a túráról sikeresen lejelentkeztél.
+                          {paymentStatus === 'paid' && ' A részvételi díj korábban kifizetésre került.'}
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      <div className="w-full py-4 px-4 rounded-2xl font-black text-sm bg-amber-500/10 text-amber-400 border border-amber-500/30 flex flex-col items-center justify-center gap-2 text-center">
+                        <div className="flex items-center gap-2 uppercase tracking-widest text-xs font-black">
+                          <Clock size={16} /> Jóváhagyásra vár
+                        </div>
+                        <div className="text-[11px] font-normal text-amber-200/80 leading-relaxed">
+                          A jelentkezésedet rögzítettük. Az adminisztrátor jóváhagyása után kapni fogsz egy értesítő emailt, és megnyílik a fizetés lehetősége.
+                        </div>
+                      </div>
+                      <button
+                        onClick={handleCancelBooking}
+                        disabled={cancelBookingSubmitting}
+                        className={`w-full py-4 rounded-2xl font-black text-sm border flex items-center justify-center gap-2 uppercase tracking-widest transition-all ${
+                          cancelBookingSubmitting
+                            ? 'bg-red-500/5 text-red-300 border-red-500/20 cursor-not-allowed'
+                            : 'bg-red-500/10 text-red-500 border-red-500/30 hover:bg-red-500 hover:text-white'
+                        }`}
+                      >
+                        {cancelBookingSubmitting && (
+                          <span
+                            className="h-4 w-4 rounded-full border-2 border-red-200 border-t-red-500 animate-spin"
+                            aria-hidden="true"
+                          ></span>
+                        )}
+                        <UserMinus size={18} />
+                        {cancelBookingSubmitting ? 'Jelentkezés visszavonása...' : 'Jelentkezés visszavonása'}
                       </button>
                       <div hidden={isTourEnded && bookedEquipmentOptions.length === 0} className="bg-white/5 border border-white/10 rounded-2xl p-4 text-xs space-y-3">
                         <div className="text-[10px] font-black uppercase tracking-widest text-slate-400">
                           {isTourEnded ? 'Használt eszközök' : 'Eszközök módosítása'}
                         </div>
                         <div hidden={isTourEnded} className="text-slate-300">
-                          Pipáld ki, amit megtartanál. A gomb csak változtatás után aktív. Fizetés után módosítás nem engedett.
+                          Pipáld ki, amit megtartanál. A gomb csak változtatás után aktív.
                         </div>
                         {bookedEquipmentOptions.length > 0 && (
                           <div className="space-y-2">
-                            {bookedEquipmentOptions.map((item) => (
-                              <label key={item.id} className="flex items-center justify-between gap-3">
-                                <div className="flex items-center gap-2">
-                                  <input
-                                    type="checkbox"
-                                    className="accent-emerald-500"
-                                    disabled={isTourEnded || paymentStatus === 'paid'}
-                                    checked={selectedEquipmentIds.includes(item.id)}
-                                    onChange={(e) => {
-                                      if (isTourEnded || paymentStatus === 'paid') return;
-                                      setSelectedEquipmentIds((prev) =>
-                                        e.target.checked
-                                          ? [...new Set([...prev, item.id])]
-                                          : prev.filter((id) => Number(id) !== Number(item.id))
-                                      );
-                                    }}
-                                  />
-                                  <div className="flex flex-col">
-                                    <span className="font-bold text-white">{item.name}</span>
-                                    {item.description && (
-                                      <span className="text-[10px] text-slate-400">{item.description}</span>
+                            {bookedEquipmentOptions.map((item) => {
+                              const isBookedByMe = initialEquipmentIds.some((id) => Number(id) === Number(item.id));
+                              const availableCount = Number(item.available_quantity || 0);
+                              const isAvailable = isBookedByMe || availableCount > 0;
+
+                              return (
+                                <label 
+                                  key={item.id} 
+                                  className={`flex items-center justify-between gap-3 p-2 rounded-xl transition ${
+                                    !isAvailable && !isBookedByMe ? 'opacity-60 bg-red-500/5 cursor-not-allowed' : 'hover:bg-white/5 cursor-pointer'
+                                  }`}
+                                >
+                                  <div className="flex items-center gap-2.5">
+                                    <input
+                                      type="checkbox"
+                                      className="accent-emerald-500 h-4 w-4 rounded"
+                                      disabled={isTourEnded || paymentStatus === 'paid' || (!isAvailable && !isBookedByMe)}
+                                      checked={selectedEquipmentIds.includes(item.id)}
+                                      onChange={(e) => {
+                                        if (isTourEnded || paymentStatus === 'paid') return;
+                                        if (!isAvailable && !isBookedByMe && e.target.checked) return;
+                                        setSelectedEquipmentIds((prev) =>
+                                          e.target.checked
+                                            ? [...new Set([...prev, item.id])]
+                                            : prev.filter((id) => Number(id) !== Number(item.id))
+                                        );
+                                      }}
+                                    />
+                                    <div className="flex flex-col">
+                                      <span className={`font-bold ${!isAvailable && !isBookedByMe ? 'text-slate-400 line-through' : 'text-white'}`}>
+                                        {item.name}
+                                      </span>
+                                      {item.description && (
+                                        <span className="text-[10px] text-slate-400">{item.description}</span>
+                                      )}
+                                    </div>
+                                  </div>
+                                  <div className="text-right shrink-0">
+                                    <div className="text-emerald-300 font-black">{formatPrice(item.price)} Ft</div>
+                                    {isBookedByMe ? (
+                                      <div className="text-[10px] font-bold text-emerald-400">
+                                        Lefoglalva nálad {availableCount > 0 ? `(szabad: ${availableCount} db)` : ''}
+                                      </div>
+                                    ) : isAvailable ? (
+                                      availableCount === 1 ? (
+                                        <div className="text-[10px] font-black uppercase tracking-wider text-amber-300">
+                                          Már csak 1 db!
+                                        </div>
+                                      ) : (
+                                        <div className="text-[10px] text-slate-400">
+                                          Elérhető: {availableCount} db
+                                        </div>
+                                      )
+                                    ) : (
+                                      <div className="mt-0.5 inline-block px-2 py-0.5 bg-red-500/20 text-red-400 border border-red-500/30 rounded text-[9px] font-black uppercase tracking-wider">
+                                        ELFOGYOTT
+                                      </div>
                                     )}
                                   </div>
-                                </div>
-                                <span className="text-emerald-300 font-black">{formatPrice(item.price)} Ft</span>
-                              </label>
-                            ))}
+                                </label>
+                              );
+                            })}
                           </div>
                         )}
                         <button
@@ -1361,12 +1557,7 @@ const TourDetailsScreen = () => {
                         >
                           Eszközök frissítése
                         </button>
-                        {!isTourEnded && paymentStatus === 'paid' && (
-                          <div className="text-amber-300 font-black uppercase tracking-widest text-[10px]">
-                            Fizetés után az eszközök nem módosíthatók.
-                          </div>
-                        )}
-                        {!isTourEnded && !paymentStatus && (!equipmentInitialized || !isEquipmentDirty) && (
+                        {!isTourEnded && (!equipmentInitialized || !isEquipmentDirty) && (
                           <div className="text-[10px] font-black uppercase tracking-widest text-slate-400">
                             Nincs változtatás.
                           </div>
@@ -1382,50 +1573,84 @@ const TourDetailsScreen = () => {
                         <div className="text-slate-300 leading-relaxed">
                           Eszközöket a túra időszakára tudsz bérelni. A készlet korlátozott.
                         </div>
-                        {equipmentOptions.map((item) => (
-                          <label key={item.id} className="flex items-center justify-between gap-3">
-                            <div className="flex items-center gap-2">
-                              <input
-                                type="checkbox"
-                                className="accent-emerald-500"
-                                disabled={Number(item.available_quantity || 0) <= 0}
-                                checked={selectedEquipmentIds.includes(item.id)}
-                                onChange={(e) => {
-                                  setSelectedEquipmentIds((prev) =>
-                                    e.target.checked
-                                      ? [...new Set([...prev, item.id])]
-                                      : prev.filter((id) => Number(id) !== Number(item.id))
-                                  );
-                                }}
-                              />
-                              <div className="flex flex-col">
-                                <span className="font-bold text-white">{item.name}</span>
-                                {item.description && (
-                                  <span className="text-[10px] text-slate-400">{item.description}</span>
+                        {equipmentOptions.map((item) => {
+                          const isAvailable = Number(item.available_quantity || 0) > 0;
+                          const availableCount = Number(item.available_quantity || 0);
+
+                          return (
+                            <label 
+                              key={item.id} 
+                              className={`flex items-center justify-between gap-3 p-2 rounded-xl transition ${
+                                !isAvailable ? 'opacity-60 bg-red-500/5 cursor-not-allowed' : 'hover:bg-white/5 cursor-pointer'
+                              }`}
+                            >
+                              <div className="flex items-center gap-2.5">
+                                <input
+                                  type="checkbox"
+                                  className="accent-emerald-500 h-4 w-4 rounded"
+                                  disabled={!isAvailable}
+                                  checked={selectedEquipmentIds.includes(item.id)}
+                                  onChange={(e) => {
+                                    if (!isAvailable && e.target.checked) return;
+                                    setSelectedEquipmentIds((prev) =>
+                                      e.target.checked
+                                        ? [...new Set([...prev, item.id])]
+                                        : prev.filter((id) => Number(id) !== Number(item.id))
+                                    );
+                                  }}
+                                />
+                                <div className="flex flex-col">
+                                  <span className={`font-bold ${!isAvailable ? 'text-slate-400 line-through' : 'text-white'}`}>
+                                    {item.name}
+                                  </span>
+                                  {item.description && (
+                                    <span className="text-[10px] text-slate-400">{item.description}</span>
+                                  )}
+                                </div>
+                              </div>
+                              <div className="text-right shrink-0">
+                                <div className="text-emerald-300 font-black">{formatPrice(item.price)} Ft</div>
+                                {isAvailable ? (
+                                  availableCount === 1 ? (
+                                    <div className="text-[10px] font-black uppercase tracking-wider text-amber-300">
+                                      Már csak 1 db!
+                                    </div>
+                                  ) : (
+                                    <div className="text-[10px] text-slate-400">
+                                      Elérhető: {availableCount} db
+                                    </div>
+                                  )
+                                ) : (
+                                  <div className="mt-0.5 inline-block px-2 py-0.5 bg-red-500/20 text-red-400 border border-red-500/30 rounded text-[9px] font-black uppercase tracking-wider">
+                                    ELFOGYOTT
+                                  </div>
                                 )}
                               </div>
-                            </div>
-                            <div className="text-right">
-                              <div className="text-emerald-300 font-black">{formatPrice(item.price)} Ft</div>
-                              {Number(item.available_quantity || 0) > 0 ? (
-                                <div className="text-[10px] text-slate-400">Elérhető: {Number(item.available_quantity || 0)} db</div>
-                              ) : (
-                                <div className="text-[10px] font-black uppercase tracking-widest text-red-400">Nem elérhető</div>
-                              )}
-                            </div>
-                          </label>
-                        ))}
+                            </label>
+                          );
+                        })}
+                      </div>
+                    )}
+                    {isTourFull && !isTourEnded && !isTourInProgress && (
+                      <div className="p-4 bg-amber-500/10 border border-amber-500/30 rounded-2xl text-xs text-amber-200 flex items-start gap-3">
+                        <Clock size={18} className="text-amber-400 shrink-0 mt-0.5" />
+                        <div>
+                          <span className="font-black text-amber-300 block mb-1">A túra betelt!</span>
+                          Jelentkezz a <strong>várólistára</strong>. Ha valamelyik résztvevő visszamondja a helyét, az adminisztrátor átmozgathat a résztvevők közé, amiről azonnal emailben értesítünk!
+                        </div>
                       </div>
                     )}
                     <button 
                       onClick={handleBooking}
-                      disabled={isTourEnded || isTourInProgress || isTourFull || !user || bookingSubmitting}
+                      disabled={isTourEnded || isTourInProgress || !user || bookingSubmitting}
                       className={`w-full py-4 rounded-2xl font-black text-sm transition-all flex items-center justify-center gap-2 uppercase tracking-widest ${
-                        isTourEnded || isTourInProgress || isTourFull || bookingSubmitting
+                        isTourEnded || isTourInProgress || bookingSubmitting
                           ? 'bg-slate-800 text-slate-500 cursor-not-allowed'
-                          : user 
-                            ? 'bg-emerald-500 hover:bg-emerald-400 text-slate-900 shadow-lg shadow-emerald-500/20' 
-                            : 'bg-slate-800 text-slate-500 cursor-not-allowed'
+                          : !user 
+                            ? 'bg-slate-800 text-slate-500 cursor-not-allowed'
+                            : isTourFull
+                              ? 'bg-amber-500 hover:bg-amber-400 text-slate-950 shadow-lg shadow-amber-500/20'
+                              : 'bg-emerald-500 hover:bg-emerald-400 text-slate-900 shadow-lg shadow-emerald-500/20'
                       }`}
                     >
                       {bookingSubmitting && (
@@ -1438,13 +1663,13 @@ const TourDetailsScreen = () => {
                         ? 'A túra véget ért'
                         : isTourInProgress
                           ? 'A túra már elkezdődött'
-                          : isTourFull
-                            ? 'A túra betelt'
-                            : !user
-                              ? 'Bejelentkezés szükséges'
-                              : bookingSubmitting
-                                ? 'Jelentkezés...'
-                                : 'Jelentkezem most'}
+                          : !user
+                            ? 'Bejelentkezés szükséges'
+                            : bookingSubmitting
+                              ? 'Jelentkezés...'
+                              : isTourFull
+                                ? '⏳ Jelentkezés várólistára'
+                                : 'Jelentkezés a túrára'}
                     </button>
                   </div>
                 )}

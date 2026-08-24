@@ -3,14 +3,22 @@ const db = require('../config/db');
 exports.getAllTours = async (req, res) => {
     try {
         const [rows] = await db.query(`
-            SELECT t.*, COALESCE(b.booked_count, 0) AS booked_count
+            SELECT t.*, 
+                   COALESCE(b.booked_count, 0) AS booked_count,
+                   COALESCE(w.waitlist_count, 0) AS waitlist_count
             FROM tours t
             LEFT JOIN (
                 SELECT tour_id, COUNT(*) AS booked_count
                 FROM bookings
-                WHERE status <> 'cancelled'
+                WHERE status <> 'cancelled' AND status <> 'waitlist'
                 GROUP BY tour_id
             ) b ON b.tour_id = t.id
+            LEFT JOIN (
+                SELECT tour_id, COUNT(*) AS waitlist_count
+                FROM bookings
+                WHERE status = 'waitlist'
+                GROUP BY tour_id
+            ) w ON w.tour_id = t.id
         `);
         console.log("Adatok lekérve:", rows.length, "db túra");
         res.json(rows);
@@ -24,7 +32,8 @@ exports.getTourById = async (req, res) => {
     try {
         const [rows] = await db.query(`
             SELECT t.*, 
-            (SELECT COUNT(*) FROM bookings WHERE tour_id = t.id AND status <> 'cancelled') as booked_count 
+            (SELECT COUNT(*) FROM bookings WHERE tour_id = t.id AND status <> 'cancelled' AND status <> 'waitlist') as booked_count,
+            (SELECT COUNT(*) FROM bookings WHERE tour_id = t.id AND status = 'waitlist') as waitlist_count
             FROM tours t 
             WHERE t.id = ?
         `, [req.params.id]);
@@ -61,7 +70,7 @@ exports.getTourEquipmentOptions = async (req, res) => {
                SELECT be.equipment_id, SUM(be.quantity) AS qty, MAX(be.price) AS booked_price
                FROM booking_equipments be
                JOIN bookings b ON b.id = be.booking_id
-               WHERE b.tour_id = ? AND b.status <> 'cancelled'
+               WHERE b.tour_id = ? AND b.status <> 'cancelled' AND b.status <> 'waitlist'
                GROUP BY be.equipment_id
              ) tour_booked ON tour_booked.equipment_id = e.id
              LEFT JOIN (
@@ -69,7 +78,7 @@ exports.getTourEquipmentOptions = async (req, res) => {
                FROM booking_equipments be
                JOIN bookings b ON b.id = be.booking_id
                JOIN tours t ON t.id = b.tour_id
-               WHERE b.status <> 'cancelled'
+               WHERE b.status <> 'cancelled' AND b.status <> 'waitlist'
                  AND t.start_date <= ? AND t.end_date >= ?
                GROUP BY be.equipment_id
              ) reserved ON reserved.equipment_id = e.id
@@ -136,7 +145,7 @@ exports.updateTour = async (req, res) => {
             let d = updates.duration;
             d = (d === "" || d === null || d === undefined) ? null : Number(d);
             updates.duration = (d !== null && Number.isFinite(d)) ? d : null;
-            }
+        }
         const equipmentPrices = Array.isArray(updates.equipment_prices) ? updates.equipment_prices : null;
         if ("equipment_prices" in updates) {
             delete updates.equipment_prices;
@@ -155,7 +164,7 @@ exports.updateTour = async (req, res) => {
                  JOIN equipment e ON e.id = be.equipment_id
                  LEFT JOIN tour_equipment_prices tp
                    ON tp.tour_id = b.tour_id AND tp.equipment_id = be.equipment_id
-                 WHERE b.tour_id = ? AND b.status <> 'cancelled'
+                 WHERE b.tour_id = ? AND b.status <> 'cancelled' AND b.status <> 'waitlist'
                  GROUP BY be.equipment_id, e.name`,
                 [id]
             );
@@ -201,6 +210,10 @@ exports.updateTour = async (req, res) => {
                 })
             );
         }
+        const io = req.app.get('io');
+        if (io) {
+            io.emit('equipment-availability-updated', { tourId: Number(id) });
+        }
         res.json({ message: "Túra sikeresen frissítve!" });
     } catch (err) {
         res.status(500).json({ error: err.message });
@@ -236,7 +249,7 @@ exports.getEquipmentAvailabilityByRange = async (req, res) => {
                FROM booking_equipments be
                JOIN bookings b ON b.id = be.booking_id
                JOIN tours t ON t.id = b.tour_id
-               WHERE b.status <> 'cancelled'
+               WHERE b.status <> 'cancelled' AND b.status <> 'waitlist'
                  AND t.start_date <= ? AND t.end_date >= ?
                GROUP BY be.equipment_id
              ) reserved ON reserved.equipment_id = e.id
