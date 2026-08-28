@@ -1,4 +1,5 @@
 const db = require('../config/db');
+const { createNotifications } = require('../services/notificationService');
 
 exports.getPostsByTourId = async (req, res) => {
   try {
@@ -29,6 +30,27 @@ exports.createPost = async (req, res) => {
       'INSERT INTO tour_posts (tour_id, user_id, title, content) VALUES (?, ?, ?, ?)',
       [req.params.tourId, req.user.id, title || null, content.trim()]
     );
+    try {
+      const [tourRows] = await db.query('SELECT title FROM tours WHERE id = ?', [req.params.tourId]);
+      const [bookingRows] = await db.query(
+        `SELECT DISTINCT user_id
+         FROM bookings
+         WHERE tour_id = ? AND status <> 'cancelled' AND user_id <> ?`,
+        [req.params.tourId, req.user.id]
+      );
+      const tourTitle = tourRows[0]?.title || 'Túra';
+      const postTitle = title?.trim() || 'Új bejegyzés';
+      const preview = content.trim().length > 180 ? `${content.trim().slice(0, 177)}...` : content.trim();
+      await createNotifications({
+        userIds: bookingRows.map((booking) => booking.user_id),
+        type: 'tour_post',
+        title: `Új bejegyzés: ${tourTitle}`,
+        message: `${postTitle} – ${preview}`,
+        link: `/tours/${req.params.tourId}?tab=posts`
+      });
+    } catch (notificationError) {
+      console.error('Túrabejegyzés értesítési hiba:', notificationError.message);
+    }
     const io = req.app.get('io');
     if (io) {
       io.to(`tour:${req.params.tourId}`).emit('tour-post-created', {

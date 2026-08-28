@@ -833,7 +833,13 @@ const AdminDashboard = () => {
       duration: calculateDuration(newTour.start_date, newTour.end_date),
       max_participants: parseInt(newTour.max_participants),
       equipment_prices: equipment
-        .filter((item) => selectedEquipmentIds.includes(Number(item.id)))
+        .filter((item) =>
+          selectedEquipmentIds.includes(Number(item.id)) &&
+          (
+            lockedEquipmentIds.includes(Number(item.id)) ||
+            Number(equipmentAvailability[item.id] ?? item.total_quantity ?? 0) > 0
+          )
+        )
         .map((item) => ({
           equipment_id: Number(item.id),
           price: parsePriceInput(newTour.equipment_prices?.[item.id])
@@ -900,6 +906,9 @@ const AdminDashboard = () => {
           return acc;
         }, {});
         setEquipmentAvailability(map);
+        setSelectedEquipmentIds((current) => current.filter((equipmentId) =>
+          lockedEquipmentIds.includes(Number(equipmentId)) || Number(map[equipmentId] ?? 0) > 0
+        ));
       } else {
         setEquipmentAvailability({});
       }
@@ -1065,6 +1074,7 @@ const AdminDashboard = () => {
                     setEditingTourId(null);
                     setSelectedEquipmentIds([]);
                     setLockedEquipmentIds([]);
+                    setEquipmentAvailability({});
                     const equipmentMap = equipment.reduce((acc, item) => {
                       acc[item.id] = 0;
                       return acc;
@@ -2483,12 +2493,23 @@ const AdminDashboard = () => {
                         <input
                           type="checkbox"
                           checked={selectedEquipmentIds.includes(Number(item.id))}
-                          disabled={lockedEquipmentIds.includes(Number(item.id))}
+                          disabled={
+                            lockedEquipmentIds.includes(Number(item.id)) ||
+                            Number(equipmentAvailability[item.id] ?? item.total_quantity ?? 0) <= 0
+                          }
                           aria-label={`${item.name} csatolása a túrához`}
-                          title={lockedEquipmentIds.includes(Number(item.id)) ? 'Aktív foglalás miatt nem távolítható el' : ''}
+                          title={
+                            lockedEquipmentIds.includes(Number(item.id))
+                              ? 'Aktív foglalás miatt nem távolítható el'
+                              : Number(equipmentAvailability[item.id] ?? item.total_quantity ?? 0) <= 0
+                                ? 'Az eszköz nem elérhető a kiválasztott időszakban'
+                                : ''
+                          }
                           className="h-5 w-5 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500 disabled:cursor-not-allowed disabled:opacity-50"
                           onChange={(e) => {
                             const equipmentId = Number(item.id);
+                            const isUnavailable = Number(equipmentAvailability[item.id] ?? item.total_quantity ?? 0) <= 0;
+                            if (isUnavailable && !lockedEquipmentIds.includes(equipmentId)) return;
                             setSelectedEquipmentIds((prev) => e.target.checked
                               ? [...new Set([...prev, equipmentId])]
                               : prev.filter((id) => id !== equipmentId));
@@ -2512,7 +2533,8 @@ const AdminDashboard = () => {
                             value={formatPriceInput(newTour.equipment_prices?.[item.id] ?? 0)}
                             disabled={
                               !selectedEquipmentIds.includes(Number(item.id)) ||
-                              lockedEquipmentIds.includes(Number(item.id))
+                              lockedEquipmentIds.includes(Number(item.id)) ||
+                              Number(equipmentAvailability[item.id] ?? item.total_quantity ?? 0) <= 0
                             }
                             onChange={(e) =>
                               setNewTour((prev) => ({

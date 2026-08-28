@@ -4,6 +4,9 @@ const cors = require('cors');
 const http = require('http');
 const path = require('path');
 const { Server } = require('socket.io');
+const jwt = require('jsonwebtoken');
+const db = require('./config/db');
+const { setSocketServer } = require('./services/socketService');
 const tourRoutes = require('./routes/tourRoutes.js');
 const authRoutes = require('./routes/authRoutes');
 const bookingRoutes = require('./routes/bookingRoutes');
@@ -14,6 +17,7 @@ const equipmentRoutes = require('./routes/equipmentRoutes');
 const adminEmailRoutes = require('./routes/adminEmailRoutes');
 const activityRoutes = require('./routes/activityRoutes');
 const contactRoutes = require('./routes/contactRoutes');
+const notificationRoutes = require('./routes/notificationRoutes');
 const paymentController = require('./controllers/paymentController');
 const errorLogRoutes = require('./routes/errorLogRoutes');
 const clientErrorRoutes = require('./routes/clientErrorRoutes');
@@ -64,6 +68,7 @@ app.use('/api/admin/activity', activityRoutes);
 app.use('/api/admin/errors', errorLogRoutes);
 app.use('/api/errors', clientErrorRoutes);
 app.use('/api/contact', contactRoutes);
+app.use('/api/notifications', notificationRoutes);
 
 app.use(requestLogger);
 
@@ -77,8 +82,24 @@ const io = new Server(server, {
 });
 
 app.set('io', io);
+setSocketServer(io);
 
 io.on('connection', (socket) => {
+  socket.on('join-notifications', async (token) => {
+    try {
+      const decoded = jwt.verify(token, process.env.JWT_SECRET || 'titkos_kulcs_123');
+      const [users] = await db.query('SELECT id FROM users WHERE id = ?', [decoded.id]);
+      if (!users.length) return;
+      if (socket.data.notificationUserId) {
+        socket.leave(`notifications:${socket.data.notificationUserId}`);
+      }
+      socket.data.notificationUserId = users[0].id;
+      socket.join(`notifications:${users[0].id}`);
+    } catch {
+      // Érvénytelen vagy lejárt tokennel nem csatlakozhat értesítési szobához.
+    }
+  });
+
   socket.on('join-tour', (tourId) => {
     if (tourId) {
       socket.join(`tour:${tourId}`);

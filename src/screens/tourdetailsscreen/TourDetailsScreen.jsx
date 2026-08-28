@@ -28,7 +28,9 @@ const TourDetailsScreen = () => {
   const [paymentProcessing, setPaymentProcessing] = useState(false);
   const { user } = useContext(AuthContext);
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState('details');
+  const [activeTab, setActiveTab] = useState(() =>
+    new URLSearchParams(location.search).get('tab') === 'posts' ? 'posts' : 'details'
+  );
   const paymentHandledRef = useRef(false);
   const paymentTargetRef = useRef(null);
   const selfCancelRef = useRef(false);
@@ -64,6 +66,12 @@ const TourDetailsScreen = () => {
   const [equipmentInitialized, setEquipmentInitialized] = useState(false);
 
   const fromCalendar = location.state?.from === 'calendar';
+
+  useEffect(() => {
+    if (new URLSearchParams(location.search).get('tab') === 'posts') {
+      setActiveTab('posts');
+    }
+  }, [location.search]);
 
   const formatHungarianDate = (dateString) => {
     if (!dateString) return "";

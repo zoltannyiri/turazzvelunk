@@ -168,6 +168,7 @@ exports.createBooking = async (req, res) => {
                     await sendWaitlistJoinedEmail({
                         to: userRows[0].email,
                         name: userRows[0].name,
+                        tourId: tour_id,
                         tourTitle: tour.title,
                         startDate: tour.start_date,
                         endDate: tour.end_date
@@ -183,6 +184,7 @@ exports.createBooking = async (req, res) => {
                     await sendBookingEmail({
                         to: userRows[0].email,
                         name: userRows[0].name,
+                        tourId: tour_id,
                         tourTitle: tour.title,
                         startDate: tour.start_date,
                         endDate: tour.end_date,
@@ -266,6 +268,7 @@ exports.deleteBooking = async (req, res) => {
                 await sendBookingCancelledEmail({
                     to: userRows[0].email,
                     name: userRows[0].name,
+                    tourId: booking[0].tour_id,
                     tourTitle: title,
                     startDate: tourRows[0]?.start_date,
                     endDate: tourRows[0]?.end_date
@@ -347,6 +350,7 @@ exports.updateBookingStatus = async (req, res) => {
                         await sendWaitlistPromotedEmail({
                             to: booking.user_email,
                             name: booking.user_name,
+                            tourId: booking.tour_id,
                             tourTitle: booking.tour_title,
                             startDate: booking.start_date,
                             endDate: booking.end_date,
@@ -365,6 +369,7 @@ exports.updateBookingStatus = async (req, res) => {
                         await sendBookingApprovedEmail({
                             to: booking.user_email,
                             name: booking.user_name,
+                            tourId: booking.tour_id,
                             tourTitle: booking.tour_title,
                             startDate: booking.start_date,
                             endDate: booking.end_date,
@@ -422,6 +427,7 @@ exports.removeBookingByTourId = async (req, res) => {
                 await sendBookingCancelledEmail({
                     to: userRows[0].email,
                     name: userRows[0].name,
+                    tourId: req.params.tourId,
                     tourTitle: title,
                     startDate: tourRows[0]?.start_date,
                     endDate: tourRows[0]?.end_date
@@ -570,6 +576,7 @@ exports.createCancellationRequest = async (req, res) => {
                 await sendCancellationRequestEmail({
                     to: userEmail,
                     name: userName,
+                    tourId: booking[0].tour_id,
                     tourTitle: title,
                     reason: reason.trim(),
                     startDate: tourRows[0]?.start_date,
@@ -663,6 +670,7 @@ exports.updateCancellationRequestStatus = async (req, res) => {
                     await sendBookingCancelledEmail({
                         to: userRows[0].email,
                         name: userRows[0].name,
+                        tourId: bookingRows[0].tour_id,
                         tourTitle: title,
                         startDate: tourRows[0]?.start_date,
                         endDate: tourRows[0]?.end_date
@@ -697,6 +705,7 @@ exports.updateCancellationRequestStatus = async (req, res) => {
                         await sendCancellationRejectedEmail({
                             to: userRows[0].email,
                             name: userRows[0].name,
+                            tourId: bookingRows[0].tour_id,
                             tourTitle: title,
                             startDate: tourRows[0]?.start_date,
                             endDate: tourRows[0]?.end_date
@@ -747,6 +756,7 @@ exports.adminDeleteBooking = async (req, res) => {
             await sendAdminRemovedBookingEmail({
                 to: booking.user_email,
                 name: booking.user_name,
+                tourId: booking.tour_id,
                 tourTitle: booking.tour_title || 'ismeretlen túra',
                 adminName,
                 startDate: booking.start_date,
@@ -956,6 +966,7 @@ exports.promoteWaitlistBooking = async (req, res) => {
                 await sendWaitlistPromotedEmail({
                     to: booking.user_email,
                     name: booking.user_name,
+                    tourId: booking.tour_id,
                     tourTitle: booking.tour_title,
                     startDate: booking.start_date,
                     endDate: booking.end_date,

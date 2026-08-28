@@ -5,6 +5,7 @@ import {
   Compass, Calendar, User, LogOut, 
   Menu, X, ShieldCheck, Info, Search, BookOpen, Mail
 } from 'lucide-react';
+import NotificationsBell from './NotificationsBell';
 
 const Navbar = () => {
   const { user, logout, loading } = useContext(AuthContext);
@@ -76,6 +77,7 @@ const Navbar = () => {
             <div className="w-28 h-9 rounded-xl bg-slate-100 animate-pulse" />
           ) : user ? (
             <div className="flex items-center gap-2">
+              <NotificationsBell />
               <Link to="/profile" className="flex items-center gap-2.5 bg-slate-50 hover:bg-emerald-50 pl-1 pr-3 py-1 rounded-full border border-slate-100 transition-all group">
                 <div className="w-7 h-7 bg-white rounded-full flex items-center justify-center text-emerald-600 text-[10px] font-black shadow-sm group-hover:bg-emerald-600 group-hover:text-white transition-all">
                   {user.name.charAt(0)}

@@ -28,12 +28,31 @@ const getAdminRecipients = async () => {
     return rows.map((row) => row.email).filter(Boolean);
 };
 
+const formatAmount = (amount) => `${new Intl.NumberFormat('hu-HU').format(Number(amount || 0))} Ft`;
+const tourNotification = (tourId, title, message) => ({
+    type: 'tour',
+    title,
+    message,
+    link: tourId ? `/tours/${tourId}` : null
+});
+
 const sendRegistrationEmail = async ({ to, name }) => {
     const { subject, text, html } = buildRegistrationEmail({ name });
-    return sendMail({ to, subject, text, html });
+    return sendMail({
+        to,
+        subject,
+        text,
+        html,
+        notification: {
+            type: 'account',
+            title: 'Üdv a Túrázz Velünk közösségében!',
+            message: 'A regisztrációd sikeresen elkészült.',
+            link: '/profile'
+        }
+    });
 };
 
-const sendBookingApprovedEmail = async ({ to, name, tourTitle, startDate, endDate, totalPrice }) => {
+const sendBookingApprovedEmail = async ({ to, name, tourId, tourTitle, startDate, endDate, totalPrice }) => {
     const { subject, text, html } = buildBookingApprovedEmail({
         name,
         tourTitle,
@@ -41,10 +60,20 @@ const sendBookingApprovedEmail = async ({ to, name, tourTitle, startDate, endDat
         endDate,
         totalPrice
     });
-    return sendMail({ to, subject, text, html });
+    return sendMail({
+        to,
+        subject,
+        text,
+        html,
+        notification: tourNotification(
+            tourId,
+            `Jelentkezésed jóváhagyva: ${tourTitle}`,
+            `Már csak a ${formatAmount(totalPrice)} részvételi díj befizetése van hátra.`
+        )
+    });
 };
 
-const sendBookingEmail = async ({ to, name, tourTitle, startDate, endDate, totalPrice }) => {
+const sendBookingEmail = async ({ to, name, tourId, tourTitle, startDate, endDate, totalPrice }) => {
     const { subject, text, html } = buildBookingEmail({
         name,
         tourTitle,
@@ -52,7 +81,17 @@ const sendBookingEmail = async ({ to, name, tourTitle, startDate, endDate, total
         endDate,
         totalPrice
     });
-    return sendMail({ to, subject, text, html });
+    return sendMail({
+        to,
+        subject,
+        text,
+        html,
+        notification: tourNotification(
+            tourId,
+            `Jelentkezés elküldve: ${tourTitle}`,
+            'A jelentkezésed jóváhagyásra vár.'
+        )
+    });
 };
 
 const sendAdminEmail = async ({ to, subject, message }) => {
@@ -60,17 +99,23 @@ const sendAdminEmail = async ({ to, subject, message }) => {
     return sendMail({ to, subject, text, html });
 };
 
-const sendBookingCancelledEmail = async ({ to, name, tourTitle, startDate, endDate }) => {
+const sendBookingCancelledEmail = async ({ to, name, tourId, tourTitle, startDate, endDate }) => {
     const { subject, text, html } = buildBookingCancelledEmail({
         name,
         tourTitle,
         startDate,
         endDate
     });
-    return sendMail({ to, subject, text, html });
+    return sendMail({
+        to,
+        subject,
+        text,
+        html,
+        notification: tourNotification(tourId, `Jelentkezés lemondva: ${tourTitle}`, 'A lejelentkezésedet rögzítettük.')
+    });
 };
 
-const sendAdminRemovedBookingEmail = async ({ to, name, tourTitle, adminName, startDate, endDate }) => {
+const sendAdminRemovedBookingEmail = async ({ to, name, tourId, tourTitle, adminName, startDate, endDate }) => {
     const { subject, text, html } = buildAdminRemovedBookingEmail({
         name,
         tourTitle,
@@ -78,7 +123,13 @@ const sendAdminRemovedBookingEmail = async ({ to, name, tourTitle, adminName, st
         startDate,
         endDate
     });
-    return sendMail({ to, subject, text, html });
+    return sendMail({
+        to,
+        subject,
+        text,
+        html,
+        notification: tourNotification(tourId, `Jelentkezésed törölve: ${tourTitle}`, 'Az adminisztrátor törölte a jelentkezésedet.')
+    });
 };
 
 const sendAdminRemovedBookingNotificationEmail = async ({ to, adminName, userName, userEmail, tourTitle, startDate, endDate }) => {
@@ -93,7 +144,7 @@ const sendAdminRemovedBookingNotificationEmail = async ({ to, adminName, userNam
     return sendMail({ to, subject, text, html });
 };
 
-const sendCancellationRequestEmail = async ({ to, name, tourTitle, reason, startDate, endDate }) => {
+const sendCancellationRequestEmail = async ({ to, name, tourId, tourTitle, reason, startDate, endDate }) => {
     const { subject, text, html } = buildCancellationRequestEmail({
         name,
         tourTitle,
@@ -101,17 +152,29 @@ const sendCancellationRequestEmail = async ({ to, name, tourTitle, reason, start
         startDate,
         endDate
     });
-    return sendMail({ to, subject, text, html });
+    return sendMail({
+        to,
+        subject,
+        text,
+        html,
+        notification: tourNotification(tourId, `Lejelentkezési kérelem elküldve: ${tourTitle}`, 'A kérelmed elbírálásra vár.')
+    });
 };
 
-const sendCancellationRejectedEmail = async ({ to, name, tourTitle, startDate, endDate }) => {
+const sendCancellationRejectedEmail = async ({ to, name, tourId, tourTitle, startDate, endDate }) => {
     const { subject, text, html } = buildCancellationRejectedEmail({
         name,
         tourTitle,
         startDate,
         endDate
     });
-    return sendMail({ to, subject, text, html });
+    return sendMail({
+        to,
+        subject,
+        text,
+        html,
+        notification: tourNotification(tourId, `Lejelentkezési kérelem elutasítva: ${tourTitle}`, 'A jelentkezésed továbbra is aktív.')
+    });
 };
 
 const sendAdminCancellationRequestEmail = async ({ to, userName, userEmail, tourTitle, reason, startDate, endDate }) => {
@@ -137,7 +200,7 @@ const sendAdminCancellationApprovedEmail = async ({ to, userName, userEmail, tou
     return sendMail({ to, subject, text, html });
 };
 
-const sendPaymentEmail = async ({ to, name, tourTitle, amount, startDate, endDate }) => {
+const sendPaymentEmail = async ({ to, name, tourId, tourTitle, amount, startDate, endDate }) => {
     const { subject, text, html } = buildPaymentEmail({
         name,
         tourTitle,
@@ -145,7 +208,13 @@ const sendPaymentEmail = async ({ to, name, tourTitle, amount, startDate, endDat
         startDate,
         endDate
     });
-    return sendMail({ to, subject, text, html });
+    return sendMail({
+        to,
+        subject,
+        text,
+        html,
+        notification: tourNotification(tourId, `Sikeres fizetés: ${tourTitle}`, `${formatAmount(amount)} befizetését rögzítettük.`)
+    });
 };
 
 const sendAdminPaymentEmail = async ({ to, userName, tourTitle, amount, startDate, endDate }) => {
@@ -235,14 +304,20 @@ const sendAdminRemovedBookingNotification = async ({ adminName, userName, userEm
 };
 
 
-const sendWaitlistJoinedEmail = async ({ to, name, tourTitle, startDate, endDate }) => {
+const sendWaitlistJoinedEmail = async ({ to, name, tourId, tourTitle, startDate, endDate }) => {
     const { subject, text, html } = buildWaitlistJoinedEmail({
         name,
         tourTitle,
         startDate,
         endDate
     });
-    return sendMail({ to, subject, text, html });
+    return sendMail({
+        to,
+        subject,
+        text,
+        html,
+        notification: tourNotification(tourId, `Várólistára kerültél: ${tourTitle}`, 'Értesítünk, ha felszabadul egy hely.')
+    });
 };
 
 const sendAdminWaitlistEmail = async ({ to, userName, userEmail, tourTitle, startDate, endDate }) => {
@@ -271,7 +346,7 @@ const sendAdminWaitlistNotification = async ({ userName, userEmail, tourTitle, s
     );
 };
 
-const sendWaitlistPromotedEmail = async ({ to, name, tourTitle, startDate, endDate, totalPrice }) => {
+const sendWaitlistPromotedEmail = async ({ to, name, tourId, tourTitle, startDate, endDate, totalPrice }) => {
     const { subject, text, html } = buildWaitlistPromotedEmail({
         name,
         tourTitle,
@@ -279,7 +354,17 @@ const sendWaitlistPromotedEmail = async ({ to, name, tourTitle, startDate, endDa
         endDate,
         totalPrice
     });
-    return sendMail({ to, subject, text, html });
+    return sendMail({
+        to,
+        subject,
+        text,
+        html,
+        notification: tourNotification(
+            tourId,
+            `Felszabadult egy hely: ${tourTitle}`,
+            `A jelentkezésed aktív. Fizetendő: ${formatAmount(totalPrice)}.`
+        )
+    });
 };
 
 module.exports = {

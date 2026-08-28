@@ -40,6 +40,7 @@ const finalizePaidBooking = async ({ payment, booking }) => {
             await sendPaymentEmail({
                 to: userRows[0].email,
                 name: userName,
+                tourId: payment.tour_id,
                 tourTitle: title,
                 amount: booking?.total_price || payment.amount,
                 startDate: tourRows[0]?.start_date,
@@ -293,6 +294,7 @@ exports.confirmCheckoutSession = async (req, res) => {
                             await sendPaymentEmail({
                                 to: userRows[0].email,
                                 name: userName,
+                                tourId: bookingRows[0]?.tour_id,
                                 tourTitle: title,
                                 amount: bookingRows[0]?.total_price || 0,
                                 startDate: tourRows[0]?.start_date,

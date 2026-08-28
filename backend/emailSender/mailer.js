@@ -1,4 +1,5 @@
 const nodemailer = require('nodemailer');
+const { createEmailNotifications } = require('../services/notificationService');
 
 const smtpPort = Number(process.env.SMTP_PORT || 465);
 const smtpSecure = String(process.env.SMTP_SECURE || 'true').toLowerCase() === 'true';
@@ -15,11 +16,11 @@ const transporter = nodemailer.createTransport({
 
 const defaultFrom = process.env.EMAIL_FROM || 'Túrázz Velünk <no-reply@turazzvelunk.local>';
 
-const sendMail = async ({ to, subject, html, text, replyTo, from }) => {
+const sendMail = async ({ to, subject, html, text, replyTo, from, notification }) => {
     if (!process.env.SMTP_HOST || !process.env.SMTP_USER || !process.env.SMTP_PASS) {
         throw new Error('SMTP nincs beallitva. Ellenorizd az SMTP_* env valtozokat.');
     }
-    return transporter.sendMail({
+    const result = await transporter.sendMail({
         from: from || defaultFrom,
         to,
         subject,
@@ -27,6 +28,12 @@ const sendMail = async ({ to, subject, html, text, replyTo, from }) => {
         text,
         ...(replyTo ? { replyTo } : {})
     });
+    try {
+        await createEmailNotifications({ recipients: to, subject, message: text, notification });
+    } catch (notificationError) {
+        console.error('Webes értesítés mentési hiba:', notificationError.message);
+    }
+    return result;
 };
 
 module.exports = { sendMail };
