@@ -9,5 +9,13 @@
   <body>
     <div id="root"></div>
     <script type="module" src="/src/main.jsx"></script>
+    <script type="module">
+      import ReviewFlow from "https://api.reviewflow.zoltannyiri.hu/sdk/index.js";
+
+      ReviewFlow.init({
+        "apiUrl": "https://api.reviewflow.zoltannyiri.hu/api",
+        "projectKey": "A_REVIEWFLOW_ÁLTAL_GENERÁLT_PROJECT_KEY"
+      });
+    </script>
   </body>
 </html>
