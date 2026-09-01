@@ -40,6 +40,7 @@ const AdminDashboard = () => {
   const navigate = useNavigate();
   const [bookings, setBookings] = useState([]);
   const [expandedTour, setExpandedTour] = useState(null);
+  const [expandedCategories, setExpandedCategories] = useState({});
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingTourId, setEditingTourId] = useState(null);
   const [cancelRequests, setCancelRequests] = useState([]);
@@ -433,6 +434,34 @@ const AdminDashboard = () => {
       return acc;
     }, {});
   }, [tours]);
+
+  const isTourExpired = useCallback((tour) => {
+    if (!tour?.end_date) return false;
+    const endDate = new Date(tour.end_date);
+    if (Number.isNaN(endDate.getTime())) return false;
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    endDate.setHours(0, 0, 0, 0);
+    return endDate < today;
+  }, []);
+
+  const sortedToursByCategory = useMemo(() => {
+    return Object.entries(toursByCategory).reduce((acc, [category, items]) => {
+      acc[category] = [...items].sort((a, b) => {
+        const aExpired = isTourExpired(a);
+        const bExpired = isTourExpired(b);
+
+        if (aExpired !== bExpired) {
+          return Number(aExpired) - Number(bExpired);
+        }
+
+        const aDate = new Date(a.start_date || a.end_date || 0).getTime();
+        const bDate = new Date(b.start_date || b.end_date || 0).getTime();
+        return aDate - bDate;
+      });
+      return acc;
+    }, {});
+  }, [toursByCategory, isTourExpired]);
 
   const emailEligibleTours = useMemo(() => {
     const today = new Date();
@@ -1172,184 +1201,217 @@ const AdminDashboard = () => {
               <div className="grid gap-8">
                 {toursLoading ? (
                   <div className="bg-white rounded-[2rem] border border-slate-100 p-10 text-center text-slate-400 font-bold">Betöltés...</div>
-                ) : Object.keys(toursByCategory).length === 0 ? (
+                ) : Object.keys(sortedToursByCategory).length === 0 ? (
                   <div className="bg-white rounded-[2rem] border border-slate-100 p-10 text-center text-slate-400 font-bold">Nincs túra.</div>
                 ) : (
-                  Object.entries(toursByCategory).map(([category, items]) => (
-                    <div key={category} className="space-y-4">
-                      <div className="text-xs font-black uppercase tracking-[0.3em] text-emerald-600">{category}</div>
-                      <div className="grid gap-6">
-                        {items.map((tour) => {
-                          const participants = groupedBookings[tour.id]?.participants || [];
-                          const pendingCount = participants.filter(p => p.status === 'pending').length;
-                          const confirmedCount = participants.filter(p => p.status === 'confirmed').length;
-                          const saturation = tour.max_participants > 0
-                            ? Math.round((participants.length / tour.max_participants) * 100)
-                            : 0;
+                  Object.entries(sortedToursByCategory).map(([category, items]) => {
+                    const isCategoryExpanded = expandedCategories[category] ?? false;
 
-                          return (
-                            <div
-                              key={tour.id}
-                              className="bg-white rounded-[3rem] shadow-sm border border-slate-100 overflow-hidden transition-all hover:shadow-xl cursor-pointer"
-                              onClick={() => navigate(`/tours/${tour.id}`)}
-                            >
-                              <div className="p-8 md:p-10 flex flex-col md:flex-row justify-between items-center gap-6 bg-gradient-to-r from-white to-slate-50">
-                                <div className="flex items-center gap-6">
-                                  <div className="w-16 h-16 bg-emerald-100 rounded-3xl flex items-center justify-center text-emerald-600">
-                                    <Calendar size={28} />
-                                  </div>
-                                  <div>
-                                    <h2 className="text-2xl font-black text-emerald-950">{tour.title}</h2>
-                                    <div className="flex flex-wrap gap-3 mt-2 text-[10px] font-black uppercase tracking-tighter text-slate-400">
-                                      <span className="flex items-center gap-1"><Users size={14} /> {participants.length} Fő</span>
-                                      <span>Max: {tour.max_participants || 0} fő</span>
-                                      <span>Pending: {pendingCount} fő</span>
-                                      <span className="flex items-center gap-1"><DollarSign size={14} /> {formatPrice(tour.price)} Ft</span>
-                                      <span>Nehézség: {tour.difficulty}</span>
-                                      {tour.subcategory && <span>{tour.subcategory}</span>}
-                                      {tour.start_date && tour.end_date && (
-                                        <span>{new Date(tour.start_date).toLocaleDateString()} - {new Date(tour.end_date).toLocaleDateString()}</span>
-                                      )}
-                                      <span>{tour.location}</span>
-                                      <span>{tour.duration} nap</span>
+                    return (
+                      <div key={category} className="space-y-4 rounded-[2.25rem] border border-slate-100 bg-white p-4 shadow-sm">
+                        <button
+                          type="button"
+                          onClick={() => setExpandedCategories((prev) => ({ ...prev, [category]: !prev[category] }))}
+                          className="w-full flex items-center justify-between gap-4 rounded-[1.5rem] px-4 py-3 text-left hover:bg-slate-50 transition"
+                        >
+                          <div className="flex items-center gap-3">
+                            <div className="text-xs font-black uppercase tracking-[0.3em] text-emerald-600">{category}</div>
+                            <span className="rounded-full bg-emerald-50 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.2em] text-emerald-700">
+                              {items.length} db
+                            </span>
+                          </div>
+                          {isCategoryExpanded ? <ChevronUp size={20} className="text-slate-500" /> : <ChevronDown size={20} className="text-slate-500" />}
+                        </button>
+
+                        {isCategoryExpanded && (
+                          <div className="grid gap-6 px-2 pb-2">
+                            {items.map((tour) => {
+                              const participants = groupedBookings[tour.id]?.participants || [];
+                              const pendingCount = participants.filter(p => p.status === 'pending').length;
+                              const confirmedCount = participants.filter(p => p.status === 'confirmed').length;
+                              const saturation = tour.max_participants > 0
+                                ? Math.round((participants.length / tour.max_participants) * 100)
+                                : 0;
+                              const expired = isTourExpired(tour);
+
+                              return (
+                                <div
+                                  key={tour.id}
+                                  className={`rounded-[3rem] shadow-sm border overflow-hidden transition-all hover:shadow-xl cursor-pointer ${expired ? 'border-red-200 bg-red-50/70' : 'border-slate-100 bg-white'}`}
+                                  onClick={() => navigate(`/tours/${tour.id}`)}
+                                >
+                                  <div className={`p-8 md:p-10 flex flex-col md:flex-row justify-between items-center gap-6 ${expired ? 'bg-gradient-to-r from-red-50 to-white' : 'bg-gradient-to-r from-white to-slate-50'}`}>
+                                    <div className="flex items-center gap-6">
+                                      <div className={`w-16 h-16 rounded-3xl flex items-center justify-center ${expired ? 'bg-red-100 text-red-600' : 'bg-emerald-100 text-emerald-600'}`}>
+                                        <Calendar size={28} />
+                                      </div>
+                                      <div>
+                                        <div className="flex flex-wrap items-center gap-2">
+                                          <h2 className={`text-2xl font-black ${expired ? 'text-red-700 line-through decoration-red-400' : 'text-emerald-950'}`}>{tour.title}</h2>
+                                          {expired && (
+                                            <span className="inline-flex items-center rounded-full bg-red-600 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.2em] text-white">
+                                              Lejárt
+                                            </span>
+                                          )}
+                                        </div>
+                                        <div className="flex flex-wrap gap-3 mt-2 text-[10px] font-black uppercase tracking-tighter text-slate-400">
+                                          <span className="flex items-center gap-1"><Users size={14} /> {participants.length} Fő</span>
+                                          <span>Max: {tour.max_participants || 0} fő</span>
+                                          <span>Pending: {pendingCount} fő</span>
+                                          <span className="flex items-center gap-1"><DollarSign size={14} /> {formatPrice(tour.price)} Ft</span>
+                                          <span>Nehézség: {tour.difficulty}</span>
+                                          {tour.subcategory && <span>{tour.subcategory}</span>}
+                                          {tour.start_date && tour.end_date && (
+                                            <span>{new Date(tour.start_date).toLocaleDateString()} - {new Date(tour.end_date).toLocaleDateString()}</span>
+                                          )}
+                                          <span>{tour.location}</span>
+                                          <span>{tour.duration} nap</span>
+                                        </div>
+                                      </div>
+                                    </div>
+
+                                    <div className="w-full md:w-64">
+                                      <div className="flex justify-between text-[10px] font-black uppercase mb-2 text-slate-400 italic">
+                                        <span>{participants.length} / {tour.max_participants || 0} fő</span>
+                                        <span>{saturation}%</span>
+                                      </div>
+                                      <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden">
+                                        <div 
+                                          className={`h-full transition-all duration-1000 ${expired ? 'bg-red-500' : 'bg-emerald-500'}`} 
+                                          style={{ width: `${Math.min(saturation, 100)}%` }}
+                                        ></div>
+                                      </div>
+                                      <div className="mt-2 text-[10px] font-black uppercase tracking-widest text-slate-400 space-y-1">
+                                        <div>Elfogadott: {confirmedCount} fő</div>
+                                        <div>Folyamatban: {pendingCount} fő</div>
+                                      </div>
+                                    </div>
+
+                                    <div className="flex gap-3">
+                                      <Link
+                                        to={`/tours/${tour.id}`}
+                                        onClick={(e) => e.stopPropagation()}
+                                        className="px-4 py-3 rounded-2xl bg-slate-900 text-white text-[10px] font-black uppercase tracking-widest hover:bg-emerald-600 transition"
+                                      >
+                                        Túra megnyitása
+                                      </Link>
+                                      <button 
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          setEditingTourId(tour.id);
+                                          setSelectedEquipmentIds([]);
+                                          setLockedEquipmentIds([]);
+                                          setNewTour({
+                                            title: tour.title || '',
+                                            location: tour.location || '',
+                                            description: tour.description || '',
+                                            price: tour.price || '',
+                                            duration: tour.duration || '',
+                                            difficulty: tour.difficulty || 'Könnyű',
+                                            category: tour.category || 'Hegyi túrák',
+                                            subcategory: tour.subcategory || 'Hazai - Külföldi túrák',
+                                            image_url: tour.image_url || '',
+                                            max_participants: tour.max_participants || 12,
+                                            equipment_prices: {},
+                                            start_date: tour.start_date ? new Date(tour.start_date) : null,
+                                            end_date: tour.end_date ? new Date(tour.end_date) : null,
+                                          });
+                                          loadTourEquipmentPrices(tour.id);
+                                          setIsModalOpen(true);
+                                        }}
+                                        className="p-3 bg-blue-50 text-blue-600 rounded-2xl hover:bg-blue-600 hover:text-white transition shadow-sm"
+                                      >
+                                        <Edit3 size={18} />
+                                      </button>
+                                      <button 
+                                        onClick={(e) => { e.stopPropagation(); handleDeleteTour(tour.id); }}
+                                        className="p-3 bg-red-50 text-red-600 rounded-2xl hover:bg-red-500 hover:text-white transition shadow-sm"
+                                      >
+                                        <Trash2 size={18} />
+                                      </button>
+                                      <button 
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          setExpandedTour(expandedTour === tour.id ? null : tour.id);
+                                        }}
+                                        className="p-3 bg-white border border-slate-100 rounded-2xl hover:bg-slate-50 transition"
+                                      >
+                                        {expandedTour === tour.id ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
+                                      </button>
                                     </div>
                                   </div>
-                                </div>
 
-                                <div className="w-full md:w-64">
-                                  <div className="flex justify-between text-[10px] font-black uppercase mb-2 text-slate-400 italic">
-                                    <span>{participants.length} / {tour.max_participants || 0} fő</span>
-                                    <span>{saturation}%</span>
-                                  </div>
-                                  <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden">
-                                    <div 
-                                      className="h-full bg-emerald-500 transition-all duration-1000" 
-                                      style={{ width: `${Math.min(saturation, 100)}%` }}
-                                    ></div>
-                                  </div>
-                                  <div className="mt-2 text-[10px] font-black uppercase tracking-widest text-slate-400 space-y-1">
-                                    <div>Elfogadott: {confirmedCount} fő</div>
-                                    <div>Folyamatban: {pendingCount} fő</div>
-                                  </div>
-                                </div>
-
-                                <div className="flex gap-3">
-                                  <Link
-                                    to={`/tours/${tour.id}`}
-                                    onClick={(e) => e.stopPropagation()}
-                                    className="px-4 py-3 rounded-2xl bg-slate-900 text-white text-[10px] font-black uppercase tracking-widest hover:bg-emerald-600 transition"
-                                  >
-                                    Túra megnyitása
-                                  </Link>
-                                  <button 
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      setEditingTourId(tour.id);
-                                      setSelectedEquipmentIds([]);
-                                      setLockedEquipmentIds([]);
-                                      setNewTour({
-                                        title: tour.title || '',
-                                        location: tour.location || '',
-                                        description: tour.description || '',
-                                        price: tour.price || '',
-                                        duration: tour.duration || '',
-                                        difficulty: tour.difficulty || 'Könnyű',
-                                        category: tour.category || 'Hegyi túrák',
-                                        subcategory: tour.subcategory || 'Hazai - Külföldi túrák',
-                                        image_url: tour.image_url || '',
-                                        max_participants: tour.max_participants || 12,
-                                        equipment_prices: {},
-                                        start_date: tour.start_date ? new Date(tour.start_date) : null,
-                                        end_date: tour.end_date ? new Date(tour.end_date) : null,
-                                      });
-                                      loadTourEquipmentPrices(tour.id);
-                                      setIsModalOpen(true);
-                                    }}
-                                    className="p-3 bg-blue-50 text-blue-600 rounded-2xl hover:bg-blue-600 hover:text-white transition shadow-sm"
-                                  >
-                                    <Edit3 size={18} />
-                                  </button>
-                                  <button 
-                                    onClick={(e) => { e.stopPropagation(); handleDeleteTour(tour.id); }}
-                                    className="p-3 bg-red-50 text-red-600 rounded-2xl hover:bg-red-500 hover:text-white transition shadow-sm"
-                                  >
-                                    <Trash2 size={18} />
-                                  </button>
-                                  <button 
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      setExpandedTour(expandedTour === tour.id ? null : tour.id);
-                                    }}
-                                    className="p-3 bg-white border border-slate-100 rounded-2xl hover:bg-slate-50 transition"
-                                  >
-                                    {expandedTour === tour.id ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
-                                  </button>
-                                </div>
-                              </div>
-
-                              {expandedTour === tour.id && (
-                                <div className="px-10 pb-10 animate-in fade-in slide-in-from-top-4 duration-300">
-                                  <div className="overflow-hidden rounded-[2rem] border border-slate-50 bg-slate-50/50 p-2">
-                                    <table className="w-full text-left">
-                                      <thead>
-                                        <tr className="text-[10px] font-black uppercase text-slate-400 tracking-widest">
-                                          <th className="px-8 py-5">Túrázó</th>
-                                          <th className="px-8 py-5">Státusz</th>
-                                          <th className="px-8 py-5 text-right">Művelet</th>
-                                        </tr>
-                                      </thead>
-                                      <tbody className="divide-y divide-white">
-                                        {participants.length === 0 ? (
-                                          <tr>
-                                            <td className="px-8 py-6 text-sm text-slate-400 font-bold" colSpan={3}>Nincs jelentkező.</td>
-                                          </tr>
-                                        ) : participants.map((p) => (
-                                          <tr key={p.id} className="group hover:bg-white transition-colors">
-                                            <td className="px-8 py-5">
-                                              <button
-                                                onClick={(e) => { e.stopPropagation(); openUserProfile(p.user_id); }}
-                                                className="font-black text-emerald-950 text-sm hover:text-emerald-600 transition"
-                                              >
-                                                {p.user_name}
-                                              </button>
-                                              <div className="text-xs text-slate-400">{p.email}</div>
-                                            </td>
-                                            <td className="px-8 py-5">
-                                              <span className="text-xs font-black uppercase text-slate-400">{getBookingStatusLabel(p)}</span>
-                                            </td>
-                                            <td className="px-8 py-5 text-right">
-                                              <div className="flex items-center justify-end gap-2">
-                                                {p.status === 'pending' ? (
-                                                  <button 
-                                                    onClick={(e) => { e.stopPropagation(); updateStatus(p.id, 'confirmed'); }}
-                                                    className="bg-emerald-600 text-white text-[10px] font-black px-4 py-2 rounded-xl hover:bg-emerald-700 transition"
+                                  {expandedTour === tour.id && (
+                                    <div className="px-10 pb-10 animate-in fade-in slide-in-from-top-4 duration-300">
+                                      <div className="overflow-hidden rounded-[2rem] border border-slate-50 bg-slate-50/50 p-2">
+                                        <table className="w-full text-left">
+                                          <thead>
+                                            <tr className="text-[10px] font-black uppercase text-slate-400 tracking-widest">
+                                              <th className="px-8 py-5">Túrázó</th>
+                                              <th className="px-8 py-5">Státusz</th>
+                                              <th className="px-8 py-5 text-right">Művelet</th>
+                                            </tr>
+                                          </thead>
+                                          <tbody className="divide-y divide-white">
+                                            {participants.length === 0 ? (
+                                              <tr>
+                                                <td className="px-8 py-6 text-sm text-slate-400 font-bold" colSpan={3}>Nincs jelentkező.</td>
+                                              </tr>
+                                            ) : participants.map((p) => (
+                                              <tr key={p.id} className="group hover:bg-white transition-colors">
+                                                <td className="px-8 py-5">
+                                                  <button
+                                                    onClick={(e) => { e.stopPropagation(); openUserProfile(p.user_id); }}
+                                                    className="font-black text-emerald-950 text-sm hover:text-emerald-600 transition"
                                                   >
-                                                    ELFOGADÁS
+                                                    {p.user_name}
                                                   </button>
-                                                ) : (
-                                                  <div className="text-emerald-500 flex justify-end"><CheckCircle size={20} /></div>
-                                                )}
-                                                <button
-                                                  onClick={(e) => { e.stopPropagation(); handleAdminRemoveBooking(p.id); }}
-                                                  className="bg-red-500/10 text-red-500 text-[10px] font-black px-4 py-2 rounded-xl hover:bg-red-500 hover:text-white transition"
-                                                >
-                                                  TÖRLÉS
-                                                </button>
-                                              </div>
-                                            </td>
-                                          </tr>
-                                        ))}
-                                      </tbody>
-                                    </table>
-                                  </div>
+                                                  <div className="text-xs text-slate-400">{p.email}</div>
+                                                </td>
+                                                <td className="px-8 py-5">
+                                                  <span className="text-xs font-black uppercase text-slate-400">{getBookingStatusLabel(p)}</span>
+                                                </td>
+                                                <td className="px-8 py-5 text-right">
+                                                  <div className="flex items-center justify-end gap-2">
+                                                    {p.status === 'pending' ? (
+                                                      <button 
+                                                        onClick={(e) => { e.stopPropagation(); updateStatus(p.id, 'confirmed'); }}
+                                                        className="bg-emerald-600 text-white text-[10px] font-black px-4 py-2 rounded-xl hover:bg-emerald-700 transition"
+                                                      >
+                                                        Jóváhagyás
+                                                      </button>
+                                                    ) : null}
+                                                    {p.status === 'confirmed' ? (
+                                                      <button 
+                                                        onClick={(e) => { e.stopPropagation(); updateStatus(p.id, 'cancelled'); }}
+                                                        className="bg-amber-500 text-white text-[10px] font-black px-4 py-2 rounded-xl hover:bg-amber-600 transition"
+                                                      >
+                                                        Törlés
+                                                      </button>
+                                                    ) : null}
+                                                    <button 
+                                                      onClick={(e) => { e.stopPropagation(); handleAdminRemoveBooking(p.id); }}
+                                                      className="bg-red-50 text-red-600 text-[10px] font-black px-4 py-2 rounded-xl hover:bg-red-500 hover:text-white transition"
+                                                    >
+                                                      Eltávolítás
+                                                    </button>
+                                                  </div>
+                                                </td>
+                                              </tr>
+                                            ))}
+                                          </tbody>
+                                        </table>
+                                      </div>
+                                    </div>
+                                  )}
                                 </div>
-                              )}
-                            </div>
-                          );
-                        })}
+                              );
+                            })}
+                          </div>
+                        )}
                       </div>
-                    </div>
-                  ))
+                    );
+                  })
                 )}
               </div>
             )}
