@@ -1,1 +1,86 @@
 @import "tailwindcss";
+
+.ProseMirror img,
+.blog-rich-content img {
+  display: block;
+  height: auto;
+  max-width: 100%;
+  margin-top: 1.75rem;
+  margin-bottom: 1.75rem;
+  border-radius: 1.25rem;
+}
+
+.ProseMirror img[data-width="50"],
+.blog-rich-content img[data-width="50"] {
+  width: 50%;
+}
+
+.ProseMirror img[data-width="75"],
+.blog-rich-content img[data-width="75"] {
+  width: 75%;
+}
+
+.ProseMirror img[data-width="100"],
+.blog-rich-content img[data-width="100"] {
+  width: 100%;
+}
+
+.ProseMirror img[data-align="left"],
+.blog-rich-content img[data-align="left"] {
+  margin-right: auto;
+  margin-left: 0;
+}
+
+.ProseMirror img[data-align="center"],
+.blog-rich-content img[data-align="center"] {
+  margin-right: auto;
+  margin-left: auto;
+}
+
+.ProseMirror img[data-align="right"],
+.blog-rich-content img[data-align="right"] {
+  margin-right: 0;
+  margin-left: auto;
+}
+
+.ProseMirror img.ProseMirror-selectednode {
+  outline: 4px solid rgb(52 211 153 / 45%);
+  outline-offset: 4px;
+}
+
+.ProseMirror,
+.blog-rich-content {
+  display: flow-root;
+}
+
+.ProseMirror img[data-wrap="left"],
+.blog-rich-content img[data-wrap="left"] {
+  float: left;
+  margin: 0.5rem 1.75rem 1rem 0;
+}
+
+.ProseMirror img[data-wrap="right"],
+.blog-rich-content img[data-wrap="right"] {
+  float: right;
+  margin: 0.5rem 0 1rem 1.75rem;
+}
+
+.ProseMirror img[data-wrap="none"],
+.blog-rich-content img[data-wrap="none"] {
+  float: none;
+}
+
+.ProseMirror :is(h2, h3, h4, hr),
+.blog-rich-content :is(h2, h3, h4, hr) {
+  clear: both;
+}
+
+@media (max-width: 640px) {
+  .blog-rich-content img,
+  .ProseMirror img {
+    float: none !important;
+    width: 100% !important;
+    margin-right: auto !important;
+    margin-left: auto !important;
+  }
+}

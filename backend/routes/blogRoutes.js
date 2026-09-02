@@ -33,6 +33,7 @@ const upload = multer({
 router.get('/', blogController.getAllPosts);
 router.get('/:id', blogController.getPostById);
 
+router.post('/images', protect, adminOnly, upload.single('image'), blogController.uploadEditorImage);
 router.post('/', protect, adminOnly, upload.array('images', 30), blogController.createPost);
 router.put('/:id', protect, adminOnly, upload.array('images', 30), blogController.updatePost);
 router.delete('/:id', protect, adminOnly, blogController.deletePost);
