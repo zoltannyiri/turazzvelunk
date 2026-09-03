@@ -296,7 +296,9 @@ const TourDetailsScreen = () => {
     const end = new Date(tour.end_date);
     return now > end;
   })();
-  const bookedEquipmentOptions = isTourEnded
+  const isTourOngoing = isTourInProgress;
+  const isEquipmentSelectionClosed = isTourEnded || isTourOngoing;
+  const bookedEquipmentOptions = isEquipmentSelectionClosed
     ? equipmentOptions.filter((item) => selectedEquipmentIds.some((equipmentId) => Number(equipmentId) === Number(item.id)))
     : equipmentOptions;
   const avatarBase = (import.meta.env.VITE_API_URL || '').replace(/\/api\/?$/, '');
@@ -318,7 +320,7 @@ const TourDetailsScreen = () => {
     }
     return false;
   })();
-  const isUpdateDisabled = isTourEnded || paymentStatus === 'paid' || !equipmentInitialized || !isEquipmentDirty;
+  const isUpdateDisabled = isEquipmentSelectionClosed || paymentStatus === 'paid' || !equipmentInitialized || !isEquipmentDirty;
 
   const handleUpdateEquipment = async () => {
     if (!bookingId || isUpdateDisabled) return;
@@ -1314,11 +1316,11 @@ const TourDetailsScreen = () => {
                           {cancelBookingSubmitting ? 'Lejelentkezés...' : 'Lejelentkezés'}
                         </button>
                       )}
-                      <div hidden={isTourEnded && bookedEquipmentOptions.length === 0} className="bg-white/5 border border-white/10 rounded-2xl p-4 text-xs space-y-3">
+                      <div hidden={(isTourEnded || isTourOngoing) && bookedEquipmentOptions.length === 0} className="bg-white/5 border border-white/10 rounded-2xl p-4 text-xs space-y-3">
                         <div className="text-[10px] font-black uppercase tracking-widest text-slate-400">
-                          {isTourEnded ? 'Használt eszközök' : 'Eszközök módosítása'}
+                          {(isTourEnded || isTourOngoing) ? 'Használt eszközök' : 'Eszközök módosítása'}
                         </div>
-                        <div hidden={isTourEnded} className="text-slate-300">
+                        <div hidden={isEquipmentSelectionClosed} className="text-slate-300">
                           Pipáld ki, amit megtartanál. A gomb csak változtatás után aktív. Fizetés után módosítás nem engedett.
                         </div>
                         {bookedEquipmentOptions.length > 0 && (
@@ -1339,10 +1341,10 @@ const TourDetailsScreen = () => {
                                     <input
                                       type="checkbox"
                                       className="accent-emerald-500 h-4 w-4 rounded"
-                                      disabled={isTourEnded || paymentStatus === 'paid' || (!isAvailable && !isBookedByMe)}
+                                      disabled={isEquipmentSelectionClosed || paymentStatus === 'paid' || (!isAvailable && !isBookedByMe)}
                                       checked={selectedEquipmentIds.includes(item.id)}
                                       onChange={(e) => {
-                                        if (isTourEnded || paymentStatus === 'paid') return;
+                                        if (isEquipmentSelectionClosed || paymentStatus === 'paid') return;
                                         if (!isAvailable && !isBookedByMe && e.target.checked) return;
                                         setSelectedEquipmentIds((prev) =>
                                           e.target.checked
@@ -1388,7 +1390,7 @@ const TourDetailsScreen = () => {
                           </div>
                         )}
                         <button
-                          hidden={isTourEnded}
+                          hidden={isEquipmentSelectionClosed}
                           onClick={handleUpdateEquipment}
                           disabled={isUpdateDisabled}
                           className={`w-full py-3 rounded-xl font-black text-xs uppercase tracking-widest border transition ${
@@ -1399,12 +1401,12 @@ const TourDetailsScreen = () => {
                         >
                           Eszközök frissítése
                         </button>
-                        {!isTourEnded && paymentStatus === 'paid' && (
+                        {!isEquipmentSelectionClosed && paymentStatus === 'paid' && (
                           <div className="text-amber-300 font-black uppercase tracking-widest text-[10px]">
                             Fizetés után az eszközök nem módosíthatók.
                           </div>
                         )}
-                        {!isTourEnded && !paymentStatus && (!equipmentInitialized || !isEquipmentDirty) && (
+                        {!isEquipmentSelectionClosed && !paymentStatus && (!equipmentInitialized || !isEquipmentDirty) && (
                           <div className="text-[10px] font-black uppercase tracking-widest text-slate-400">
                             Nincs változtatás.
                           </div>
@@ -1480,11 +1482,11 @@ const TourDetailsScreen = () => {
                         <UserMinus size={18} />
                         {cancelBookingSubmitting ? 'Jelentkezés visszavonása...' : 'Jelentkezés visszavonása'}
                       </button>
-                      <div hidden={isTourEnded && bookedEquipmentOptions.length === 0} className="bg-white/5 border border-white/10 rounded-2xl p-4 text-xs space-y-3">
+                      <div hidden={(isTourEnded || isTourOngoing) && bookedEquipmentOptions.length === 0} className="bg-white/5 border border-white/10 rounded-2xl p-4 text-xs space-y-3">
                         <div className="text-[10px] font-black uppercase tracking-widest text-slate-400">
-                          {isTourEnded ? 'Használt eszközök' : 'Eszközök módosítása'}
+                          {(isTourEnded || isTourOngoing) ? 'Használt eszközök' : 'Eszközök módosítása'}
                         </div>
-                        <div hidden={isTourEnded} className="text-slate-300">
+                        <div hidden={isTourEnded || isTourOngoing} className="text-slate-300">
                           Pipáld ki, amit megtartanál. A gomb csak változtatás után aktív.
                         </div>
                         {bookedEquipmentOptions.length > 0 && (
@@ -1505,10 +1507,10 @@ const TourDetailsScreen = () => {
                                     <input
                                       type="checkbox"
                                       className="accent-emerald-500 h-4 w-4 rounded"
-                                      disabled={isTourEnded || paymentStatus === 'paid' || (!isAvailable && !isBookedByMe)}
+                                      disabled={isEquipmentSelectionClosed || paymentStatus === 'paid' || (!isAvailable && !isBookedByMe)}
                                       checked={selectedEquipmentIds.includes(item.id)}
                                       onChange={(e) => {
-                                        if (isTourEnded || paymentStatus === 'paid') return;
+                                        if (isEquipmentSelectionClosed || paymentStatus === 'paid') return;
                                         if (!isAvailable && !isBookedByMe && e.target.checked) return;
                                         setSelectedEquipmentIds((prev) =>
                                           e.target.checked
@@ -1554,7 +1556,7 @@ const TourDetailsScreen = () => {
                           </div>
                         )}
                         <button
-                          hidden={isTourEnded}
+                          hidden={isEquipmentSelectionClosed}
                           onClick={handleUpdateEquipment}
                           disabled={isUpdateDisabled}
                           className={`w-full py-3 rounded-xl font-black text-xs uppercase tracking-widest border transition ${
@@ -1565,7 +1567,7 @@ const TourDetailsScreen = () => {
                         >
                           Eszközök frissítése
                         </button>
-                        {!isTourEnded && (!equipmentInitialized || !isEquipmentDirty) && (
+                        {!isEquipmentSelectionClosed && (!equipmentInitialized || !isEquipmentDirty) && (
                           <div className="text-[10px] font-black uppercase tracking-widest text-slate-400">
                             Nincs változtatás.
                           </div>
@@ -1576,7 +1578,7 @@ const TourDetailsScreen = () => {
                 ) : (
                   <div className="space-y-4">
                     {equipmentOptions.length > 0 && (
-                      <div hidden={isTourEnded} className="bg-white/5 border border-white/10 rounded-2xl p-4 text-xs space-y-3">
+                      <div hidden={isEquipmentSelectionClosed} className="bg-white/5 border border-white/10 rounded-2xl p-4 text-xs space-y-3">
                         <div className="text-[10px] font-black uppercase tracking-widest text-slate-400">Bérelhető eszközök</div>
                         <div className="text-slate-300 leading-relaxed">
                           Eszközöket a túra időszakára tudsz bérelni. A készlet korlátozott.
