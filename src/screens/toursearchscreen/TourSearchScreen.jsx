@@ -120,6 +120,12 @@ const TourSearchScreen = () => {
     }
   };
 
+  const getCategoryLabel = (catName) => ({
+    'Hegyi túrák': 'Hegyi-túrák',
+    'Vízitúrák': 'Vízi-túrák',
+    'Motoros': 'Motoros-túrák'
+  })[catName] || catName;
+
   // Alkategóriák a kiválasztott kategória alapján
   const subcategories = useMemo(() => {
     if (selectedCategory === "Mind") return [];
@@ -346,7 +352,7 @@ const TourSearchScreen = () => {
                   }`}
                 >
                   <span className="shrink-0">{getCategoryIcon(cat)}</span>
-                  <span className="truncate">{cat}</span>
+                  <span className="truncate">{getCategoryLabel(cat)}</span>
                   <span className={`text-[10px] px-2 py-0.5 rounded-full font-black shrink-0 ${
                     isSelected ? "bg-emerald-800 text-emerald-100" : "bg-slate-200 text-slate-600"
                   }`}>

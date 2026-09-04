@@ -26,7 +26,7 @@ const CalendarScreen = () => {
     const initialTourState = {
         title: '', location: '', description: '', price: '', duration: '', 
         difficulty: 'Könnyű',
-        category: 'Hegyi túrák', subcategory: 'Hazai - Külföldi túrák',
+        category: 'Hegyi-túrák', subcategory: 'Hazai - Külföldi túrák',
         image_url: '', start_date: '', end_date: '', max_participants: ''
     };
     const [newTour, setNewTour] = useState(initialTourState);
@@ -173,10 +173,10 @@ const CalendarScreen = () => {
                             <div>
                                 <label className="form-label-premium">Kategória</label>
                                 <select value={newTour.category} className="form-input-premium" onChange={e => setNewTour({...newTour, category: e.target.value})}>
-                                    <option>Hegyi túrák</option>
-                                    <option>Vízitúrák</option>
+                                    <option>Hegyi-túrák</option>
+                                    <option>Vízi-túrák</option>
                                     <option>Jóga</option>
-                                    <option>Motoros</option>
+                                    <option>Motoros-túrák</option>
                                 </select>
                             </div>
                             <div>
