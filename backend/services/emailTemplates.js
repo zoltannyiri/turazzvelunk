@@ -211,7 +211,7 @@ const buildBookingApprovedEmail = ({ name, tourTitle, startDate, endDate, totalP
                         </table>
 
                         <div style="text-align: center; margin-top: 24px; margin-bottom: 16px;">
-                            <a href="${process.env.CLIENT_ORIGIN || 'http://localhost:5173'}/profile" style="background: #10b981; color: #ffffff; padding: 14px 28px; text-decoration: none; border-radius: 12px; font-weight: 700; font-size: 14px; display: inline-block; box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);">
+                            <a href="${process.env.FRONTEND_URL || 'http://localhost:5173'}/profile" style="background: #10b981; color: #ffffff; padding: 14px 28px; text-decoration: none; border-radius: 12px; font-weight: 700; font-size: 14px; display: inline-block; box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);">
                                 Irány a Profil és Fizetés →
                             </a>
                         </div>
@@ -818,7 +818,7 @@ const buildWaitlistPromotedEmail = ({ name, tourTitle, startDate, endDate, total
                         </table>
 
                         <div style="text-align: center; margin-top: 24px; margin-bottom: 16px;">
-                            <a href="${process.env.CLIENT_ORIGIN || 'http://localhost:5173'}/profile" style="background: #10b981; color: #ffffff; padding: 14px 28px; text-decoration: none; border-radius: 12px; font-weight: 700; font-size: 14px; display: inline-block; box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);">
+                            <a href="${process.env.FRONTEND_URL || 'http://localhost:5173'}/profile" style="background: #10b981; color: #ffffff; padding: 14px 28px; text-decoration: none; border-radius: 12px; font-weight: 700; font-size: 14px; display: inline-block; box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);">
                                 Irány a Profil és Fizetés →
                             </a>
                         </div>

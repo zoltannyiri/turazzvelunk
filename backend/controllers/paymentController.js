@@ -64,7 +64,7 @@ const getClientOrigin = (req) => {
     if (origin && /^https?:\/\//i.test(origin)) {
         return origin;
     }
-    return process.env.CLIENT_ORIGIN || 'http://localhost:5173';
+    return process.env.FRONTEND_URL || 'http://localhost:5173';
 };
 
 exports.createCheckoutSession = async (req, res) => {
