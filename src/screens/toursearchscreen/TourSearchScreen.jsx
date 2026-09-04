@@ -85,7 +85,7 @@ const TourSearchScreen = () => {
   }, [tours, todayKey]);
 
   // Alapértelmezett és dinamikusan fellelhető kategóriák listája
-  const defaultCategories = ['Hegyi túrák', 'Vízitúrák', 'Jóga', 'Jóga táborok', 'Motoros'];
+  const defaultCategories = ['Hegyi túrák', 'Vízitúrák', 'Motoros', 'Jóga'];
 
   const categoryList = useMemo(() => {
     const dynamicCategories = Array.from(
@@ -111,8 +111,6 @@ const TourSearchScreen = () => {
         return <Waves size={18} />;
       case 'Jóga':
         return <Sparkles size={18} />;
-      case 'Jóga táborok':
-        return <Tent size={18} />;
       case 'Motoros':
         return <Bike size={18} />;
       case 'Mind':

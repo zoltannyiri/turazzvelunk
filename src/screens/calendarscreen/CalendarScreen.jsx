@@ -176,7 +176,6 @@ const CalendarScreen = () => {
                                     <option>Hegyi túrák</option>
                                     <option>Vízitúrák</option>
                                     <option>Jóga</option>
-                                    <option>Jóga táborok</option>
                                     <option>Motoros</option>
                                 </select>
                             </div>
@@ -218,7 +217,7 @@ const CalendarScreen = () => {
                                 className="form-input-premium" onChange={e => setNewTour({...newTour, description: e.target.value})}></textarea></div>
                             <button type="submit" 
                               className="md:col-span-2 w-full py-5 rounded-[2rem] font-black text-xl bg-emerald-600 text-white shadow-xl hover:bg-emerald-700 transition-all uppercase">
-                                {editingTourId ? '💾 Módosítások mentése' : '🚀 Túra közzététele'}
+                                {editingTourId ? '💾 Módosítások mentése' : 'Túra közzététele'}
                             </button>
                         </form>
                     </div>

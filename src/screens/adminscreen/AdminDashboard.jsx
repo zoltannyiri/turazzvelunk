@@ -900,7 +900,7 @@ const AdminDashboard = () => {
     const data = await res.json();
 
     if (res.ok) {
-      toast.success(editingTourId ? "💾 Túra frissítve!" : "🚀 Új túra létrehozva!");
+      toast.success(editingTourId ? "Túra frissítve!" : "Új túra létrehozva!");
       setIsModalOpen(false);
       setEditingTourId(null);
       setNewTour(initialTourState);
@@ -2456,7 +2456,6 @@ const AdminDashboard = () => {
                   <option>Hegyi túrák</option>
                   <option>Vízitúrák</option>
                   <option>Jóga</option>
-                  <option>Jóga táborok</option>
                   <option>Motoros</option>
                 </select>
               </div>
@@ -2638,7 +2637,7 @@ const AdminDashboard = () => {
                   onChange={e => setNewTour({...newTour, description: e.target.value})}></textarea>
               </div>
               <button type="submit" className="md:col-span-2 relative group overflow-hidden w-full py-5 rounded-[2rem] font-black text-xl bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-xl hover:-translate-y-1 transition-all active:scale-95 flex items-center justify-center gap-3">
-                <span className="relative z-10">{editingTourId ? '💾 MÓDOSÍTÁSOK MENTÉSE' : '🚀 TÚRA KÖZZÉTÉTELE'}</span>
+                <span className="relative z-10">{editingTourId ? '💾 MÓDOSÍTÁSOK MENTÉSE' : 'TÚRA KÖZZÉTÉTELE'}</span>
                 <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000"></div>
               </button>
             </form>
