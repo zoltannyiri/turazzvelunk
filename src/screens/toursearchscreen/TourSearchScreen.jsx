@@ -320,7 +320,7 @@ const TourSearchScreen = () => {
               }`}
             >
               <Layers size={18} className="shrink-0" />
-              <span className="truncate">Összes kategória</span>
+              <span className="truncate">Összes</span>
               <span className={`text-[10px] px-2 py-0.5 rounded-full font-black shrink-0 ${
                 selectedCategory === "Mind" ? "bg-emerald-800 text-emerald-100" : "bg-slate-200 text-slate-600"
               }`}>
@@ -397,7 +397,7 @@ const TourSearchScreen = () => {
           <div className="text-xs font-black uppercase tracking-wider text-emerald-700 flex items-center gap-2">
             <span>Kategória:</span>
             <span className="text-emerald-950 font-black">
-              {selectedCategory === "Mind" ? "Összes kategória" : selectedCategory}
+              {selectedCategory === "Mind" ? "Összes" : selectedCategory}
               {selectedSubcategory !== "Mind" ? ` • ${selectedSubcategory}` : ""}
             </span>
           </div>
