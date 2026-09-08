@@ -7,6 +7,7 @@ const { Server } = require('socket.io');
 const jwt = require('jsonwebtoken');
 const db = require('./config/db');
 const { setSocketServer } = require('./services/socketService');
+const { startBookingExpirationJob } = require('./services/bookingExpirationService');
 const tourRoutes = require('./routes/tourRoutes.js');
 const authRoutes = require('./routes/authRoutes');
 const bookingRoutes = require('./routes/bookingRoutes');
@@ -114,4 +115,7 @@ io.on('connection', (socket) => {
 });
 
 const PORT = process.env.PORT || 5000;
-server.listen(PORT, () => console.log(`Server on port ${PORT}`));
+server.listen(PORT, () => {
+  console.log(`Server on port ${PORT}`);
+  startBookingExpirationJob();
+});

@@ -35,7 +35,9 @@ exports.createPost = async (req, res) => {
       const [bookingRows] = await db.query(
         `SELECT DISTINCT user_id
          FROM bookings
-         WHERE tour_id = ? AND status <> 'cancelled' AND user_id <> ?`,
+         WHERE tour_id = ?
+           AND status IN ('pending', 'confirmed', 'waitlist')
+           AND user_id <> ?`,
         [req.params.tourId, req.user.id]
       );
       const tourTitle = tourRows[0]?.title || 'Túra';

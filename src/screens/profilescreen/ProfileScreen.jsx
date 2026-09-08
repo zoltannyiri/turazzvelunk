@@ -297,7 +297,7 @@ import { formatPrice } from '../../utils/formatPrice';
             
             <div className="bg-emerald-600 p-8 rounded-[2.5rem] text-white shadow-xl shadow-emerald-600/20">
               <Mountain className="mb-4 opacity-50" size={32} />
-              <div className="text-4xl font-black">{bookings.filter(b => b.status !== 'cancelled').length}</div>
+              <div className="text-4xl font-black">{bookings.filter(b => !['cancelled', 'expired'].includes(b.status)).length}</div>
               <div className="font-bold opacity-80">Aktív jelentkezés</div>
             </div>
 
@@ -347,6 +347,10 @@ import { formatPrice } from '../../utils/formatPrice';
                           <div className="flex items-center gap-2 px-5 py-2 bg-amber-50 text-amber-600 rounded-full border border-amber-200 font-black text-xs uppercase tracking-tighter">
                             <Clock size={14} /> Jóváhagyásra vár
                           </div>
+                        ) : booking.status === 'expired' ? (
+                          <div className="flex items-center gap-2 px-5 py-2 bg-slate-100 text-slate-600 rounded-full border border-slate-300 font-black text-xs uppercase tracking-tighter">
+                            <AlertCircle size={14} /> Lejárt
+                          </div>
                         ) : booking.status === 'confirmed' ? (
                           <div className="flex items-center gap-2 px-5 py-2 bg-emerald-50 text-emerald-600 rounded-full border border-emerald-100 font-black text-xs uppercase tracking-tighter">
                             <CheckCircle2 size={14} /> Elfogadva
@@ -368,6 +372,11 @@ import { formatPrice } from '../../utils/formatPrice';
                         {booking.status === 'pending' && (
                           <div className="text-[10px] font-bold text-amber-600/90">
                             Jóváhagyás után fizethető
+                          </div>
+                        )}
+                        {booking.status === 'expired' && (
+                          <div className="max-w-56 text-right text-[10px] font-bold leading-relaxed text-slate-500">
+                            Nem került jóváhagyásra a túra indulásáig
                           </div>
                         )}
                         {booking.status === 'confirmed' && booking.payment_status !== 'paid' && (

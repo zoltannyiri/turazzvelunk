@@ -1,7 +1,9 @@
 const db = require('../config/db');
+const { expireStaleBookings } = require('../services/bookingExpirationService');
 
 exports.getAllTours = async (req, res) => {
     try {
+        await expireStaleBookings();
         const [rows] = await db.query(`
             SELECT t.*, 
                    COALESCE(b.booked_count, 0) AS booked_count,
@@ -10,7 +12,7 @@ exports.getAllTours = async (req, res) => {
             LEFT JOIN (
                 SELECT tour_id, COUNT(*) AS booked_count
                 FROM bookings
-                WHERE status <> 'cancelled' AND status <> 'waitlist'
+                WHERE status IN ('pending', 'confirmed')
                 GROUP BY tour_id
             ) b ON b.tour_id = t.id
             LEFT JOIN (
@@ -30,9 +32,10 @@ exports.getAllTours = async (req, res) => {
 
 exports.getTourById = async (req, res) => {
     try {
+        await expireStaleBookings();
         const [rows] = await db.query(`
             SELECT t.*, 
-            (SELECT COUNT(*) FROM bookings WHERE tour_id = t.id AND status <> 'cancelled' AND status <> 'waitlist') as booked_count,
+            (SELECT COUNT(*) FROM bookings WHERE tour_id = t.id AND status IN ('pending', 'confirmed')) as booked_count,
             (SELECT COUNT(*) FROM bookings WHERE tour_id = t.id AND status = 'waitlist') as waitlist_count
             FROM tours t 
             WHERE t.id = ?
@@ -70,7 +73,7 @@ exports.getTourEquipmentOptions = async (req, res) => {
                SELECT be.equipment_id, SUM(be.quantity) AS qty, MAX(be.price) AS booked_price
                FROM booking_equipments be
                JOIN bookings b ON b.id = be.booking_id
-               WHERE b.tour_id = ? AND b.status <> 'cancelled' AND b.status <> 'waitlist'
+               WHERE b.tour_id = ? AND b.status IN ('pending', 'confirmed')
                GROUP BY be.equipment_id
              ) tour_booked ON tour_booked.equipment_id = e.id
              LEFT JOIN (
@@ -78,7 +81,7 @@ exports.getTourEquipmentOptions = async (req, res) => {
                FROM booking_equipments be
                JOIN bookings b ON b.id = be.booking_id
                JOIN tours t ON t.id = b.tour_id
-               WHERE b.status <> 'cancelled' AND b.status <> 'waitlist'
+               WHERE b.status IN ('pending', 'confirmed')
                  AND t.start_date <= ? AND t.end_date >= ?
                GROUP BY be.equipment_id
              ) reserved ON reserved.equipment_id = e.id
@@ -164,7 +167,7 @@ exports.updateTour = async (req, res) => {
                  JOIN equipment e ON e.id = be.equipment_id
                  LEFT JOIN tour_equipment_prices tp
                    ON tp.tour_id = b.tour_id AND tp.equipment_id = be.equipment_id
-                 WHERE b.tour_id = ? AND b.status <> 'cancelled' AND b.status <> 'waitlist'
+                 WHERE b.tour_id = ? AND b.status IN ('pending', 'confirmed')
                  GROUP BY be.equipment_id, e.name`,
                 [id]
             );
@@ -249,7 +252,7 @@ exports.getEquipmentAvailabilityByRange = async (req, res) => {
                FROM booking_equipments be
                JOIN bookings b ON b.id = be.booking_id
                JOIN tours t ON t.id = b.tour_id
-               WHERE b.status <> 'cancelled' AND b.status <> 'waitlist'
+               WHERE b.status IN ('pending', 'confirmed')
                  AND t.start_date <= ? AND t.end_date >= ?
                GROUP BY be.equipment_id
              ) reserved ON reserved.equipment_id = e.id

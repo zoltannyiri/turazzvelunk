@@ -554,6 +554,10 @@ const AdminDashboard = () => {
   const getBookingStatusLabel = (booking) => {
     if (booking?.payment_status === 'paid') return 'Fizetve';
     if (booking?.status === 'confirmed') return 'Jelentkezve';
+    if (booking?.status === 'pending') return 'Jóváhagyásra vár';
+    if (booking?.status === 'waitlist') return 'Várólistán';
+    if (booking?.status === 'expired') return 'Lejárt';
+    if (booking?.status === 'cancelled') return 'Lemondva';
     return booking?.status || '';
   };
 
@@ -632,6 +636,7 @@ const AdminDashboard = () => {
       fetchBookings(true);
     } else {
       toast.error(data.message || "Hiba a státusz frissítésekor!");
+      fetchBookings(true);
     }
   };
 
@@ -1453,6 +1458,7 @@ const AdminDashboard = () => {
                       <option value="all">Összes státusz</option>
                       <option value="pending">Függőben</option>
                       <option value="confirmed">Elfogadva</option>
+                      <option value="expired">Lejárt</option>
                       <option value="cancelled">Lemondva</option>
                     </select>
                     <select
@@ -1542,7 +1548,7 @@ const AdminDashboard = () => {
                   const toursWithWaitlist = tours.map(tour => {
                     const tourBookings = bookings.filter(b => b.tour_id === tour.id);
                     const waitlisted = tourBookings.filter(b => b.status === 'waitlist');
-                    const confirmedOrPending = tourBookings.filter(b => b.status !== 'cancelled' && b.status !== 'waitlist');
+                    const confirmedOrPending = tourBookings.filter(b => ['confirmed', 'pending'].includes(b.status));
                     return {
                       ...tour,
                       waitlisted,

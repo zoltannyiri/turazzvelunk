@@ -1442,6 +1442,17 @@ const TourDetailsScreen = () => {
                         {cancelBookingSubmitting ? 'Leiratkozás a várólistáról...' : 'Leiratkozás a várólistáról'}
                       </button>
                     </div>
+                  ) : bookingStatus === 'expired' ? (
+                    <div className="space-y-4">
+                      <div className="w-full py-4 px-4 rounded-2xl font-black text-sm bg-slate-500/15 text-slate-300 border border-slate-400/30 flex flex-col items-center justify-center gap-2 text-center">
+                        <div className="flex items-center gap-2 uppercase tracking-widest text-xs font-black text-slate-300">
+                          <Clock size={16} /> Jelentkezés lejárt
+                        </div>
+                        <div className="text-[11px] font-normal text-slate-300/80 leading-relaxed">
+                          A jelentkezés nem került jóváhagyásra a túra indulásáig, ezért automatikusan lezárult.
+                        </div>
+                      </div>
+                    </div>
                   ) : bookingStatus === 'cancelled' ? (
                     <div className="space-y-4">
                       <div className="w-full py-4 px-4 rounded-2xl font-black text-sm bg-rose-500/15 text-rose-300 border border-rose-500/30 flex flex-col items-center justify-center gap-2 text-center">

@@ -1,5 +1,6 @@
 const Stripe = require('stripe');
 const db = require('../config/db');
+const { getBudapestDateKey } = require('../services/bookingExpirationService');
 const { logActivity } = require('../services/activityService');
 const { sendPaymentEmail, sendAdminPaymentNotification } = require('../services/emailService');
 
@@ -77,16 +78,20 @@ exports.createCheckoutSession = async (req, res) => {
 
     try {
         const [bookingRows] = await db.query(
-            `SELECT b.id, b.status, b.payment_status, b.tour_id, b.total_price, t.title, t.price
+            `SELECT b.id, b.status, b.payment_status, b.tour_id, b.total_price, t.title, t.price,
+                    t.start_date <= ? AS tour_started
              FROM bookings b
              JOIN tours t ON b.tour_id = t.id
              WHERE b.id = ? AND b.user_id = ?`,
-            [booking_id, user_id]
+            [getBudapestDateKey(), booking_id, user_id]
         );
         if (bookingRows.length === 0) {
             return res.status(404).json({ message: 'Foglalás nem található.' });
         }
         const booking = bookingRows[0];
+        if (booking.tour_started) {
+            return res.status(409).json({ message: 'A túra kezdete után már nem indítható fizetés.' });
+        }
         if (booking.status !== 'confirmed') {
             return res.status(400).json({ message: 'A foglalás még nincs jóváhagyva.' });
         }

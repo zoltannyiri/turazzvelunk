@@ -15,31 +15,30 @@ const {
     sendAdminRemovedBookingNotification
 } = require('../services/emailService');
 const { logActivity } = require('../services/activityService');
+const { expireStaleBookings, getBudapestDateKey } = require('../services/bookingExpirationService');
 
 exports.createBooking = async (req, res) => {
     const { tour_id, equipment_ids } = req.body;
     const user_id = req.user.id;
     try {
         const [tourRows] = await db.query(
-            `SELECT id, title, max_participants, price, start_date, end_date
+            `SELECT id, title, max_participants, price, start_date, end_date,
+                    start_date <= ? AS tour_started
              FROM tours WHERE id = ?`,
-            [tour_id]
+            [getBudapestDateKey(), tour_id]
         );
         if (tourRows.length === 0) {
             return res.status(404).json({ message: "Túra nem található." });
         }
         const tour = tourRows[0];
-        const now = new Date();
-        const startDate = tour.start_date ? new Date(tour.start_date) : null;
-        const endDate = tour.end_date ? new Date(tour.end_date) : null;
-        if (startDate && endDate && now >= startDate && now <= endDate) {
-            return res.status(400).json({ message: "Folyamatban lévő túrára nem lehet jelentkezni." });
+        if (tour.tour_started) {
+            return res.status(400).json({ message: "Már megkezdődött túrára nem lehet jelentkezni." });
         }
         const maxParticipants = tour.max_participants;
         let isFull = false;
         if (maxParticipants) {
             const [countRows] = await db.query(
-                "SELECT COUNT(*) AS bookedCount FROM bookings WHERE tour_id = ? AND status <> 'cancelled' AND status <> 'waitlist'",
+                "SELECT COUNT(*) AS bookedCount FROM bookings WHERE tour_id = ? AND status IN ('pending', 'confirmed')",
                 [tour_id]
             );
             const bookedCount = countRows[0]?.bookedCount || 0;
@@ -75,7 +74,7 @@ exports.createBooking = async (req, res) => {
                    FROM booking_equipments be
                    JOIN bookings b ON b.id = be.booking_id
                    JOIN tours t ON t.id = b.tour_id
-                   WHERE b.status <> 'cancelled' AND b.status <> 'waitlist'
+                   WHERE b.status IN ('pending', 'confirmed')
                      AND t.start_date <= ? AND t.end_date >= ?
                    GROUP BY be.equipment_id
                  ) reserved ON reserved.equipment_id = e.id
@@ -216,6 +215,7 @@ exports.createBooking = async (req, res) => {
 exports.getMyBookings = async (req, res) => {
     const user_id = req.user.id;
     try {
+        await expireStaleBookings();
         const [myBookings] = await db.query(
             `SELECT bookings.id, bookings.status, bookings.booked_at, bookings.payment_status, bookings.paid_at,
                          bookings.extra_price, bookings.total_price, bookings.refund_amount, bookings.refund_status,
@@ -298,6 +298,7 @@ exports.deleteBooking = async (req, res) => {
 
 exports.getAllBookings = async (req, res) => {
     try {
+        await expireStaleBookings();
         const [rows] = await db.query(`
             SELECT 
                 b.*, 
@@ -319,6 +320,9 @@ exports.getAllBookings = async (req, res) => {
 exports.updateBookingStatus = async (req, res) => {
     const { id } = req.params;
     const { status } = req.body;
+    if (!['confirmed', 'cancelled'].includes(status)) {
+        return res.status(400).json({ message: "Érvénytelen jelentkezési státusz." });
+    }
     try {
         const [bookingRows] = await db.query(
             `SELECT b.id, b.tour_id, b.user_id, b.status AS current_status, b.total_price,
@@ -334,7 +338,34 @@ exports.updateBookingStatus = async (req, res) => {
             return res.status(404).json({ message: "Foglalás nem található." });
         }
         const booking = bookingRows[0];
-        await db.query('UPDATE bookings SET status = ? WHERE id = ?', [status, id]);
+
+        if (status === 'confirmed') {
+            if (!['pending', 'waitlist'].includes(booking.current_status)) {
+                return res.status(409).json({
+                    message: booking.current_status === 'expired'
+                        ? "A jelentkezés lejárt, ezért már nem hagyható jóvá."
+                        : "Ez a jelentkezés már nem vár jóváhagyásra."
+                });
+            }
+
+            const [updateResult] = await db.query(
+                `UPDATE bookings b
+                 JOIN tours t ON t.id = b.tour_id
+                 SET b.status = 'confirmed'
+                 WHERE b.id = ?
+                   AND b.status IN ('pending', 'waitlist')
+                   AND t.start_date > ?`,
+                [id, getBudapestDateKey()]
+            );
+            if (!updateResult.affectedRows) {
+                await expireStaleBookings({ force: true });
+                return res.status(409).json({
+                    message: "A túra már megkezdődött, ezért a jelentkezés lejárt és nem hagyható jóvá."
+                });
+            }
+        } else {
+            await db.query('UPDATE bookings SET status = ? WHERE id = ?', [status, id]);
+        }
 
         if (status === 'confirmed' && booking.current_status !== 'confirmed') {
             try {
@@ -469,6 +500,7 @@ exports.checkIfBooked = async (req, res) => {
 
 exports.getBookingStatusByTourId = async (req, res) => {
     try {
+        await expireStaleBookings();
         const [rows] = await db.query(
             `SELECT b.id, b.status, b.payment_status,
                     b.extra_price, b.total_price,
@@ -833,11 +865,12 @@ exports.updateBookingEquipment = async (req, res) => {
     try {
         const [rows] = await db.query(
             `SELECT b.id, b.user_id, b.status, b.payment_status, b.total_price,
-                    b.tour_id, t.price, t.start_date, t.end_date
+                    b.tour_id, t.price, t.start_date, t.end_date,
+                    t.start_date <= ? AS tour_started
              FROM bookings b
              JOIN tours t ON b.tour_id = t.id
              WHERE b.id = ? AND b.user_id = ?`,
-            [bookingId, userId]
+            [getBudapestDateKey(), bookingId, userId]
         );
 
         if (rows.length === 0) {
@@ -845,8 +878,11 @@ exports.updateBookingEquipment = async (req, res) => {
         }
 
         const booking = rows[0];
-        if (booking.status === 'cancelled') {
-            return res.status(400).json({ message: 'A foglalás törölt.' });
+        if (booking.status === 'cancelled' || booking.status === 'expired') {
+            return res.status(400).json({ message: 'A jelentkezés már nem módosítható.' });
+        }
+        if (booking.tour_started) {
+            return res.status(409).json({ message: 'A túra kezdete után az eszközök nem módosíthatók.' });
         }
         if (booking.payment_status === 'paid') {
             return res.status(400).json({ message: 'Fizetés után az eszközök nem módosíthatók.' });
@@ -866,7 +902,7 @@ exports.updateBookingEquipment = async (req, res) => {
                      FROM booking_equipments be
                      JOIN bookings b ON b.id = be.booking_id
                      JOIN tours t ON t.id = b.tour_id
-                     WHERE b.status <> 'cancelled' AND b.status <> 'waitlist'
+                     WHERE b.status IN ('pending', 'confirmed')
                          AND b.id <> ?
                          AND t.start_date <= ? AND t.end_date >= ?
                      GROUP BY be.equipment_id
@@ -947,7 +983,21 @@ exports.promoteWaitlistBooking = async (req, res) => {
             return res.status(400).json({ message: "Ez a foglalás nem szerepel a várólistán." });
         }
 
-        await db.query('UPDATE bookings SET status = ? WHERE id = ?', ['confirmed', bookingId]);
+        const [promotionResult] = await db.query(
+            `UPDATE bookings b
+             JOIN tours t ON t.id = b.tour_id
+             SET b.status = 'confirmed'
+             WHERE b.id = ?
+               AND b.status = 'waitlist'
+               AND t.start_date > ?`,
+            [bookingId, getBudapestDateKey()]
+        );
+        if (!promotionResult.affectedRows) {
+            await expireStaleBookings({ force: true });
+            return res.status(409).json({
+                message: "A túra már megkezdődött, ezért a várólistás jelentkezés lejárt."
+            });
+        }
 
         try {
             await logActivity({
@@ -999,6 +1049,7 @@ exports.promoteWaitlistBooking = async (req, res) => {
 exports.getTourWaitlist = async (req, res) => {
     const { tourId } = req.params;
     try {
+        await expireStaleBookings();
         const [rows] = await db.query(
             `SELECT b.id, b.user_id, b.tour_id, b.status, b.booked_at, b.total_price,
                     u.name AS user_name, u.email AS user_email, u.avatar_url
