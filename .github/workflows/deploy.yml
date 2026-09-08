@@ -10,7 +10,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v6
 
       - name: Deploy to VPS via SSH
         uses: appleboy/ssh-action@master
@@ -31,4 +31,4 @@ jobs:
             npm install --production
             
             # Restart PM2
-            pm2 restart turazzvelunk-backend || pm2 start server.js --name "turazzvelunk-backend" 
+            pm2 restart turazzvelunk-backend || pm2 start server.js --name "turazzvelunk-backend"
