@@ -63,6 +63,8 @@ const AdminDashboard = () => {
   const [cancelStatusFilter, setCancelStatusFilter] = useState('all');
   const [newEquipment, setNewEquipment] = useState({ name: '', description: '', total_quantity: '' });
   const [equipmentAvailability, setEquipmentAvailability] = useState({});
+  const [equipmentConflicts, setEquipmentConflicts] = useState({});
+  const [initialTourEquipmentIds, setInitialTourEquipmentIds] = useState([]);
   const [emailSubject, setEmailSubject] = useState('');
   const [emailMessage, setEmailMessage] = useState('');
   const [emailRecipients, setEmailRecipients] = useState([]);
@@ -826,18 +828,23 @@ const AdminDashboard = () => {
           return acc;
         }, {});
         setNewTour((prev) => ({ ...prev, equipment_prices: map }));
-        setSelectedEquipmentIds(data.map((item) => Number(item.id)));
+        const equipmentIds = data.map((item) => Number(item.id));
+        setSelectedEquipmentIds(equipmentIds);
+        setInitialTourEquipmentIds(equipmentIds);
         setLockedEquipmentIds(
           data
             .filter((item) => Number(item.booked_quantity || 0) > 0)
             .map((item) => Number(item.id))
         );
+        return equipmentIds;
       }
     } catch (err) {
       setNewTour((prev) => ({ ...prev, equipment_prices: {} }));
       setSelectedEquipmentIds([]);
       setLockedEquipmentIds([]);
+      setInitialTourEquipmentIds([]);
     }
+    return [];
   };
 
   const handleSubmitTour = async (e) => {
@@ -871,6 +878,7 @@ const AdminDashboard = () => {
           selectedEquipmentIds.includes(Number(item.id)) &&
           (
             lockedEquipmentIds.includes(Number(item.id)) ||
+            initialTourEquipmentIds.includes(Number(item.id)) ||
             Number(equipmentAvailability[item.id] ?? item.total_quantity ?? 0) > 0
           )
         )
@@ -911,6 +919,9 @@ const AdminDashboard = () => {
       setNewTour(initialTourState);
       setSelectedEquipmentIds([]);
       setLockedEquipmentIds([]);
+      setInitialTourEquipmentIds([]);
+      setEquipmentAvailability({});
+      setEquipmentConflicts({});
       fetchBookings();
       fetchTours();
     } else {
@@ -918,9 +929,15 @@ const AdminDashboard = () => {
     }
   };
 
-  const fetchEquipmentAvailability = async (startDate, endDate) => {
+  const fetchEquipmentAvailability = async (
+    startDate,
+    endDate,
+    excludeTourId = editingTourId,
+    preservedEquipmentIds = initialTourEquipmentIds
+  ) => {
     if (!(startDate instanceof Date) || !(endDate instanceof Date)) {
       setEquipmentAvailability({});
+      setEquipmentConflicts({});
       return;
     }
     const formatDate = (date) => {
@@ -930,24 +947,38 @@ const AdminDashboard = () => {
       return `${year}-${month}-${day}`;
     };
     try {
-      const res = await fetch(
-        `${import.meta.env.VITE_API_URL}/tours/equipment-availability/range?start_date=${formatDate(startDate)}&end_date=${formatDate(endDate)}`
-      );
+      const params = new URLSearchParams({
+        start_date: formatDate(startDate),
+        end_date: formatDate(endDate)
+      });
+      if (excludeTourId) params.set('exclude_tour_id', excludeTourId);
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/tours/equipment-availability/range?${params}`);
       const data = await res.json();
       if (res.ok && Array.isArray(data)) {
         const map = data.reduce((acc, item) => {
           acc[item.id] = Number(item.available_quantity || 0);
           return acc;
         }, {});
+        const conflicts = data.reduce((acc, item) => {
+          if (item.is_assigned_elsewhere) {
+            acc[item.id] = item.conflicting_tours || 'másik túra';
+          }
+          return acc;
+        }, {});
         setEquipmentAvailability(map);
+        setEquipmentConflicts(conflicts);
         setSelectedEquipmentIds((current) => current.filter((equipmentId) =>
-          lockedEquipmentIds.includes(Number(equipmentId)) || Number(map[equipmentId] ?? 0) > 0
+          lockedEquipmentIds.includes(Number(equipmentId)) ||
+          preservedEquipmentIds.includes(Number(equipmentId)) ||
+          Number(map[equipmentId] ?? 0) > 0
         ));
       } else {
         setEquipmentAvailability({});
+        setEquipmentConflicts({});
       }
     } catch (err) {
       setEquipmentAvailability({});
+      setEquipmentConflicts({});
     }
   };
 
@@ -1108,7 +1139,9 @@ const AdminDashboard = () => {
                     setEditingTourId(null);
                     setSelectedEquipmentIds([]);
                     setLockedEquipmentIds([]);
+                    setInitialTourEquipmentIds([]);
                     setEquipmentAvailability({});
+                    setEquipmentConflicts({});
                     const equipmentMap = equipment.reduce((acc, item) => {
                       acc[item.id] = 0;
                       return acc;
@@ -1321,7 +1354,11 @@ const AdminDashboard = () => {
                                             start_date: tour.start_date ? new Date(tour.start_date) : null,
                                             end_date: tour.end_date ? new Date(tour.end_date) : null,
                                           });
-                                          loadTourEquipmentPrices(tour.id);
+                                          const startDate = tour.start_date ? new Date(tour.start_date) : null;
+                                          const endDate = tour.end_date ? new Date(tour.end_date) : null;
+                                          loadTourEquipmentPrices(tour.id).then((equipmentIds) => {
+                                            fetchEquipmentAvailability(startDate, endDate, tour.id, equipmentIds);
+                                          });
                                           setIsModalOpen(true);
                                         }}
                                         className="p-3 bg-blue-50 text-blue-600 rounded-2xl hover:bg-blue-600 hover:text-white transition shadow-sm"
@@ -2501,6 +2538,7 @@ const AdminDashboard = () => {
                         fetchEquipmentAvailability(start, end);
                       } else {
                         setEquipmentAvailability({});
+                        setEquipmentConflicts({});
                       }
                     }}
                     className="w-full p-4 bg-slate-50 border-none rounded-2xl focus:ring-2 focus:ring-emerald-500 transition font-bold text-emerald-900"
@@ -2562,12 +2600,17 @@ const AdminDashboard = () => {
                           checked={selectedEquipmentIds.includes(Number(item.id))}
                           disabled={
                             lockedEquipmentIds.includes(Number(item.id)) ||
-                            Number(equipmentAvailability[item.id] ?? item.total_quantity ?? 0) <= 0
+                            (
+                              Number(equipmentAvailability[item.id] ?? item.total_quantity ?? 0) <= 0 &&
+                              !initialTourEquipmentIds.includes(Number(item.id))
+                            )
                           }
                           aria-label={`${item.name} csatolása a túrához`}
                           title={
                             lockedEquipmentIds.includes(Number(item.id))
                               ? 'Aktív foglalás miatt nem távolítható el'
+                              : equipmentConflicts[item.id]
+                                ? `Már egy másik, átfedő túrához van rendelve: ${equipmentConflicts[item.id]}`
                               : Number(equipmentAvailability[item.id] ?? item.total_quantity ?? 0) <= 0
                                 ? 'Az eszköz nem elérhető a kiválasztott időszakban'
                                 : ''
@@ -2576,7 +2619,8 @@ const AdminDashboard = () => {
                           onChange={(e) => {
                             const equipmentId = Number(item.id);
                             const isUnavailable = Number(equipmentAvailability[item.id] ?? item.total_quantity ?? 0) <= 0;
-                            if (isUnavailable && !lockedEquipmentIds.includes(equipmentId)) return;
+                            const wasInitiallyAssigned = initialTourEquipmentIds.includes(equipmentId);
+                            if (e.target.checked && isUnavailable && !wasInitiallyAssigned) return;
                             setSelectedEquipmentIds((prev) => e.target.checked
                               ? [...new Set([...prev, equipmentId])]
                               : prev.filter((id) => id !== equipmentId));
@@ -2588,9 +2632,15 @@ const AdminDashboard = () => {
                             Foglalásban
                           </div>
                         )}
-                        <div className="text-xs text-slate-400 font-bold">
-                          Elérhető: {Number(equipmentAvailability[item.id] ?? item.total_quantity ?? 0)} db
-                        </div>
+                        {equipmentConflicts[item.id] ? (
+                          <div className="text-xs text-red-500 font-bold">
+                            Másik túra: {equipmentConflicts[item.id]}
+                          </div>
+                        ) : (
+                          <div className="text-xs text-slate-400 font-bold">
+                            Elérhető: {Number(equipmentAvailability[item.id] ?? item.total_quantity ?? 0)} db
+                          </div>
+                        )}
                         <div className="relative w-full md:w-48">
                           <input
                             type="text"
@@ -2618,7 +2668,9 @@ const AdminDashboard = () => {
                           </span>
                         </div>
                         {Number(equipmentAvailability[item.id] ?? item.total_quantity ?? 0) <= 0 && (
-                          <div className="text-[10px] font-black uppercase tracking-widest text-red-500">Nem elérhető</div>
+                          <div className="text-[10px] font-black uppercase tracking-widest text-red-500">
+                            {equipmentConflicts[item.id] ? 'Másik túrához rendelve' : 'Nem elérhető'}
+                          </div>
                         )}
                       </div>
                     ))
