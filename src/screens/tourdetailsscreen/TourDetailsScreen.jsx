@@ -3,11 +3,15 @@ import { useParams, Link, useNavigate, useLocation } from 'react-router-dom';
 import { AuthContext } from '../../context/AuthContext';
 import { 
   Clock, MapPin, Calendar, Users, ArrowLeft, 
-  Zap, Info, ShieldCheck, CheckCircle2, UserMinus, MessageCircle, ThumbsUp, X, XCircle
+  Zap, Info, ShieldCheck, CheckCircle2, UserMinus, ThumbsUp, X, XCircle
 } from 'lucide-react';
 import { toast } from 'react-toastify';
 import { io } from 'socket.io-client';
 import { formatPrice } from '../../utils/formatPrice';
+
+// Ideiglenesen kikapcsolva: a meglévő kommentek olvashatók maradnak,
+// de új komment és válasz nem küldhető.
+const COMMENTS_ENABLED = false;
 
 const TourDetailsScreen = () => {
   const { id } = useParams();
@@ -41,6 +45,7 @@ const TourDetailsScreen = () => {
   const [commentDrafts, setCommentDrafts] = useState({});
   const [likeLoadingId, setLikeLoadingId] = useState(null);
   const socketRef = useRef(null);
+  const chatMessagesContainerRef = useRef(null);
   const [postUpdates, setPostUpdates] = useState({});
   const [commentLikeLoadingId, setCommentLikeLoadingId] = useState(null);
   const [replyDrafts, setReplyDrafts] = useState({});
@@ -358,6 +363,22 @@ const TourDetailsScreen = () => {
       });
     }
   }, [activeTab, id, isChatAllowed, user]);
+
+  useEffect(() => {
+    if (activeTab !== 'chat' || chatLoading) return undefined;
+
+    const frameId = window.requestAnimationFrame(() => {
+      const container = chatMessagesContainerRef.current;
+      if (container) {
+        container.scrollTo({
+          top: container.scrollHeight,
+          behavior: 'smooth'
+        });
+      }
+    });
+
+    return () => window.cancelAnimationFrame(frameId);
+  }, [activeTab, chatLoading, chatMessages.length]);
 
   useEffect(() => {
     const apiBase = import.meta.env.VITE_API_URL || '';
@@ -999,12 +1020,6 @@ const TourDetailsScreen = () => {
                         >
                           <ThumbsUp size={14} /> {post.like_count || 0}
                         </button>
-                        <button
-                          onClick={() => openCommentsModal(post.id)}
-                          className="flex items-center gap-2 text-xs text-slate-500 font-black uppercase tracking-widest px-3 py-2 rounded-full bg-slate-50 hover:bg-slate-100 transition"
-                        >
-                          <MessageCircle size={14} /> Kommentek ({post.comment_count || post.comments?.length || 0})
-                        </button>
                       </div>
 
                       <div className="space-y-3">
@@ -1082,7 +1097,7 @@ const TourDetailsScreen = () => {
                       </div>
                     )}
                   </div>
-                  <div className="flex-1 overflow-y-auto p-6 space-y-4">
+                  <div ref={chatMessagesContainerRef} className="flex-1 overflow-y-auto p-6 space-y-4">
                     {chatLoading ? (
                       <div className="text-slate-400 font-semibold">Betöltés...</div>
                     ) : chatMessages.length === 0 ? (
@@ -1770,7 +1785,7 @@ const TourDetailsScreen = () => {
           <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={closeCommentsModal}></div>
           <div className="relative bg-white w-full max-w-3xl rounded-[2.5rem] shadow-2xl p-8 max-h-[85vh] overflow-y-auto">
             <div className="flex items-center justify-between mb-6">
-              <h3 className="text-2xl font-black text-slate-900">Bejegyzés és kommentek</h3>
+              <h3 className="text-2xl font-black text-slate-900">Bejegyzés</h3>
               <button onClick={closeCommentsModal} className="p-2 rounded-xl hover:bg-slate-100 transition">
                 <X size={18} />
               </button>
@@ -1815,15 +1830,17 @@ const TourDetailsScreen = () => {
                           >
                             <ThumbsUp size={12} /> {comment.like_count || 0}
                           </button>
-                          <button
-                            onClick={() => setActiveReplyTo(activeReplyTo === comment.id ? null : comment.id)}
-                            className="text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-emerald-600"
-                          >
-                            Válasz
-                          </button>
+                          {COMMENTS_ENABLED && user && (
+                            <button
+                              onClick={() => setActiveReplyTo(activeReplyTo === comment.id ? null : comment.id)}
+                              className="text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-emerald-600"
+                            >
+                              Válasz
+                            </button>
+                          )}
                         </div>
 
-                        {activeReplyTo === comment.id && user && (
+                        {COMMENTS_ENABLED && activeReplyTo === comment.id && user && (
                           <div className="flex items-center gap-3 mb-3">
                             <input
                               type="text"
@@ -1863,7 +1880,7 @@ const TourDetailsScreen = () => {
                     ))}
                   </div>
 
-                  {user && (
+                  {COMMENTS_ENABLED && user && (
                     <div className="flex items-center gap-3">
                       <input
                         type="text"

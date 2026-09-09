@@ -8,7 +8,8 @@ router.post('/tour/:tourId', protect, adminOnly, tourPostController.createPost);
 
 router.get('/:postId/comments', tourPostController.getCommentsByPostId);
 router.get('/:postId/comments/top', tourPostController.getTopCommentsByPostId);
-router.post('/:postId/comments', protect, tourPostController.createComment);
+// Ideiglenesen kikapcsolva: új komment és válasz létrehozása.
+// router.post('/:postId/comments', protect, tourPostController.createComment);
 router.post('/comments/:commentId/likes', protect, tourPostController.toggleCommentLike);
 
 router.post('/:postId/likes', protect, tourPostController.toggleLike);
