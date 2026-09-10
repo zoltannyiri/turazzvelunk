@@ -66,6 +66,73 @@ exports.createPost = async (req, res) => {
   }
 };
 
+exports.updatePost = async (req, res) => {
+  const postId = Number(req.params.postId);
+  const title = typeof req.body.title === 'string' ? req.body.title.trim() : '';
+  const content = typeof req.body.content === 'string' ? req.body.content.trim() : '';
+  if (!Number.isInteger(postId) || postId <= 0) {
+    return res.status(400).json({ message: 'Érvénytelen bejegyzésazonosító.' });
+  }
+  if (!content) {
+    return res.status(400).json({ message: 'A tartalom kötelező.' });
+  }
+
+  try {
+    const [rows] = await db.query('SELECT id, tour_id FROM tour_posts WHERE id = ?', [postId]);
+    if (rows.length === 0) {
+      return res.status(404).json({ message: 'A bejegyzés nem található.' });
+    }
+
+    await db.query(
+      'UPDATE tour_posts SET title = ?, content = ? WHERE id = ?',
+      [title || null, content, postId]
+    );
+
+    const io = req.app.get('io');
+    if (io) {
+      io.to(`tour:${rows[0].tour_id}`).emit('tour-post-updated', {
+        tourId: Number(rows[0].tour_id),
+        postId
+      });
+    }
+
+    res.json({ message: 'Bejegyzés frissítve.', id: postId, title: title || null, content });
+  } catch (err) {
+    res.status(500).json({ message: 'Szerver hiba történt a bejegyzés módosításakor.', error: err.message });
+  }
+};
+
+exports.deletePost = async (req, res) => {
+  const postId = Number(req.params.postId);
+  if (!Number.isInteger(postId) || postId <= 0) {
+    return res.status(400).json({ message: 'Érvénytelen bejegyzésazonosító.' });
+  }
+
+  try {
+    const [rows] = await db.query('SELECT id, tour_id FROM tour_posts WHERE id = ?', [postId]);
+    if (rows.length === 0) {
+      return res.status(404).json({ message: 'A bejegyzés nem található.' });
+    }
+
+    await db.query('DELETE FROM tour_post_likes WHERE post_id = ?', [postId]);
+    await db.query('DELETE FROM tour_post_comment_likes WHERE comment_id IN (SELECT id FROM tour_post_comments WHERE post_id = ?)', [postId]);
+    await db.query('DELETE FROM tour_post_comments WHERE post_id = ?', [postId]);
+    await db.query('DELETE FROM tour_posts WHERE id = ?', [postId]);
+
+    const io = req.app.get('io');
+    if (io) {
+      io.to(`tour:${rows[0].tour_id}`).emit('tour-post-deleted', {
+        tourId: Number(rows[0].tour_id),
+        postId
+      });
+    }
+
+    res.json({ message: 'Bejegyzés sikeresen törölve.' });
+  } catch (err) {
+    res.status(500).json({ message: 'Szerver hiba történt a bejegyzés törlésekor.', error: err.message });
+  }
+};
+
 exports.getCommentsByPostId = async (req, res) => {
   try {
     const [rows] = await db.query(

@@ -3,7 +3,7 @@ import { useParams, Link, useNavigate, useLocation } from 'react-router-dom';
 import { AuthContext } from '../../context/AuthContext';
 import { 
   Clock, MapPin, Calendar, Users, ArrowLeft, 
-  Zap, Info, ShieldCheck, CheckCircle2, UserMinus, ThumbsUp, X, XCircle, Edit3
+  Zap, Info, ShieldCheck, CheckCircle2, UserMinus, ThumbsUp, X, XCircle, Edit3, Trash2
 } from 'lucide-react';
 import { toast } from 'react-toastify';
 import { io } from 'socket.io-client';
@@ -42,6 +42,10 @@ const TourDetailsScreen = () => {
   const [posts, setPosts] = useState([]);
   const [postsLoading, setPostsLoading] = useState(false);
   const [newPost, setNewPost] = useState({ title: '', content: '' });
+  const [editingPostId, setEditingPostId] = useState(null);
+  const [editPostForm, setEditPostForm] = useState({ title: '', content: '' });
+  const [editPostSubmitting, setEditPostSubmitting] = useState(false);
+  const [deletePostLoadingId, setDeletePostLoadingId] = useState(null);
   const [commentDrafts, setCommentDrafts] = useState({});
   const [likeLoadingId, setLikeLoadingId] = useState(null);
   const socketRef = useRef(null);
@@ -851,6 +855,78 @@ const TourDetailsScreen = () => {
     }
   };
 
+  const handleStartEditPost = (post) => {
+    setEditingPostId(post.id);
+    setEditPostForm({
+      title: post.title || '',
+      content: post.content || ''
+    });
+  };
+
+  const handleCancelEditPost = () => {
+    setEditingPostId(null);
+    setEditPostForm({ title: '', content: '' });
+  };
+
+  const handleUpdatePost = async (e, postId) => {
+    e.preventDefault();
+    if (!editPostForm.content.trim()) {
+      toast.error('A tartalom kitöltése kötelező.');
+      return;
+    }
+    setEditPostSubmitting(true);
+    try {
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/tour-posts/${postId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify({
+          title: editPostForm.title.trim() || null,
+          content: editPostForm.content.trim()
+        })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        toast.success('Bejegyzés sikeresen frissítve.');
+        setEditingPostId(null);
+        setEditPostForm({ title: '', content: '' });
+        fetchPosts({ silent: true });
+      } else {
+        toast.error(data.message || data.error || 'Hiba a bejegyzés módosításakor.');
+      }
+    } catch (err) {
+      toast.error('Hiba történt a módosítás mentésekor.');
+    } finally {
+      setEditPostSubmitting(false);
+    }
+  };
+
+  const handleDeletePost = async (postId) => {
+    if (!window.confirm('Biztosan törölni szeretnéd ezt a bejegyzést?')) return;
+    setDeletePostLoadingId(postId);
+    try {
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/tour-posts/${postId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        }
+      });
+      const data = await res.json();
+      if (res.ok) {
+        toast.success('Bejegyzés törölve.');
+        fetchPosts({ silent: true });
+      } else {
+        toast.error(data.message || data.error || 'Hiba a bejegyzés törlésekor.');
+      }
+    } catch (err) {
+      toast.error('Hiba történt a törlés során.');
+    } finally {
+      setDeletePostLoadingId(null);
+    }
+  };
+
   const handleCreateComment = async (postId, parentCommentId = null) => {
     const content = (parentCommentId ? replyDrafts[parentCommentId] : commentDrafts[postId] || '').trim();
     if (!content) return;
@@ -1174,14 +1250,79 @@ const TourDetailsScreen = () => {
                             {new Date(post.created_at).toLocaleDateString()}
                           </div>
                         </div>
-                        <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-50 text-emerald-700 text-[9px] font-black uppercase tracking-widest">
-                          {tour?.location || 'Túra'}
+                        <div className="flex items-center gap-2">
+                          <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-50 text-emerald-700 text-[9px] font-black uppercase tracking-widest">
+                            {tour?.location || 'Túra'}
+                          </div>
+                          {user?.role === 'admin' && (
+                            <div className="flex items-center gap-1.5 ml-1">
+                              <button
+                                onClick={() => handleStartEditPost(post)}
+                                className="flex items-center gap-1 px-3 py-1 rounded-lg text-xs font-bold text-slate-600 hover:text-emerald-700 hover:bg-emerald-50 border border-slate-200 bg-white transition shadow-xs"
+                                title="Bejegyzés módosítása"
+                              >
+                                <Edit3 size={13} className="text-emerald-600" />
+                                <span>Módosítás</span>
+                              </button>
+                              <button
+                                onClick={() => handleDeletePost(post.id)}
+                                disabled={deletePostLoadingId === post.id}
+                                className="flex items-center gap-1 p-1.5 rounded-lg text-xs font-bold text-slate-400 hover:text-red-600 hover:bg-red-50 border border-slate-200 bg-white transition disabled:opacity-50"
+                                title="Bejegyzés törlése"
+                              >
+                                <Trash2 size={13} />
+                              </button>
+                            </div>
+                          )}
                         </div>
                       </div>
-                      {post.title && (
-                        <h3 className="text-xl font-black text-slate-900 mb-2">{post.title}</h3>
+
+                      {editingPostId === post.id ? (
+                        <form onSubmit={(e) => handleUpdatePost(e, post.id)} className="space-y-3 my-4 p-5 bg-slate-50 rounded-2xl border border-emerald-100">
+                          <div className="text-[11px] font-black uppercase tracking-widest text-emerald-700 flex items-center gap-1.5">
+                            <Edit3 size={14} /> Bejegyzés módosítása
+                          </div>
+                          <input
+                            type="text"
+                            placeholder="Cím (opcionális)"
+                            className="w-full p-3.5 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none transition font-bold text-slate-900"
+                            value={editPostForm.title}
+                            onChange={(e) => setEditPostForm(prev => ({ ...prev, title: e.target.value }))}
+                          />
+                          <textarea
+                            rows="4"
+                            placeholder="Bejegyzés tartalma..."
+                            className="w-full p-3.5 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none transition font-medium text-slate-700"
+                            value={editPostForm.content}
+                            onChange={(e) => setEditPostForm(prev => ({ ...prev, content: e.target.value }))}
+                            required
+                          />
+                          <div className="flex items-center justify-end gap-2 pt-2">
+                            <button
+                              type="button"
+                              onClick={handleCancelEditPost}
+                              disabled={editPostSubmitting}
+                              className="px-4 py-2 rounded-xl text-xs font-bold text-slate-500 hover:bg-slate-200 transition"
+                            >
+                              Mégse
+                            </button>
+                            <button
+                              type="submit"
+                              disabled={editPostSubmitting}
+                              className="px-5 py-2.5 rounded-xl bg-emerald-600 text-white font-black text-xs uppercase tracking-widest hover:bg-emerald-700 transition disabled:opacity-50 flex items-center gap-1.5 shadow-sm"
+                            >
+                              {editPostSubmitting ? 'Mentés...' : 'Módosítások mentése'}
+                            </button>
+                          </div>
+                        </form>
+                      ) : (
+                        <>
+                          {post.title && (
+                            <h3 className="text-xl font-black text-slate-900 mb-2">{post.title}</h3>
+                          )}
+                          <p className="text-slate-700 leading-relaxed mb-4 whitespace-pre-wrap">{post.content}</p>
+                        </>
                       )}
-                      <p className="text-slate-700 leading-relaxed mb-4 whitespace-pre-wrap">{post.content}</p>
 
                       {postUpdates[post.id] && (
                         <div className="mb-4">
