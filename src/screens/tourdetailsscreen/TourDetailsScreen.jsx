@@ -3,11 +3,11 @@ import { useParams, Link, useNavigate, useLocation } from 'react-router-dom';
 import { AuthContext } from '../../context/AuthContext';
 import { 
   Clock, MapPin, Calendar, Users, ArrowLeft, 
-  Zap, Info, ShieldCheck, CheckCircle2, UserMinus, ThumbsUp, X, XCircle
+  Zap, Info, ShieldCheck, CheckCircle2, UserMinus, ThumbsUp, X, XCircle, Edit3
 } from 'lucide-react';
 import { toast } from 'react-toastify';
 import { io } from 'socket.io-client';
-import { formatPrice } from '../../utils/formatPrice';
+import { formatPrice, formatPriceInput, parsePriceInput } from '../../utils/formatPrice';
 
 // Ideiglenesen kikapcsolva: a meglévő kommentek olvashatók maradnak,
 // de új komment és válasz nem küldhető.
@@ -69,6 +69,30 @@ const TourDetailsScreen = () => {
   const [selectedEquipmentIds, setSelectedEquipmentIds] = useState([]);
   const [initialEquipmentIds, setInitialEquipmentIds] = useState([]);
   const [equipmentInitialized, setEquipmentInitialized] = useState(false);
+  const [isTourEditModalOpen, setIsTourEditModalOpen] = useState(false);
+  const [tourEditSaving, setTourEditSaving] = useState(false);
+  const [tourEditEquipmentLoading, setTourEditEquipmentLoading] = useState(false);
+  const [tourEditEquipment, setTourEditEquipment] = useState([]);
+  const [tourEditSelectedEquipmentIds, setTourEditSelectedEquipmentIds] = useState([]);
+  const [tourEditInitialEquipmentIds, setTourEditInitialEquipmentIds] = useState([]);
+  const [tourEditLockedEquipmentIds, setTourEditLockedEquipmentIds] = useState([]);
+  const [tourEditAvailability, setTourEditAvailability] = useState({});
+  const [tourEditConflicts, setTourEditConflicts] = useState({});
+  const [tourEditForm, setTourEditForm] = useState({
+    title: '',
+    location: '',
+    description: '',
+    price: '',
+    duration: '',
+    difficulty: 'Könnyű',
+    category: 'Hegyi túrák',
+    subcategory: '',
+    image_url: '',
+    start_date: '',
+    end_date: '',
+    max_participants: '',
+    equipment_prices: {}
+  });
 
   const fromCalendar = location.state?.from === 'calendar';
 
@@ -355,7 +379,7 @@ const TourDetailsScreen = () => {
     if (activeTab === 'chat' && isChatAllowed) {
       fetchChatMessages();
     }
-    if (activeTab === 'chat' && user) {
+    if (activeTab === 'chat' && user && user.role !== 'admin') {
       refreshBookingStatus().then((data) => {
         if (!data?.isBooked || data?.status !== 'confirmed') {
           setActiveTab('details');
@@ -468,11 +492,13 @@ const TourDetailsScreen = () => {
   const handleSendChatMessage = async (e) => {
     e.preventDefault();
     if (!chatInput.trim()) return;
-    const status = await refreshBookingStatus();
-    if (!status?.isBooked || status?.status !== 'confirmed') {
-      toast.info('A csevegés csak elfogadott jelentkezés után érhető el.');
-      setActiveTab('details');
-      return;
+    if (user?.role !== 'admin') {
+      const status = await refreshBookingStatus();
+      if (!status?.isBooked || status?.status !== 'confirmed') {
+        toast.info('A csevegés csak elfogadott jelentkezés után érhető el.');
+        setActiveTab('details');
+        return;
+      }
     }
     try {
       const res = await fetch(`${import.meta.env.VITE_API_URL}/tours/${id}/chat-messages`, {
@@ -491,6 +517,169 @@ const TourDetailsScreen = () => {
       setChatInput('');
     } catch (err) {
       toast.error('Hiba történt.');
+    }
+  };
+
+  const toDateInputValue = (value) => {
+    if (!value) return '';
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return '';
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
+  const fetchTourEditAvailability = async (startDate, endDate, preservedIds = tourEditInitialEquipmentIds) => {
+    if (!startDate || !endDate) {
+      setTourEditAvailability({});
+      setTourEditConflicts({});
+      return;
+    }
+    try {
+      const params = new URLSearchParams({
+        start_date: startDate,
+        end_date: endDate,
+        exclude_tour_id: id
+      });
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/tours/equipment-availability/range?${params}`);
+      const data = await res.json();
+      if (!res.ok || !Array.isArray(data)) throw new Error(data.message || data.error);
+
+      const availability = data.reduce((acc, item) => {
+        acc[item.id] = Number(item.available_quantity || 0);
+        return acc;
+      }, {});
+      const conflicts = data.reduce((acc, item) => {
+        if (item.is_assigned_elsewhere) acc[item.id] = item.conflicting_tours || 'másik túra';
+        return acc;
+      }, {});
+      setTourEditAvailability(availability);
+      setTourEditConflicts(conflicts);
+      setTourEditSelectedEquipmentIds((current) => current.filter((equipmentId) =>
+        tourEditLockedEquipmentIds.includes(Number(equipmentId)) ||
+        preservedIds.includes(Number(equipmentId)) ||
+        Number(availability[equipmentId] || 0) > 0
+      ));
+    } catch (err) {
+      setTourEditAvailability({});
+      setTourEditConflicts({});
+    }
+  };
+
+  const openTourEditModal = async () => {
+    if (user?.role !== 'admin' || !tour) return;
+    const startDate = toDateInputValue(tour.start_date);
+    const endDate = toDateInputValue(tour.end_date);
+    setTourEditForm({
+      title: tour.title || '',
+      location: tour.location || '',
+      description: tour.description || '',
+      price: tour.price || '',
+      duration: tour.duration || '',
+      difficulty: tour.difficulty || 'Könnyű',
+      category: tour.category || 'Hegyi túrák',
+      subcategory: tour.subcategory || '',
+      image_url: tour.image_url || '',
+      start_date: startDate,
+      end_date: endDate,
+      max_participants: tour.max_participants || '',
+      equipment_prices: {}
+    });
+    setTourEditEquipment([]);
+    setTourEditSelectedEquipmentIds([]);
+    setTourEditInitialEquipmentIds([]);
+    setTourEditLockedEquipmentIds([]);
+    setTourEditAvailability({});
+    setTourEditConflicts({});
+    setIsTourEditModalOpen(true);
+    setTourEditEquipmentLoading(true);
+    try {
+      const authHeaders = { Authorization: `Bearer ${localStorage.getItem('token')}` };
+      const [equipmentRes, assignedRes] = await Promise.all([
+        fetch(`${import.meta.env.VITE_API_URL}/equipment`, { headers: authHeaders }),
+        fetch(`${import.meta.env.VITE_API_URL}/tours/${id}/equipment`)
+      ]);
+      const [equipmentData, assignedData] = await Promise.all([equipmentRes.json(), assignedRes.json()]);
+      if (!equipmentRes.ok || !Array.isArray(equipmentData)) {
+        throw new Error(equipmentData.message || equipmentData.error || 'Az eszközök nem tölthetők be.');
+      }
+      if (!assignedRes.ok || !Array.isArray(assignedData)) {
+        throw new Error(assignedData.message || assignedData.error || 'A csatolt eszközök nem tölthetők be.');
+      }
+
+      const assignedIds = assignedData.map((item) => Number(item.id));
+      const prices = assignedData.reduce((acc, item) => {
+        acc[item.id] = Number(item.price || 0);
+        return acc;
+      }, {});
+      setTourEditEquipment(equipmentData);
+      setTourEditSelectedEquipmentIds(assignedIds);
+      setTourEditInitialEquipmentIds(assignedIds);
+      setTourEditLockedEquipmentIds(
+        assignedData
+          .filter((item) => Number(item.booked_quantity || 0) > 0)
+          .map((item) => Number(item.id))
+      );
+      setTourEditForm((current) => ({ ...current, equipment_prices: prices }));
+      await fetchTourEditAvailability(startDate, endDate, assignedIds);
+    } catch (err) {
+      toast.error(err.message || 'A szerkesztő nem tölthető be.');
+      setIsTourEditModalOpen(false);
+    } finally {
+      setTourEditEquipmentLoading(false);
+    }
+  };
+
+  const handleTourEditSubmit = async (e) => {
+    e.preventDefault();
+    if (tourEditSaving) return;
+    setTourEditSaving(true);
+    try {
+      const start = Date.parse(`${tourEditForm.start_date}T00:00:00Z`);
+      const end = Date.parse(`${tourEditForm.end_date}T00:00:00Z`);
+      const duration = Math.floor((end - start) / 86400000) + 1;
+      if (!Number.isFinite(duration) || duration < 1) {
+        toast.error('A túra időintervalluma hibás.');
+        return;
+      }
+      const payload = {
+        ...tourEditForm,
+        price: parsePriceInput(tourEditForm.price),
+        duration,
+        max_participants: Number(tourEditForm.max_participants),
+        equipment_prices: tourEditEquipment
+          .filter((item) => {
+            const equipmentId = Number(item.id);
+            return tourEditSelectedEquipmentIds.includes(equipmentId) && (
+              tourEditLockedEquipmentIds.includes(equipmentId) ||
+              tourEditInitialEquipmentIds.includes(equipmentId) ||
+              Number(tourEditAvailability[equipmentId] ?? item.total_quantity ?? 0) > 0
+            );
+          })
+          .map((item) => ({
+            equipment_id: Number(item.id),
+            price: parsePriceInput(tourEditForm.equipment_prices?.[item.id])
+          }))
+      };
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/tours/${id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify(payload)
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || data.error || 'A túra módosítása sikertelen.');
+
+      toast.success('Túra frissítve!');
+      setIsTourEditModalOpen(false);
+      await Promise.all([fetchTourData(), fetchEquipmentOptions()]);
+    } catch (err) {
+      toast.error(err.message || 'A túra módosítása sikertelen.');
+    } finally {
+      setTourEditSaving(false);
     }
   };
 
@@ -862,7 +1051,7 @@ const TourDetailsScreen = () => {
             >
               Fontos információk
             </button>
-            {user && bookingStatus === 'confirmed' && (
+            {user && isChatAllowed && (
               <button
                 onClick={() => setActiveTab('chat')}
                 className={`px-4 py-2 rounded-xl text-[11px] font-black uppercase tracking-widest transition ${
@@ -1279,7 +1468,14 @@ const TourDetailsScreen = () => {
                     )}
                 </div>
 
-                {isBooked || bookingStatus === 'cancelled' ? (
+                {user?.role === 'admin' ? (
+                  <button
+                    onClick={openTourEditModal}
+                    className="w-full py-4 rounded-2xl font-black text-sm bg-yellow-500 hover:bg-emerald-400 text-slate-900 shadow-lg shadow-emerald-500/20 transition-all flex items-center justify-center gap-2 uppercase tracking-widest"
+                  >
+                    <Edit3 size={18} /> Túra módosítása
+                  </button>
+                ) : isBooked || bookingStatus === 'cancelled' ? (
                   bookingStatus === 'confirmed' ? (
                     <div className="space-y-4">
                       <div className="w-full py-4 rounded-2xl font-black text-sm bg-emerald-500/10 text-emerald-500 border border-emerald-500/30 flex items-center justify-center gap-2 uppercase tracking-widest">
@@ -1718,6 +1914,240 @@ const TourDetailsScreen = () => {
           </div>
         </div>
       </div>
+
+      {isTourEditModalOpen && (
+        <div className="fixed inset-0 z-[190] flex items-center justify-center p-6">
+          <div
+            className="absolute inset-0 bg-emerald-950/60 backdrop-blur-xl"
+            onClick={() => !tourEditSaving && setIsTourEditModalOpen(false)}
+          ></div>
+          <div className="relative bg-white w-full max-w-3xl rounded-[3rem] shadow-2xl p-8 md:p-10 overflow-y-auto max-h-[90vh] animate-in zoom-in duration-300">
+            <div className="flex items-center justify-between gap-4 mb-8">
+              <h2 className="text-3xl font-black text-emerald-950 italic">Túra szerkesztése</h2>
+              <button
+                type="button"
+                onClick={() => setIsTourEditModalOpen(false)}
+                disabled={tourEditSaving}
+                className="p-3 rounded-2xl bg-slate-100 text-slate-500 hover:bg-slate-200 transition disabled:opacity-50"
+                aria-label="Szerkesztő bezárása"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            <form onSubmit={handleTourEditSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="md:col-span-2">
+                <label className="text-[10px] font-black uppercase text-slate-400 ml-4">Túra megnevezése</label>
+                <input
+                  type="text"
+                  required
+                  value={tourEditForm.title}
+                  onChange={(e) => setTourEditForm((current) => ({ ...current, title: e.target.value }))}
+                  className="w-full p-4 bg-slate-50 border-none rounded-2xl mt-1 focus:ring-2 focus:ring-emerald-500"
+                />
+              </div>
+              <div>
+                <label className="text-[10px] font-black uppercase text-slate-400 ml-4">Helyszín</label>
+                <input
+                  type="text"
+                  required
+                  value={tourEditForm.location}
+                  onChange={(e) => setTourEditForm((current) => ({ ...current, location: e.target.value }))}
+                  className="w-full p-4 bg-slate-50 border-none rounded-2xl mt-1"
+                />
+              </div>
+              <div>
+                <label className="text-[10px] font-black uppercase text-slate-400 ml-4">Kategória</label>
+                <select
+                  value={tourEditForm.category}
+                  onChange={(e) => setTourEditForm((current) => ({ ...current, category: e.target.value }))}
+                  className="w-full p-4 bg-slate-50 border-none rounded-2xl mt-1 font-bold"
+                >
+                  <option>Hegyi túrák</option>
+                  <option>Vízitúrák</option>
+                  <option>Jóga</option>
+                  <option>Motoros</option>
+                </select>
+              </div>
+              <div>
+                <label className="text-[10px] font-black uppercase text-slate-400 ml-4">Alkategória</label>
+                <input
+                  type="text"
+                  value={tourEditForm.subcategory}
+                  onChange={(e) => setTourEditForm((current) => ({ ...current, subcategory: e.target.value }))}
+                  className="w-full p-4 bg-slate-50 border-none rounded-2xl mt-1"
+                />
+              </div>
+              <div>
+                <label className="text-[10px] font-black uppercase text-slate-400 ml-4">Nehézség</label>
+                <select
+                  value={tourEditForm.difficulty}
+                  onChange={(e) => setTourEditForm((current) => ({ ...current, difficulty: e.target.value }))}
+                  className="w-full p-4 bg-slate-50 border-none rounded-2xl mt-1 font-bold"
+                >
+                  <option value="Könnyű">Könnyű</option>
+                  <option value="Közepes">Közepes</option>
+                  <option value="Nehéz">Nehéz</option>
+                </select>
+              </div>
+              <div>
+                <label className="text-[10px] font-black uppercase text-slate-400 ml-4">Ár (Ft)</label>
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  required
+                  value={formatPriceInput(tourEditForm.price)}
+                  onChange={(e) => setTourEditForm((current) => ({ ...current, price: formatPriceInput(e.target.value) }))}
+                  className="w-full p-4 bg-slate-50 border-none rounded-2xl mt-1"
+                />
+              </div>
+              <div>
+                <label className="text-[10px] font-black uppercase text-slate-400 ml-4">Kezdés</label>
+                <input
+                  type="date"
+                  required
+                  value={tourEditForm.start_date}
+                  onChange={(e) => {
+                    const startDate = e.target.value;
+                    setTourEditForm((current) => ({ ...current, start_date: startDate }));
+                    if (startDate && tourEditForm.end_date) {
+                      fetchTourEditAvailability(startDate, tourEditForm.end_date);
+                    }
+                  }}
+                  className="w-full p-4 bg-slate-50 border-none rounded-2xl mt-1 font-bold text-emerald-900"
+                />
+              </div>
+              <div>
+                <label className="text-[10px] font-black uppercase text-slate-400 ml-4">Befejezés</label>
+                <input
+                  type="date"
+                  required
+                  min={tourEditForm.start_date || undefined}
+                  value={tourEditForm.end_date}
+                  onChange={(e) => {
+                    const endDate = e.target.value;
+                    setTourEditForm((current) => ({ ...current, end_date: endDate }));
+                    if (tourEditForm.start_date && endDate) {
+                      fetchTourEditAvailability(tourEditForm.start_date, endDate);
+                    }
+                  }}
+                  className="w-full p-4 bg-slate-50 border-none rounded-2xl mt-1 font-bold text-emerald-900"
+                />
+              </div>
+              <div>
+                <label className="text-[10px] font-black uppercase text-slate-400 ml-4">Maximális létszám</label>
+                <input
+                  type="number"
+                  min="1"
+                  required
+                  value={tourEditForm.max_participants}
+                  onChange={(e) => setTourEditForm((current) => ({ ...current, max_participants: e.target.value }))}
+                  className="w-full p-4 bg-slate-50 border-none rounded-2xl mt-1"
+                />
+              </div>
+
+              <div className="md:col-span-2">
+                <div className="flex items-center justify-between gap-4 px-4">
+                  <label className="text-[10px] font-black uppercase text-slate-400">Csatolt eszközök és árak (Ft)</label>
+                  <span className="text-[10px] font-black uppercase text-emerald-600">
+                    {tourEditSelectedEquipmentIds.length} kiválasztva
+                  </span>
+                </div>
+                <div className="mt-2 grid gap-3">
+                  {tourEditEquipmentLoading ? (
+                    <div className="text-xs text-slate-400 font-bold">Eszközök betöltése...</div>
+                  ) : tourEditEquipment.length === 0 ? (
+                    <div className="text-xs text-slate-400 font-bold">Nincs elérhető eszköz.</div>
+                  ) : (
+                    tourEditEquipment.map((item) => {
+                      const equipmentId = Number(item.id);
+                      const isSelected = tourEditSelectedEquipmentIds.includes(equipmentId);
+                      const isLocked = tourEditLockedEquipmentIds.includes(equipmentId);
+                      const wasInitiallyAssigned = tourEditInitialEquipmentIds.includes(equipmentId);
+                      const available = Number(tourEditAvailability[equipmentId] ?? item.total_quantity ?? 0);
+                      const isUnavailable = available <= 0;
+                      const conflict = tourEditConflicts[equipmentId];
+                      return (
+                        <div key={item.id} className="flex flex-col md:flex-row md:items-center gap-3">
+                          <input
+                            type="checkbox"
+                            checked={isSelected}
+                            disabled={isLocked || (isUnavailable && !wasInitiallyAssigned)}
+                            onChange={(e) => {
+                              if (e.target.checked && isUnavailable && !wasInitiallyAssigned) return;
+                              setTourEditSelectedEquipmentIds((current) => e.target.checked
+                                ? [...new Set([...current, equipmentId])]
+                                : current.filter((selectedId) => selectedId !== equipmentId));
+                            }}
+                            title={isLocked
+                              ? 'Aktív foglalás miatt nem távolítható el'
+                              : conflict
+                                ? `Másik átfedő túrához rendelve: ${conflict}`
+                                : isUnavailable
+                                  ? 'Nem elérhető a kiválasztott időszakban'
+                                  : ''}
+                            className="h-5 w-5 rounded border-slate-300 text-emerald-600 disabled:cursor-not-allowed disabled:opacity-50"
+                          />
+                          <div className="flex-1 font-bold text-slate-700">{item.name}</div>
+                          {isLocked && <div className="text-[10px] font-black uppercase text-amber-600">Foglalásban</div>}
+                          <div className={`text-xs font-bold ${conflict ? 'text-red-500' : 'text-slate-400'}`}>
+                            {conflict ? `Másik túra: ${conflict}` : `Elérhető: ${available} db`}
+                          </div>
+                          <div className="relative w-full md:w-48">
+                            <input
+                              type="text"
+                              inputMode="numeric"
+                              value={formatPriceInput(tourEditForm.equipment_prices?.[item.id] ?? 0)}
+                              disabled={!isSelected || isLocked || isUnavailable}
+                              onChange={(e) => setTourEditForm((current) => ({
+                                ...current,
+                                equipment_prices: {
+                                  ...current.equipment_prices,
+                                  [item.id]: formatPriceInput(e.target.value)
+                                }
+                              }))}
+                              className="w-full p-3 pr-16 bg-slate-50 border-none rounded-2xl disabled:opacity-60"
+                            />
+                            <span className="absolute right-4 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400">Forint</span>
+                          </div>
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
+              </div>
+
+              <div className="md:col-span-2">
+                <label className="text-[10px] font-black uppercase text-slate-400 ml-4">Kép URL</label>
+                <input
+                  type="text"
+                  required
+                  value={tourEditForm.image_url}
+                  onChange={(e) => setTourEditForm((current) => ({ ...current, image_url: e.target.value }))}
+                  className="w-full p-4 bg-slate-50 border-none rounded-2xl mt-1"
+                />
+              </div>
+              <div className="md:col-span-2">
+                <label className="text-[10px] font-black uppercase text-slate-400 ml-4">Leírás</label>
+                <textarea
+                  rows="4"
+                  required
+                  value={tourEditForm.description}
+                  onChange={(e) => setTourEditForm((current) => ({ ...current, description: e.target.value }))}
+                  className="w-full p-4 bg-slate-50 border-none rounded-2xl mt-1 font-medium"
+                ></textarea>
+              </div>
+              <button
+                type="submit"
+                disabled={tourEditSaving || tourEditEquipmentLoading}
+                className="md:col-span-2 w-full py-5 rounded-[2rem] font-black text-xl bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-xl hover:-translate-y-1 transition-all disabled:opacity-60 disabled:hover:translate-y-0"
+              >
+                {tourEditSaving ? 'Mentés...' : 'Módosítások mentése'}
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
 
       {participantsModalOpen && (
         <div className="fixed inset-0 z-[180] flex items-center justify-center p-6">

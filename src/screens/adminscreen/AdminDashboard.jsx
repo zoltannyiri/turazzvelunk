@@ -982,6 +982,37 @@ const AdminDashboard = () => {
     }
   };
 
+  const openTourEditor = (tour) => {
+    setEditingTourId(tour.id);
+    setSelectedEquipmentIds([]);
+    setLockedEquipmentIds([]);
+    setInitialTourEquipmentIds([]);
+    setEquipmentAvailability({});
+    setEquipmentConflicts({});
+    setNewTour({
+      title: tour.title || '',
+      location: tour.location || '',
+      description: tour.description || '',
+      price: tour.price || '',
+      duration: tour.duration || '',
+      difficulty: tour.difficulty || 'Könnyű',
+      category: tour.category || 'Hegyi túrák',
+      subcategory: tour.subcategory || 'Hazai - Külföldi túrák',
+      image_url: tour.image_url || '',
+      max_participants: tour.max_participants || 12,
+      equipment_prices: {},
+      start_date: tour.start_date ? new Date(tour.start_date) : null,
+      end_date: tour.end_date ? new Date(tour.end_date) : null,
+    });
+    const startDate = tour.start_date ? new Date(tour.start_date) : null;
+    const endDate = tour.end_date ? new Date(tour.end_date) : null;
+    loadTourEquipmentPrices(tour.id).then((equipmentIds) => {
+      fetchEquipmentAvailability(startDate, endDate, tour.id, equipmentIds);
+    });
+    setActiveTab('tours');
+    setIsModalOpen(true);
+  };
+
   const handleDeleteTour = async (id) => {
     if (!window.confirm("Biztosan törölni akarod ezt a túrát?")) return;
     const res = await fetch(`${import.meta.env.VITE_API_URL}/tours/${id}`, {
@@ -1336,30 +1367,7 @@ const AdminDashboard = () => {
                                       <button 
                                         onClick={(e) => {
                                           e.stopPropagation();
-                                          setEditingTourId(tour.id);
-                                          setSelectedEquipmentIds([]);
-                                          setLockedEquipmentIds([]);
-                                          setNewTour({
-                                            title: tour.title || '',
-                                            location: tour.location || '',
-                                            description: tour.description || '',
-                                            price: tour.price || '',
-                                            duration: tour.duration || '',
-                                            difficulty: tour.difficulty || 'Könnyű',
-                                            category: tour.category || 'Hegyi túrák',
-                                            subcategory: tour.subcategory || 'Hazai - Külföldi túrák',
-                                            image_url: tour.image_url || '',
-                                            max_participants: tour.max_participants || 12,
-                                            equipment_prices: {},
-                                            start_date: tour.start_date ? new Date(tour.start_date) : null,
-                                            end_date: tour.end_date ? new Date(tour.end_date) : null,
-                                          });
-                                          const startDate = tour.start_date ? new Date(tour.start_date) : null;
-                                          const endDate = tour.end_date ? new Date(tour.end_date) : null;
-                                          loadTourEquipmentPrices(tour.id).then((equipmentIds) => {
-                                            fetchEquipmentAvailability(startDate, endDate, tour.id, equipmentIds);
-                                          });
-                                          setIsModalOpen(true);
+                                          openTourEditor(tour);
                                         }}
                                         className="p-3 bg-blue-50 text-blue-600 rounded-2xl hover:bg-blue-600 hover:text-white transition shadow-sm"
                                       >
@@ -2695,7 +2703,7 @@ const AdminDashboard = () => {
                   onChange={e => setNewTour({...newTour, description: e.target.value})}></textarea>
               </div>
               <button type="submit" className="md:col-span-2 relative group overflow-hidden w-full py-5 rounded-[2rem] font-black text-xl bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-xl hover:-translate-y-1 transition-all active:scale-95 flex items-center justify-center gap-3">
-                <span className="relative z-10">{editingTourId ? '💾 MÓDOSÍTÁSOK MENTÉSE' : 'TÚRA KÖZZÉTÉTELE'}</span>
+                <span className="relative z-10">{editingTourId ? 'MÓDOSÍTÁSOK MENTÉSE' : 'TÚRA KÖZZÉTÉTELE'}</span>
                 <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000"></div>
               </button>
             </form>
