@@ -3,7 +3,7 @@ import { useParams, Link, useNavigate, useLocation } from 'react-router-dom';
 import { AuthContext } from '../../context/AuthContext';
 import { 
   Clock, MapPin, Calendar, Users, ArrowLeft, 
-  Zap, Info, ShieldCheck, CheckCircle2, UserMinus, ThumbsUp, X, XCircle, Edit3, Trash2
+  Zap, Info, ShieldCheck, CheckCircle2, UserMinus, ThumbsUp, X, XCircle, Edit3, Trash2, ChevronDown, ChevronUp
 } from 'lucide-react';
 import { toast } from 'react-toastify';
 import { io } from 'socket.io-client';
@@ -41,6 +41,7 @@ const TourDetailsScreen = () => {
 
   const [posts, setPosts] = useState([]);
   const [postsLoading, setPostsLoading] = useState(false);
+  const [expandedPostId, setExpandedPostId] = useState(null);
   const [newPost, setNewPost] = useState({ title: '', content: '' });
   const [editingPostId, setEditingPostId] = useState(null);
   const [editPostForm, setEditPostForm] = useState({ title: '', content: '' });
@@ -856,6 +857,7 @@ const TourDetailsScreen = () => {
   };
 
   const handleStartEditPost = (post) => {
+    setExpandedPostId(post.id);
     setEditingPostId(post.id);
     setEditPostForm({
       title: post.title || '',
@@ -916,6 +918,7 @@ const TourDetailsScreen = () => {
       const data = await res.json();
       if (res.ok) {
         toast.success('Bejegyzés törölve.');
+        setExpandedPostId((current) => current === postId ? null : current);
         fetchPosts({ silent: true });
       } else {
         toast.error(data.message || data.error || 'Hiba a bejegyzés törlésekor.');
@@ -1241,15 +1244,26 @@ const TourDetailsScreen = () => {
                 <div className="space-y-6">
                   {posts.map((post) => (
                     <div key={post.id} className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm">
-                      <div className="flex items-center justify-between mb-3">
-                        <div className="flex items-center gap-3">
-                          <div className="text-[10px] font-black uppercase tracking-widest text-emerald-600">
-                            {post.author_name}
+                      <div className={`flex items-center justify-between gap-4 ${expandedPostId === post.id ? 'mb-4' : ''}`}>
+                        <button
+                          type="button"
+                          onClick={() => setExpandedPostId((current) => current === post.id ? null : post.id)}
+                          className="min-w-0 flex-1 text-left rounded-2xl p-2 -m-2 hover:bg-slate-50 transition"
+                          aria-expanded={expandedPostId === post.id}
+                          aria-controls={`tour-post-${post.id}`}
+                        >
+                          <div className="flex flex-wrap items-center gap-3 mb-1.5">
+                            <div className="text-[10px] font-black uppercase tracking-widest text-emerald-600">
+                              {post.author_name}
+                            </div>
+                            <div className="text-[10px] font-bold text-slate-400">
+                              {new Date(post.created_at).toLocaleDateString()}
+                            </div>
                           </div>
-                          <div className="text-[10px] font-bold text-slate-400">
-                            {new Date(post.created_at).toLocaleDateString()}
-                          </div>
-                        </div>
+                          <h3 className="truncate text-lg font-black text-slate-900">
+                            {post.title || 'Bejegyzés'}
+                          </h3>
+                        </button>
                         <div className="flex items-center gap-2">
                           <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-50 text-emerald-700 text-[9px] font-black uppercase tracking-widest">
                             {tour?.location || 'Túra'}
@@ -1274,11 +1288,23 @@ const TourDetailsScreen = () => {
                               </button>
                             </div>
                           )}
+                          <button
+                            type="button"
+                            onClick={() => setExpandedPostId((current) => current === post.id ? null : post.id)}
+                            className="p-2 rounded-xl border border-slate-100 bg-white text-slate-500 hover:bg-slate-50 hover:text-emerald-700 transition"
+                            aria-label={expandedPostId === post.id ? 'Bejegyzés bezárása' : 'Bejegyzés lenyitása'}
+                            aria-expanded={expandedPostId === post.id}
+                            aria-controls={`tour-post-${post.id}`}
+                          >
+                            {expandedPostId === post.id ? <ChevronUp size={19} /> : <ChevronDown size={19} />}
+                          </button>
                         </div>
                       </div>
 
-                      {editingPostId === post.id ? (
-                        <form onSubmit={(e) => handleUpdatePost(e, post.id)} className="space-y-3 my-4 p-5 bg-slate-50 rounded-2xl border border-emerald-100">
+                      {expandedPostId === post.id && (
+                        <div id={`tour-post-${post.id}`} className="animate-in fade-in slide-in-from-top-2 duration-200">
+                          {editingPostId === post.id ? (
+                            <form onSubmit={(e) => handleUpdatePost(e, post.id)} className="space-y-3 mb-4 p-5 bg-slate-50 rounded-2xl border border-emerald-100">
                           <div className="text-[11px] font-black uppercase tracking-widest text-emerald-700 flex items-center gap-1.5">
                             <Edit3 size={14} /> Bejegyzés módosítása
                           </div>
@@ -1314,18 +1340,13 @@ const TourDetailsScreen = () => {
                               {editPostSubmitting ? 'Mentés...' : 'Módosítások mentése'}
                             </button>
                           </div>
-                        </form>
-                      ) : (
-                        <>
-                          {post.title && (
-                            <h3 className="text-xl font-black text-slate-900 mb-2">{post.title}</h3>
+                            </form>
+                          ) : (
+                            <p className="text-slate-700 leading-relaxed mb-4 whitespace-pre-wrap">{post.content}</p>
                           )}
-                          <p className="text-slate-700 leading-relaxed mb-4 whitespace-pre-wrap">{post.content}</p>
-                        </>
-                      )}
 
-                      {postUpdates[post.id] && (
-                        <div className="mb-4">
+                          {postUpdates[post.id] && (
+                            <div className="mb-4">
                           <button
                             onClick={() => {
                               setPostsLoading(true);
@@ -1337,11 +1358,11 @@ const TourDetailsScreen = () => {
                           >
                             Új komment érkezett – frissítés
                           </button>
-                        </div>
-                      )}
+                            </div>
+                          )}
 
-                      <div className="flex items-center gap-4 mb-4">
-                        <button
+                          <div className="flex items-center gap-4 mb-4">
+                            <button
                           onClick={() => handleToggleLike(post.id)}
                           className={`flex items-center gap-2 px-4 py-2 rounded-full text-xs font-black uppercase tracking-widest transition ${
                             post.liked ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-50 text-slate-500'
@@ -1349,11 +1370,11 @@ const TourDetailsScreen = () => {
                           disabled={likeLoadingId === post.id}
                         >
                           <ThumbsUp size={14} /> {post.like_count || 0}
-                        </button>
-                      </div>
+                            </button>
+                          </div>
 
-                      <div className="space-y-3">
-                        {(topCommentsByPost[post.id] || []).map((comment) => (
+                          <div className="space-y-3">
+                            {(topCommentsByPost[post.id] || []).map((comment) => (
                           <div key={comment.id} className="bg-slate-50 rounded-2xl p-4">
                             <div className="flex items-center justify-between text-[10px] font-bold text-slate-400 mb-2">
                               <span className="text-emerald-700 uppercase tracking-widest">{comment.author_name}</span>
@@ -1378,8 +1399,10 @@ const TourDetailsScreen = () => {
                               </button>
                             </div>
                           </div>
-                        ))}
-                      </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>
