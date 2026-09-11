@@ -6,6 +6,7 @@ const tourPostController = require('../controllers/tourPostController');
 const tourChatController = require('../controllers/tourChatController');
 
 router.get('/', tourController.getAllTours);
+router.get('/my-created', protect, adminOnly, tourController.getMyCreatedTours);
 router.get('/:id', tourController.getTourById);
 router.get('/equipment-availability/range', tourController.getEquipmentAvailabilityByRange);
 router.get('/:id/equipment', tourController.getTourEquipmentOptions);

@@ -62,7 +62,9 @@ exports.getAllTours = async (req, res) => {
     try {
         await expireStaleBookings();
         const [rows] = await db.query(`
-            SELECT t.*, 
+            SELECT t.id, t.title, t.location, t.price, t.duration, t.difficulty,
+                   t.image_url, t.description, t.start_date, t.end_date,
+                   t.max_participants, t.category, t.subcategory,
                    COALESCE(b.booked_count, 0) AS booked_count,
                    COALESCE(w.waitlist_count, 0) AS waitlist_count
             FROM tours t
@@ -91,7 +93,9 @@ exports.getTourById = async (req, res) => {
     try {
         await expireStaleBookings();
         const [rows] = await db.query(`
-            SELECT t.*, 
+            SELECT t.id, t.title, t.location, t.price, t.duration, t.difficulty,
+            t.image_url, t.description, t.start_date, t.end_date,
+            t.max_participants, t.category, t.subcategory,
             (SELECT COUNT(*) FROM bookings WHERE tour_id = t.id AND status IN ('pending', 'confirmed')) as booked_count,
             (SELECT COUNT(*) FROM bookings WHERE tour_id = t.id AND status = 'waitlist') as waitlist_count
             FROM tours t 
@@ -106,6 +110,22 @@ exports.getTourById = async (req, res) => {
     } catch (err) {
         console.error("SQL HIBA (getTourById):", err.message);
         res.status(500).json({ error: "Szerver hiba történt a lekéréskor." });
+    }
+};
+
+exports.getMyCreatedTours = async (req, res) => {
+    try {
+        const [rows] = await db.query(
+            `SELECT id AS tour_id, title, location, image_url, price,
+                    start_date, end_date, category, subcategory
+             FROM tours
+             WHERE created_by = ?
+             ORDER BY start_date DESC, id DESC`,
+            [req.user.id]
+        );
+        res.json(rows);
+    } catch (err) {
+        res.status(500).json({ error: "Szerver hiba történt a saját túrák lekérésekor." });
     }
 };
 
@@ -185,8 +205,8 @@ exports.createTour = async (req, res) => {
         }
 
         const [result] = await db.query(
-            'INSERT INTO tours (title, location, description, price, duration, difficulty, category, subcategory, image_url, start_date, end_date, max_participants) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-            [title, location, description, price, durationValue, difficulty, category, subcategory, image_url, start_date, end_date, max_participants]
+            'INSERT INTO tours (created_by, title, location, description, price, duration, difficulty, category, subcategory, image_url, start_date, end_date, max_participants) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+            [req.user.id, title, location, description, price, durationValue, difficulty, category, subcategory, image_url, start_date, end_date, max_participants]
         );
 
         const tourId = result.insertId;

@@ -14,7 +14,9 @@ import { formatPrice } from '../../utils/formatPrice';
     const paymentHandledRef = useRef(false);
     const paymentTargetRef = useRef(null);
 		const [bookings, setBookings] = useState([]);
+		const [createdTours, setCreatedTours] = useState([]);
 		const [loading, setLoading] = useState(true);
+    const [createdToursLoading, setCreatedToursLoading] = useState(false);
     const [email, setEmail] = useState(user?.email || '');
     const [currentPassword, setCurrentPassword] = useState('');
     const [newPassword, setNewPassword] = useState('');
@@ -50,6 +52,55 @@ import { formatPrice } from '../../utils/formatPrice';
   useEffect(() => {
     fetchMyBookings();
   }, []);
+
+  useEffect(() => {
+    if (user?.role !== 'admin') {
+      setCreatedTours([]);
+      setCreatedToursLoading(false);
+      return;
+    }
+
+    let active = true;
+    setCreatedToursLoading(true);
+    fetch(`${import.meta.env.VITE_API_URL}/tours/my-created`, {
+      headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+    })
+      .then(async (res) => {
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.message || data.error || 'A létrehozott túrák nem tölthetők be.');
+        if (active) setCreatedTours(Array.isArray(data) ? data : []);
+      })
+      .catch(() => {
+        if (active) setCreatedTours([]);
+      })
+      .finally(() => {
+        if (active) setCreatedToursLoading(false);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [user?.role]);
+
+  const createdTourIds = new Set(createdTours.map((tour) => Number(tour.tour_id)));
+  const profileTours = [
+    ...bookings.map((booking) => ({
+      ...booking,
+      profile_kind: 'booking',
+      is_created_by_me: createdTourIds.has(Number(booking.tour_id))
+    })),
+    ...createdTours
+      .filter((tour) => !bookings.some((booking) => Number(booking.tour_id) === Number(tour.tour_id)))
+      .map((tour) => ({
+        ...tour,
+        id: null,
+        status: 'created',
+        profile_kind: 'created',
+        booked_at: tour.start_date,
+        total_price: tour.price,
+        is_created_by_me: true
+      }))
+  ];
 
   useEffect(() => {
     const params = new URLSearchParams(location.search);
@@ -308,19 +359,19 @@ import { formatPrice } from '../../utils/formatPrice';
               <div className="flex justify-between items-center mb-10">
                 <h2 className="text-3xl font-black text-emerald-950 tracking-tight">Túráim</h2>
                 <div className="flex gap-2">
-                  <span className="px-4 py-2 bg-emerald-50 text-emerald-700 rounded-xl text-sm font-black uppercase tracking-widest">Összes: {bookings.length}</span>
+                  <span className="px-4 py-2 bg-emerald-50 text-emerald-700 rounded-xl text-sm font-black uppercase tracking-widest">Összes: {profileTours.length}</span>
                 </div>
               </div>
 
-              {loading ? (
+              {loading || createdToursLoading ? (
                 <div className="flex flex-col items-center justify-center py-20">
                   <div className="animate-spin h-10 w-10 border-4 border-emerald-500 border-t-transparent rounded-full mb-4"></div>
                   <p className="text-gray-400 font-bold">Betöltés..</p>
                 </div>
-              ) : bookings.length > 0 ? (
+              ) : profileTours.length > 0 ? (
                 <div className="grid gap-6">
-                  {bookings.map((booking) => (
-                    <div key={booking.id} className="group relative bg-white border border-gray-100 p-2 pr-6 rounded-[2rem] hover:shadow-2xl hover:border-emerald-200 transition-all duration-500 flex flex-col md:flex-row items-center gap-6">
+                  {profileTours.map((booking) => (
+                    <div key={`${booking.profile_kind}-${booking.id || booking.tour_id}`} className="group relative bg-white border border-gray-100 p-2 pr-6 rounded-[2rem] hover:shadow-2xl hover:border-emerald-200 transition-all duration-500 flex flex-col md:flex-row items-center gap-6">
                       <div className="w-full md:w-48 h-40 overflow-hidden rounded-[1.8rem]">
                         <img src={booking.image_url} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" alt="" />
                       </div>
@@ -339,7 +390,12 @@ import { formatPrice } from '../../utils/formatPrice';
                       </div>
 
                       <div className="flex flex-col items-center md:items-end gap-3">
-                        {booking.status === 'waitlist' ? (
+                        {booking.is_created_by_me && (
+                          <div className="flex items-center gap-2 px-5 py-2 bg-sky-50 text-sky-700 rounded-full border border-sky-200 font-black text-xs uppercase tracking-tighter">
+                            <Mountain size={14} /> Általam létrehozva
+                          </div>
+                        )}
+                        {booking.status === 'created' ? null : booking.status === 'waitlist' ? (
                           <div className="flex items-center gap-2 px-5 py-2 bg-amber-50 text-amber-700 rounded-full border border-amber-300 font-black text-xs uppercase tracking-tighter">
                             <Clock size={14} /> Várólistán
                           </div>
