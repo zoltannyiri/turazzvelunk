@@ -7,9 +7,11 @@ const normalizeEquipmentPrices = (equipmentPrices) => {
     equipmentPrices.forEach((item) => {
         const equipmentId = Number(item?.equipment_id);
         if (Number.isInteger(equipmentId) && equipmentId > 0) {
+            const qty = Number(item?.quantity);
             uniqueItems.set(equipmentId, {
                 equipment_id: equipmentId,
-                price: Number(item?.price || 0)
+                price: Number(item?.price || 0),
+                quantity: Number.isInteger(qty) && qty > 0 ? qty : 1
             });
         }
     });
@@ -17,45 +19,67 @@ const normalizeEquipmentPrices = (equipmentPrices) => {
 };
 
 const findEquipmentAssignmentConflicts = async ({ equipmentPrices, startDate, endDate, excludeTourId = null }) => {
-    const equipmentIds = normalizeEquipmentPrices(equipmentPrices).map((item) => item.equipment_id);
-    if (equipmentIds.length === 0) return [];
+    const normalized = normalizeEquipmentPrices(equipmentPrices);
+    if (normalized.length === 0) return [];
     if (!startDate || !endDate) {
         const error = new Error('Eszközök hozzárendeléséhez add meg a túra teljes időintervallumát.');
         error.statusCode = 400;
         throw error;
     }
 
+    const equipmentIds = normalized.map((item) => item.equipment_id);
     const excludeSql = excludeTourId ? 'AND t.id <> ?' : '';
-    const params = [...equipmentIds, endDate, startDate];
+    const params = [endDate, startDate];
     if (excludeTourId) params.push(Number(excludeTourId));
+
     const [rows] = await db.query(
-        `SELECT DISTINCT tep.equipment_id, e.name AS equipment_name,
-                t.id AS conflicting_tour_id, t.title AS conflicting_tour_title,
-                t.start_date, t.end_date
-         FROM tour_equipment_prices tep
-         JOIN equipment e ON e.id = tep.equipment_id
-         JOIN tours t ON t.id = tep.tour_id
-         WHERE tep.equipment_id IN (${equipmentIds.map(() => '?').join(',')})
-           AND t.start_date <= ?
-           AND t.end_date >= ?
-           ${excludeSql}
-         ORDER BY e.name, t.start_date`,
-        params
+        `SELECT e.id AS equipment_id, e.name AS equipment_name, e.total_quantity,
+                COALESCE(other_tours.assigned_qty, 0) AS other_assigned_qty,
+                other_tours.conflicting_tours
+         FROM equipment e
+         LEFT JOIN (
+            SELECT tep.equipment_id,
+                   SUM(COALESCE(tep.quantity, 1)) AS assigned_qty,
+                   GROUP_CONCAT(DISTINCT t.title ORDER BY t.start_date SEPARATOR ' | ') AS conflicting_tours
+            FROM tour_equipment_prices tep
+            JOIN tours t ON t.id = tep.tour_id
+            WHERE t.start_date <= ? AND t.end_date >= ?
+              ${excludeSql}
+            GROUP BY tep.equipment_id
+         ) other_tours ON other_tours.equipment_id = e.id
+         WHERE e.id IN (${equipmentIds.map(() => '?').join(',')})`,
+        [...params, ...equipmentIds]
     );
-    return rows;
+
+    const conflicts = [];
+    const rowMap = new Map(rows.map((r) => [Number(r.equipment_id), r]));
+
+    for (const item of normalized) {
+        const eqInfo = rowMap.get(item.equipment_id);
+        if (!eqInfo) continue;
+        const total = Number(eqInfo.total_quantity || 0);
+        const otherAssigned = Number(eqInfo.other_assigned_qty || 0);
+        const available = Math.max(0, total - otherAssigned);
+        if (item.quantity > available) {
+            conflicts.push({
+                equipment_id: item.equipment_id,
+                equipment_name: eqInfo.equipment_name,
+                requested_quantity: item.quantity,
+                available_quantity: available,
+                total_quantity: total,
+                conflicting_tours: eqInfo.conflicting_tours || ''
+            });
+        }
+    }
+
+    return conflicts;
 };
 
 const getEquipmentConflictMessage = (conflicts) => {
-    const grouped = new Map();
-    conflicts.forEach((conflict) => {
-        const names = grouped.get(conflict.equipment_name) || [];
-        names.push(conflict.conflicting_tour_title);
-        grouped.set(conflict.equipment_name, names);
-    });
-    const details = [...grouped.entries()]
-        .map(([equipmentName, tourNames]) => `${equipmentName} – ${[...new Set(tourNames)].join(', ')}`)
+    const details = conflicts
+        .map((c) => c.equipment_name + ' (Kért: ' + c.requested_quantity + ' db, Szabad készlet: ' + c.available_quantity + ' db)')
         .join('; ');
-    return `Az időszakban már másik túrához rendelt eszköz nem csatolható: ${details}.`;
+    return 'Az időszakban a megadott darabszám meghaladja a szabad készletet: ' + details + '.';
 };
 
 exports.getAllTours = async (req, res) => {
@@ -143,8 +167,8 @@ exports.getTourEquipmentOptions = async (req, res) => {
         const [rows] = await db.query(
             `SELECT e.id, e.name, e.description, e.total_quantity,
                     COALESCE(tp.price, tour_booked.booked_price, 0) AS price,
-                    COALESCE(tour_booked.qty, 0) AS booked_quantity,
-                    COALESCE(reserved.qty, 0) AS reserved_quantity
+                    COALESCE(tp.quantity, e.total_quantity) AS assigned_quantity,
+                    COALESCE(tour_booked.qty, 0) AS booked_quantity
              FROM equipment e
              LEFT JOIN tour_equipment_prices tp
                ON tp.equipment_id = e.id AND tp.tour_id = ?
@@ -155,24 +179,21 @@ exports.getTourEquipmentOptions = async (req, res) => {
                WHERE b.tour_id = ? AND b.status IN ('pending', 'confirmed')
                GROUP BY be.equipment_id
              ) tour_booked ON tour_booked.equipment_id = e.id
-             LEFT JOIN (
-               SELECT be.equipment_id, SUM(be.quantity) AS qty
-               FROM booking_equipments be
-               JOIN bookings b ON b.id = be.booking_id
-               JOIN tours t ON t.id = b.tour_id
-               WHERE b.status IN ('pending', 'confirmed')
-                 AND t.start_date <= ? AND t.end_date >= ?
-               GROUP BY be.equipment_id
-             ) reserved ON reserved.equipment_id = e.id
              WHERE tp.id IS NOT NULL OR COALESCE(tour_booked.qty, 0) > 0
              ORDER BY e.name ASC`,
-            [tour.id, tour.id, tour.end_date, tour.start_date]
+            [tour.id, tour.id]
         );
 
-        const data = rows.map((row) => ({
-            ...row,
-            available_quantity: Math.max(0, Number(row.total_quantity || 0) - Number(row.reserved_quantity || 0))
-        }));
+        const data = rows.map((row) => {
+            const assigned = Number(row.assigned_quantity || 0);
+            const booked = Number(row.booked_quantity || 0);
+            return {
+                ...row,
+                assigned_quantity: assigned,
+                booked_quantity: booked,
+                available_quantity: Math.max(0, assigned - booked)
+            };
+        });
 
         res.json(data);
     } catch (err) {
@@ -218,8 +239,8 @@ exports.createTour = async (req, res) => {
             await Promise.all(
                 normalizedEquipmentPrices.map((item) => {
                     return db.query(
-                        'INSERT INTO tour_equipment_prices (tour_id, equipment_id, price) VALUES (?, ?, ?)',
-                        [tourId, item.equipment_id, Number(item.price || 0)]
+                        'INSERT INTO tour_equipment_prices (tour_id, equipment_id, price, quantity) VALUES (?, ?, ?, ?)',
+                        [tourId, item.equipment_id, Number(item.price || 0), Number(item.quantity || 1)]
                     );
                 })
             );
@@ -316,6 +337,18 @@ exports.updateTour = async (req, res) => {
                     message: `Nem módosítható az ára, mert aktív foglalás tartozik hozzá: ${equipmentNames}.`
                 });
             }
+            const blockedQuantityReductions = bookedEquipment.filter((item) => {
+                const submitted = submittedEquipment.get(Number(item.equipment_id));
+                return submitted && Number(submitted.quantity || 1) < Number(item.booked_quantity || 0);
+            });
+            if (blockedQuantityReductions.length > 0) {
+                const details = blockedQuantityReductions
+                    .map((item) => `${item.name} (lefoglalva: ${item.booked_quantity} db)`)
+                    .join(', ');
+                return res.status(409).json({
+                    message: `Nem csökkenthető a darabszám a már lefoglalt mennyiség alá: ${details}.`
+                });
+            }
         }
         const fields = [];
         const values = [];
@@ -333,8 +366,8 @@ exports.updateTour = async (req, res) => {
                 equipmentPrices.map((item) => {
                     if (!item?.equipment_id) return Promise.resolve();
                     return db.query(
-                        'INSERT INTO tour_equipment_prices (tour_id, equipment_id, price) VALUES (?, ?, ?)',
-                        [id, item.equipment_id, Number(item.price || 0)]
+                        'INSERT INTO tour_equipment_prices (tour_id, equipment_id, price, quantity) VALUES (?, ?, ?, ?)',
+                        [id, item.equipment_id, Number(item.price || 0), Number(item.quantity || 1)]
                     );
                 })
             );
@@ -372,40 +405,58 @@ exports.getEquipmentAvailabilityByRange = async (req, res) => {
         const excludedTourId = Number(exclude_tour_id) || 0;
         const [rows] = await db.query(
             `SELECT e.id, e.name, e.description, e.total_quantity,
-                    COALESCE(reserved.qty, 0) AS reserved_quantity,
-                    COALESCE(assigned.assigned_tour_count, 0) AS assigned_tour_count,
-                    assigned.conflicting_tours
+                    COALESCE(other_tours.assigned_qty, 0) AS other_assigned_quantity,
+                    COALESCE(this_tour.assigned_qty, 0) AS current_assigned_quantity,
+                    COALESCE(this_tour_booked.qty, 0) AS current_booked_quantity,
+                    other_tours.conflicting_tours
              FROM equipment e
              LEFT JOIN (
-               SELECT be.equipment_id, SUM(be.quantity) AS qty
-               FROM booking_equipments be
-               JOIN bookings b ON b.id = be.booking_id
-               JOIN tours t ON t.id = b.tour_id
-               WHERE b.status IN ('pending', 'confirmed')
-                 AND t.start_date <= ? AND t.end_date >= ?
-               GROUP BY be.equipment_id
-             ) reserved ON reserved.equipment_id = e.id
-             LEFT JOIN (
                SELECT tep.equipment_id,
-                      COUNT(DISTINCT t.id) AS assigned_tour_count,
+                      SUM(COALESCE(tep.quantity, 1)) AS assigned_qty,
                       GROUP_CONCAT(DISTINCT t.title ORDER BY t.start_date SEPARATOR ' | ') AS conflicting_tours
                FROM tour_equipment_prices tep
                JOIN tours t ON t.id = tep.tour_id
                WHERE t.start_date <= ? AND t.end_date >= ?
                  AND (? = 0 OR t.id <> ?)
                GROUP BY tep.equipment_id
-             ) assigned ON assigned.equipment_id = e.id
+             ) other_tours ON other_tours.equipment_id = e.id
+             LEFT JOIN (
+               SELECT tep.equipment_id, COALESCE(tep.quantity, 1) AS assigned_qty
+               FROM tour_equipment_prices tep
+               WHERE tep.tour_id = ?
+             ) this_tour ON this_tour.equipment_id = e.id
+             LEFT JOIN (
+               SELECT be.equipment_id, SUM(be.quantity) AS qty
+               FROM booking_equipments be
+               JOIN bookings b ON b.id = be.booking_id
+               WHERE b.tour_id = ? AND b.status IN ('pending', 'confirmed')
+               GROUP BY be.equipment_id
+             ) this_tour_booked ON this_tour_booked.equipment_id = e.id
              ORDER BY e.name ASC`,
-            [end_date, start_date, end_date, start_date, excludedTourId, excludedTourId]
+            [end_date, start_date, excludedTourId, excludedTourId, excludedTourId, excludedTourId]
         );
 
-        const data = rows.map((row) => ({
-            ...row,
-            is_assigned_elsewhere: Number(row.assigned_tour_count || 0) > 0,
-            available_quantity: Number(row.assigned_tour_count || 0) > 0
-                ? 0
-                : Math.max(0, Number(row.total_quantity || 0) - Number(row.reserved_quantity || 0))
-        }));
+        const data = rows.map((row) => {
+            const total = Number(row.total_quantity || 0);
+            const otherAssigned = Number(row.other_assigned_quantity || 0);
+            const availableForThisTour = Math.max(0, total - otherAssigned);
+            const currentAssigned = Number(row.current_assigned_quantity || 0);
+            const booked = Number(row.current_booked_quantity || 0);
+            const minAllowed = Math.max(1, booked);
+
+            return {
+                id: row.id,
+                name: row.name,
+                description: row.description,
+                total_quantity: total,
+                other_assigned_quantity: otherAssigned,
+                current_assigned_quantity: currentAssigned,
+                current_booked_quantity: booked,
+                min_quantity: minAllowed,
+                available_quantity: availableForThisTour,
+                conflicting_tours: row.conflicting_tours || null
+            };
+        });
 
         res.json(data);
     } catch (err) {

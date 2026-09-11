@@ -2,6 +2,7 @@ import React, { useState, useEffect, useContext, useRef } from 'react';
 import { useParams, Link, useNavigate, useLocation } from 'react-router-dom';
 import { AuthContext } from '../../context/AuthContext';
 import { 
+  Plus, Minus, AlertTriangle,
   Clock, MapPin, Calendar, Users, ArrowLeft, 
   Zap, Info, ShieldCheck, CheckCircle2, UserMinus, ThumbsUp, X, XCircle, Edit3, Trash2, ChevronDown, ChevronUp
 } from 'lucide-react';
@@ -99,6 +100,7 @@ const TourDetailsScreen = () => {
     end_date: '',
     max_participants: '',
     equipment_prices: {},
+    equipment_quantities: {},
     deposit_amount: '',
     deposit_deadline: ''
   });
@@ -634,7 +636,11 @@ const TourDetailsScreen = () => {
           .filter((item) => Number(item.booked_quantity || 0) > 0)
           .map((item) => Number(item.id))
       );
-      setTourEditForm((current) => ({ ...current, equipment_prices: prices }));
+      const quantities = assignedData.reduce((acc, item) => {
+        acc[item.id] = Number(item.assigned_quantity || 1);
+        return acc;
+      }, {});
+      setTourEditForm((current) => ({ ...current, equipment_prices: prices, equipment_quantities: quantities }));
       await fetchTourEditAvailability(startDate, endDate, assignedIds);
     } catch (err) {
       toast.error(err.message || 'A szerkesztő nem tölthető be.');
@@ -674,7 +680,8 @@ const TourDetailsScreen = () => {
           })
           .map((item) => ({
             equipment_id: Number(item.id),
-            price: parsePriceInput(tourEditForm.equipment_prices?.[item.id])
+            price: parsePriceInput(tourEditForm.equipment_prices?.[item.id]),
+            quantity: Math.max(1, Number(tourEditForm.equipment_quantities?.[item.id] || 1))
           }))
       };
       const res = await fetch(`${import.meta.env.VITE_API_URL}/tours/${id}`, {
@@ -2330,70 +2337,244 @@ const TourDetailsScreen = () => {
                 />
               </div>
 
-              <div className="md:col-span-2">
-                <div className="flex items-center justify-between gap-4 px-4">
-                  <label className="text-[10px] font-black uppercase text-slate-400">Csatolt eszközök és árak (Ft)</label>
-                  <span className="text-[10px] font-black uppercase text-emerald-600">
-                    {tourEditSelectedEquipmentIds.length} kiválasztva
+              <div className="md:col-span-2 bg-slate-50/70 p-5 md:p-6 rounded-3xl border border-slate-200/80">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-slate-200/60 mb-4">
+                  <div className="flex items-center gap-2.5">
+                    <div>
+                      <h4 className="text-sm font-black text-slate-800 tracking-tight">
+                        Felszerelések & Bérleti díjak
+                      </h4>
+                    </div>
+                  </div>
+                  <span className={`self-start sm:self-auto text-xs font-bold px-3 py-1 rounded-full border transition-all ${
+                    tourEditSelectedEquipmentIds.length > 0 
+                      ? 'bg-emerald-100 text-emerald-800 border-emerald-200 shadow-2xs' 
+                      : 'bg-slate-100 text-slate-500 border-slate-200'
+                  }`}>
+                    {tourEditSelectedEquipmentIds.length} felszerelés csatolva
                   </span>
                 </div>
-                <div className="mt-2 grid gap-3">
+
+                {(!tourEditForm.start_date || !tourEditForm.end_date) && (
+                  <div className="mb-4 p-3 bg-amber-50/80 border border-amber-200/70 rounded-2xl flex items-center gap-2.5 text-xs text-amber-900 font-medium">
+                    <AlertTriangle size={15} className="text-amber-600 shrink-0" />
+                    <span>Az átfedő túrák pontos szabad készletének számításához állíts be kezdő és záró dátumot!</span>
+                  </div>
+                )}
+
+                <div className="grid gap-3">
                   {tourEditEquipmentLoading ? (
-                    <div className="text-xs text-slate-400 font-bold">Eszközök betöltése...</div>
+                    <div className="p-4 text-center text-xs text-slate-400 font-bold bg-white rounded-2xl border border-slate-200/50">
+                      Eszközök betöltése...
+                    </div>
                   ) : tourEditEquipment.length === 0 ? (
-                    <div className="text-xs text-slate-400 font-bold">Nincs elérhető eszköz.</div>
+                    <div className="p-4 text-center text-xs text-slate-400 font-bold bg-white rounded-2xl border border-slate-200/50">
+                      Nincs elérhető eszköz.
+                    </div>
                   ) : (
                     tourEditEquipment.map((item) => {
                       const equipmentId = Number(item.id);
                       const isSelected = tourEditSelectedEquipmentIds.includes(equipmentId);
                       const isLocked = tourEditLockedEquipmentIds.includes(equipmentId);
                       const wasInitiallyAssigned = tourEditInitialEquipmentIds.includes(equipmentId);
-                      const available = Number(tourEditAvailability[equipmentId] ?? item.total_quantity ?? 0);
-                      const isUnavailable = available <= 0;
-                      const conflict = tourEditConflicts[equipmentId];
+                      const availableFromStock = Number(tourEditAvailability[equipmentId] ?? item.total_quantity ?? 0);
+                      const isUnavailable = availableFromStock <= 0 && !wasInitiallyAssigned;
+                      const currentQty = Number(tourEditForm.equipment_quantities?.[item.id] || 1);
+                      const maxAssignQty = availableFromStock + (wasInitiallyAssigned ? currentQty : 0);
+
                       return (
-                        <div key={item.id} className="flex flex-col md:flex-row md:items-center gap-3">
-                          <input
-                            type="checkbox"
-                            checked={isSelected}
-                            disabled={isLocked || (isUnavailable && !wasInitiallyAssigned)}
-                            onChange={(e) => {
-                              if (e.target.checked && isUnavailable && !wasInitiallyAssigned) return;
-                              setTourEditSelectedEquipmentIds((current) => e.target.checked
-                                ? [...new Set([...current, equipmentId])]
-                                : current.filter((selectedId) => selectedId !== equipmentId));
-                            }}
-                            title={isLocked
-                              ? 'Aktív foglalás miatt nem távolítható el'
-                              : conflict
-                                ? `Másik átfedő túrához rendelve: ${conflict}`
-                                : isUnavailable
-                                  ? 'Nem elérhető a kiválasztott időszakban'
-                                  : ''}
-                            className="h-5 w-5 rounded border-slate-300 text-emerald-600 disabled:cursor-not-allowed disabled:opacity-50"
-                          />
-                          <div className="flex-1 font-bold text-slate-700">{item.name}</div>
-                          {isLocked && <div className="text-[10px] font-black uppercase text-amber-600">Foglalásban</div>}
-                          <div className={`text-xs font-bold ${conflict ? 'text-red-500' : 'text-slate-400'}`}>
-                            {conflict ? `Másik túra: ${conflict}` : `Elérhető: ${available} db`}
+                        <div
+                          key={item.id}
+                          className={`flex flex-col lg:flex-row lg:items-center justify-between gap-4 p-4 rounded-2xl border transition-all duration-200 ${
+                            isSelected
+                              ? 'bg-white border-emerald-400/90 shadow-sm ring-2 ring-emerald-500/10'
+                              : isUnavailable
+                                ? 'bg-slate-100/40 border-slate-200/50 opacity-60'
+                                : 'bg-white/80 hover:bg-white border-slate-200/80 hover:border-slate-300 shadow-2xs'
+                          }`}
+                        >
+                          <div className="flex items-start gap-3 flex-1 min-w-0">
+                            <label className="relative flex items-center justify-center pt-0.5 cursor-pointer">
+                              <input
+                                type="checkbox"
+                                checked={isSelected}
+                                disabled={isLocked || isUnavailable}
+                                aria-label={`${item.name} csatolása a túrához`}
+                                className="h-5 w-5 rounded-lg border-slate-300 text-emerald-600 focus:ring-emerald-500 focus:ring-offset-0 disabled:cursor-not-allowed disabled:opacity-50 cursor-pointer transition"
+                                onChange={(e) => {
+                                  if (e.target.checked && isUnavailable) return;
+                                  setTourEditSelectedEquipmentIds((current) => e.target.checked
+                                    ? [...new Set([...current, equipmentId])]
+                                    : current.filter((selectedId) => selectedId !== equipmentId));
+                                  if (e.target.checked && !tourEditForm.equipment_quantities?.[item.id]) {
+                                    setTourEditForm(prev => ({
+                                      ...prev,
+                                      equipment_quantities: {
+                                        ...(prev.equipment_quantities || {}),
+                                        [item.id]: 1
+                                      }
+                                    }));
+                                  }
+                                }}
+                              />
+                            </label>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <span className={`font-bold text-sm tracking-tight truncate ${isSelected ? 'text-slate-900' : 'text-slate-700'}`}>
+                                  {item.name}
+                                </span>
+                                {isLocked && (
+                                  <span className="text-[10px] font-black uppercase tracking-wider text-amber-700 bg-amber-100/80 px-2 py-0.5 rounded-md border border-amber-200 shrink-0">
+                                    🔒 Foglalás alatt
+                                  </span>
+                                )}
+                                {isUnavailable && !isSelected && (
+                                  <span className="text-[10px] font-black uppercase tracking-wider text-rose-600 bg-rose-100/80 px-2 py-0.5 rounded-md border border-rose-200 shrink-0">
+                                    Elfogyott
+                                  </span>
+                                )}
+                              </div>
+                              <div className="flex flex-wrap items-center gap-2 mt-1">
+                                <span className="text-[11px] font-medium text-slate-500">
+                                  Készlet: <strong className="text-slate-700 font-semibold">{item.total_quantity} db</strong>
+                                </span>
+                                <span className="text-slate-300">•</span>
+                                <span className="text-[11px] font-medium">
+                                  Szabad készletből: <strong className={availableFromStock > 0 ? 'text-emerald-700 font-bold' : 'text-rose-600 font-bold'}>{availableFromStock} db</strong>
+                                </span>
+                              </div>
+                            </div>
                           </div>
-                          <div className="relative w-full md:w-48">
-                            <input
-                              type="text"
-                              inputMode="numeric"
-                              value={formatPriceInput(tourEditForm.equipment_prices?.[item.id] ?? 0)}
-                              disabled={!isSelected || isLocked || isUnavailable}
-                              onChange={(e) => setTourEditForm((current) => ({
-                                ...current,
-                                equipment_prices: {
-                                  ...current.equipment_prices,
-                                  [item.id]: formatPriceInput(e.target.value)
-                                }
-                              }))}
-                              className="w-full p-3 pr-16 bg-slate-50 border-none rounded-2xl disabled:opacity-60"
-                            />
-                            <span className="absolute right-4 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400">Forint</span>
-                          </div>
+
+                          {isSelected ? (
+                            <div className="flex items-center gap-3 pt-3 lg:pt-0 border-t lg:border-t-0 border-slate-100">
+                              <div className="flex flex-col">
+                                <span className="text-[9px] font-black uppercase tracking-wider text-slate-400 mb-1">
+                                  Darabszám
+                                </span>
+                                <div className="flex items-center h-10 bg-slate-50 border border-slate-200 rounded-xl overflow-hidden hover:border-slate-300 focus-within:border-emerald-500 focus-within:ring-2 focus-within:ring-emerald-500/20 focus-within:bg-white transition shadow-2xs">
+                                  <button
+                                    type="button"
+                                    disabled={currentQty <= (isLocked ? currentQty : 1)}
+                                    onClick={() => {
+                                      const next = Math.max(isLocked ? currentQty : 1, currentQty - 1);
+                                      setTourEditForm((prev) => ({
+                                        ...prev,
+                                        equipment_quantities: {
+                                          ...(prev.equipment_quantities || {}),
+                                          [item.id]: next
+                                        }
+                                      }));
+                                    }}
+                                    className="w-8 h-full flex items-center justify-center text-slate-400 hover:text-slate-700 hover:bg-slate-100 active:bg-slate-200 disabled:opacity-25 disabled:hover:bg-transparent rounded-l-xl transition cursor-pointer"
+                                    title="Darabszám csökkentése"
+                                  >
+                                    <Minus size={13} strokeWidth={2.5} />
+                                  </button>
+                                  <div className="flex items-center justify-center px-1">
+                                    <input
+                                      type="number"
+                                      min={isLocked ? currentQty : 1}
+                                      max={maxAssignQty > 0 ? maxAssignQty : undefined}
+                                      className="w-10 text-center font-black text-sm bg-transparent outline-none text-slate-800 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                      value={tourEditForm.equipment_quantities?.[item.id] ?? 1}
+                                      onChange={(e) => {
+                                        const val = parseInt(e.target.value) || 1;
+                                        const minQ = isLocked ? currentQty : 1;
+                                        const clamped = maxAssignQty > 0 ? Math.min(Math.max(minQ, val), maxAssignQty) : Math.max(minQ, val);
+                                        setTourEditForm((prev) => ({
+                                          ...prev,
+                                          equipment_quantities: {
+                                            ...(prev.equipment_quantities || {}),
+                                            [item.id]: clamped
+                                          }
+                                        }));
+                                      }}
+                                    />
+                                    <span className="text-xs font-bold text-slate-400 pr-1 select-none">db</span>
+                                  </div>
+                                  <button
+                                    type="button"
+                                    disabled={maxAssignQty > 0 && currentQty >= maxAssignQty}
+                                    onClick={() => {
+                                      const next = maxAssignQty > 0 ? Math.min(maxAssignQty, currentQty + 1) : currentQty + 1;
+                                      setTourEditForm((prev) => ({
+                                        ...prev,
+                                        equipment_quantities: {
+                                          ...(prev.equipment_quantities || {}),
+                                          [item.id]: next
+                                        }
+                                      }));
+                                    }}
+                                    className="w-8 h-full flex items-center justify-center text-slate-400 hover:text-slate-700 hover:bg-slate-100 active:bg-slate-200 disabled:opacity-25 disabled:hover:bg-transparent rounded-r-xl transition cursor-pointer"
+                                    title="Darabszám növelése"
+                                  >
+                                    <Plus size={13} strokeWidth={2.5} />
+                                  </button>
+                                </div>
+                                {maxAssignQty > 0 && (
+                                  <span className="text-[9px] text-slate-400 font-semibold mt-0.5 text-center">
+                                    max: {maxAssignQty} db
+                                  </span>
+                                )}
+                              </div>
+
+                              <div className="flex flex-col">
+                                <span className="text-[9px] font-black uppercase tracking-wider text-slate-400 mb-1">
+                                  Bérleti díj / db
+                                </span>
+                                <div className="relative h-10">
+                                  <input
+                                    type="text"
+                                    inputMode="numeric"
+                                    disabled={isLocked}
+                                    placeholder="0"
+                                    aria-label={`${item.name} ára Forintban`}
+                                    className="w-32 md:w-36 h-full pl-3 pr-8 font-bold text-sm bg-slate-50 border border-slate-200 rounded-xl hover:border-slate-300 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 focus:bg-white outline-none text-slate-800 transition shadow-2xs"
+                                    value={formatPriceInput(tourEditForm.equipment_prices?.[item.id] ?? 0)}
+                                    onChange={(e) =>
+                                      setTourEditForm((current) => ({
+                                        ...current,
+                                        equipment_prices: {
+                                          ...current.equipment_prices,
+                                          [item.id]: formatPriceInput(e.target.value)
+                                        }
+                                      }))
+                                    }
+                                  />
+                                  <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs font-black text-slate-400 pointer-events-none select-none">
+                                    Ft
+                                  </span>
+                                </div>
+                                <span className="text-[9px] text-slate-400 font-semibold mt-0.5">
+                                  {Number(parsePriceInput(tourEditForm.equipment_prices?.[item.id] || 0)) === 0 ? 'Ingyenes' : 'Díj / fő'}
+                                </span>
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="hidden lg:flex items-center">
+                              {!isUnavailable && (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setTourEditSelectedEquipmentIds(current => [...new Set([...current, equipmentId])]);
+                                    if (!tourEditForm.equipment_quantities?.[item.id]) {
+                                      setTourEditForm(prev => ({
+                                        ...prev,
+                                        equipment_quantities: {
+                                          ...(prev.equipment_quantities || {}),
+                                          [item.id]: 1
+                                        }
+                                      }));
+                                    }
+                                  }}
+                                  className="text-xs font-bold text-slate-400 hover:text-emerald-700 bg-slate-100/70 hover:bg-emerald-50 px-3 py-1.5 rounded-xl border border-slate-200/60 hover:border-emerald-200 transition cursor-pointer"
+                                >
+                                  + Hozzárendelés
+                                </button>
+                              )}
+                            </div>
+                          )}
                         </div>
                       );
                     })

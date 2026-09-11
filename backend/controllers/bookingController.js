@@ -65,7 +65,8 @@ exports.createBooking = async (req, res) => {
             const [equipRows] = await db.query(
                 `SELECT e.id, e.name, e.total_quantity,
                         COALESCE(tp.price, 0) AS price,
-                        COALESCE(reserved.qty, 0) AS reserved_quantity
+                        COALESCE(tp.quantity, e.total_quantity) AS assigned_quantity,
+                        COALESCE(tour_booked.qty, 0) AS booked_quantity
                  FROM equipment e
                  LEFT JOIN tour_equipment_prices tp
                    ON tp.equipment_id = e.id AND tp.tour_id = ?
@@ -73,17 +74,15 @@ exports.createBooking = async (req, res) => {
                    SELECT be.equipment_id, SUM(be.quantity) AS qty
                    FROM booking_equipments be
                    JOIN bookings b ON b.id = be.booking_id
-                   JOIN tours t ON t.id = b.tour_id
-                   WHERE b.status IN ('pending', 'confirmed')
-                     AND t.start_date <= ? AND t.end_date >= ?
+                   WHERE b.tour_id = ? AND b.status IN ('pending', 'confirmed')
                    GROUP BY be.equipment_id
-                 ) reserved ON reserved.equipment_id = e.id
+                 ) tour_booked ON tour_booked.equipment_id = e.id
                  WHERE e.id IN (${selectedEquipmentIds.map(() => '?').join(',')})`,
-                [tour_id, tour.end_date, tour.start_date, ...selectedEquipmentIds]
+                [tour_id, tour_id, ...selectedEquipmentIds]
             );
 
             for (const row of equipRows) {
-                const available = Math.max(0, Number(row.total_quantity || 0) - Number(row.reserved_quantity || 0));
+                const available = Math.max(0, Number(row.assigned_quantity || 0) - Number(row.booked_quantity || 0));
                 if (available <= 0) {
                     return res.status(400).json({ message: `A(z) "${row.name}" eszköz sajnos elfogyott erre a túrára.` });
                 }
@@ -898,7 +897,8 @@ exports.updateBookingEquipment = async (req, res) => {
             const [equipRows] = await db.query(
                 `SELECT e.id, e.name, e.total_quantity,
                         COALESCE(tp.price, 0) AS price,
-                        COALESCE(reserved.qty, 0) AS reserved_quantity
+                        COALESCE(tp.quantity, e.total_quantity) AS assigned_quantity,
+                        COALESCE(tour_booked.qty, 0) AS booked_quantity
                  FROM equipment e
                  LEFT JOIN tour_equipment_prices tp
                      ON tp.equipment_id = e.id AND tp.tour_id = ?
@@ -906,18 +906,16 @@ exports.updateBookingEquipment = async (req, res) => {
                      SELECT be.equipment_id, SUM(be.quantity) AS qty
                      FROM booking_equipments be
                      JOIN bookings b ON b.id = be.booking_id
-                     JOIN tours t ON t.id = b.tour_id
-                     WHERE b.status IN ('pending', 'confirmed')
+                     WHERE b.tour_id = ? AND b.status IN ('pending', 'confirmed')
                          AND b.id <> ?
-                         AND t.start_date <= ? AND t.end_date >= ?
                      GROUP BY be.equipment_id
-                 ) reserved ON reserved.equipment_id = e.id
+                 ) tour_booked ON tour_booked.equipment_id = e.id
                  WHERE e.id IN (${equipmentIds.map(() => '?').join(',')})`,
-                [booking.tour_id, bookingId, booking.end_date, booking.start_date, ...equipmentIds]
+                [booking.tour_id, booking.tour_id, bookingId, ...equipmentIds]
             );
 
             for (const row of equipRows) {
-                const available = Math.max(0, Number(row.total_quantity || 0) - Number(row.reserved_quantity || 0));
+                const available = Math.max(0, Number(row.assigned_quantity || 0) - Number(row.booked_quantity || 0));
                 if (available <= 0) {
                     return res.status(400).json({ message: `A(z) "${row.name}" eszköz sajnos elfogyott erre a túrára.` });
                 }
