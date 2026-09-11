@@ -122,7 +122,9 @@ const AdminDashboard = () => {
     start_date: '', 
     end_date: '',
     max_participants: '',
-    equipment_prices: {}
+    equipment_prices: {},
+    deposit_amount: '',
+    deposit_deadline: null
   };
   const [newTour, setNewTour] = useState(initialTourState);
 
@@ -555,6 +557,7 @@ const AdminDashboard = () => {
 
   const getBookingStatusLabel = (booking) => {
     if (booking?.payment_status === 'paid') return 'Fizetve';
+    if (booking?.deposit_paid) return 'Előleg fizetve';
     if (booking?.status === 'confirmed') return 'Jelentkezve';
     if (booking?.status === 'pending') return 'Jóváhagyásra vár';
     if (booking?.status === 'waitlist') return 'Várólistán';
@@ -575,7 +578,10 @@ const AdminDashboard = () => {
       if (bookingPaymentFilter === 'paid' && booking.payment_status !== 'paid') {
         return false;
       }
-      if (bookingPaymentFilter === 'unpaid' && booking.payment_status === 'paid') {
+      if (bookingPaymentFilter === 'deposit' && (!booking.deposit_paid || booking.payment_status === 'paid')) {
+        return false;
+      }
+      if (bookingPaymentFilter === 'unpaid' && (booking.payment_status === 'paid' || booking.deposit_paid)) {
         return false;
       }
       if (!term) return true;
@@ -873,6 +879,8 @@ const AdminDashboard = () => {
       end_date: formatDate(newTour.end_date),
       duration: calculateDuration(newTour.start_date, newTour.end_date),
       max_participants: parseInt(newTour.max_participants),
+      deposit_amount: newTour.deposit_amount !== '' && newTour.deposit_amount != null ? parsePriceInput(newTour.deposit_amount) : null,
+      deposit_deadline: newTour.deposit_deadline instanceof Date ? formatDate(newTour.deposit_deadline) : null,
       equipment_prices: equipment
         .filter((item) =>
           selectedEquipmentIds.includes(Number(item.id)) &&
@@ -1003,6 +1011,8 @@ const AdminDashboard = () => {
       equipment_prices: {},
       start_date: tour.start_date ? new Date(tour.start_date) : null,
       end_date: tour.end_date ? new Date(tour.end_date) : null,
+      deposit_amount: tour.deposit_amount != null ? String(tour.deposit_amount) : '',
+      deposit_deadline: tour.deposit_deadline ? new Date(tour.deposit_deadline) : null,
     });
     const startDate = tour.start_date ? new Date(tour.start_date) : null;
     const endDate = tour.end_date ? new Date(tour.end_date) : null;
@@ -1513,6 +1523,7 @@ const AdminDashboard = () => {
                     >
                       <option value="all">Összes fizetés</option>
                       <option value="paid">Fizetve</option>
+                      <option value="deposit">Előleg fizetve</option>
                       <option value="unpaid">Nem fizetett</option>
                     </select>
                   </div>
@@ -2586,6 +2597,53 @@ const AdminDashboard = () => {
                 <label className="text-[10px] font-black uppercase text-slate-400 ml-4">Ár (Ft)</label>
                 <input type="text" inputMode="numeric" required value={formatPriceInput(newTour.price)} className="w-full p-4 bg-slate-50 border-none rounded-2xl mt-1"
                   onChange={e => setNewTour({...newTour, price: formatPriceInput(e.target.value)})} />
+              </div>
+
+              <div className="md:col-span-2">
+                <div className="flex items-center gap-3 mb-3 px-1">
+                  <label className="flex items-center gap-2 cursor-pointer select-none">
+                    <input
+                      type="checkbox"
+                      className="h-4 w-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
+                      checked={!!newTour.deposit_amount || newTour.deposit_amount === '0'}
+                      onChange={e => setNewTour(prev => ({
+                        ...prev,
+                        deposit_amount: e.target.checked ? '0' : '',
+                        deposit_deadline: e.target.checked ? prev.deposit_deadline : null
+                      }))}
+                    />
+                    <span className="text-[10px] font-black uppercase text-slate-400">Előleg szükséges (opcionális)</span>
+                  </label>
+                </div>
+                {(newTour.deposit_amount !== '' && newTour.deposit_amount != null) && (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 bg-amber-50/60 rounded-2xl border border-amber-100">
+                    <div>
+                      <label className="text-[10px] font-black uppercase text-slate-400 ml-1">Előleg összege (Ft)</label>
+                      <input
+                        type="text"
+                        inputMode="numeric"
+                        className="w-full p-4 bg-white border-none rounded-2xl mt-1"
+                        value={formatPriceInput(newTour.deposit_amount)}
+                        onChange={e => setNewTour(prev => ({ ...prev, deposit_amount: formatPriceInput(e.target.value) }))}
+                        placeholder="Pl. 15 000"
+                      />
+                    </div>
+                    <div className="relative">
+                      <label className="text-[10px] font-black uppercase text-slate-400 ml-1">Előleg határideje</label>
+                      <DatePicker
+                        selected={newTour.deposit_deadline}
+                        onChange={date => setNewTour(prev => ({ ...prev, deposit_deadline: date }))}
+                        locale="hu"
+                        dateFormat="yyyy.MM.dd"
+                        placeholderText="Dátum kiválasztása"
+                        minDate={new Date()}
+                        className="w-full p-4 bg-white border-none rounded-2xl mt-1"
+                        wrapperClassName="w-full"
+                      />
+                      <Calendar className="absolute right-4 top-10 text-amber-400/60 pointer-events-none" size={18} />
+                    </div>
+                  </div>
+                )}
               </div>
 
               <div className="md:col-span-2">

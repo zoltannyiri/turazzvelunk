@@ -7,7 +7,15 @@ import {
 } from 'lucide-react';
 import { formatPrice } from '../../utils/formatPrice';
 
-	const ProfileScreen = () => {
+	const formatHungarianDate = (dateString) => {
+  if (!dateString) return "";
+  const date = new Date(dateString);
+  if (isNaN(date.getTime())) return "";
+  const months = ["Január", "Február", "Március", "Április", "Május", "Június", "Július", "Augusztus", "Szeptember", "Október", "November", "December"];
+  return `${date.getFullYear()}. ${months[date.getMonth()]} ${String(date.getDate()).padStart(2, '0')}.`;
+};
+
+const ProfileScreen = () => {
     const { user, logout, updateUser, loading: authLoading } = useContext(AuthContext);
     const location = useLocation();
     const navigate = useNavigate();
@@ -154,7 +162,7 @@ import { formatPrice } from '../../utils/formatPrice';
     return () => clearInterval(interval);
   }, [paymentProcessing]);
 
-  const handlePay = async (bookingId) => {
+  const handlePay = async (bookingId, paymentType = 'full') => {
     const ok = window.confirm('Fizetés után az eszközöket már nem lehet visszamondani. Folytatod a fizetést?');
     if (!ok) return;
     try {
@@ -166,6 +174,7 @@ import { formatPrice } from '../../utils/formatPrice';
         },
         body: JSON.stringify({
           booking_id: bookingId,
+          payment_type: paymentType,
           return_url: `${window.location.origin}${window.location.pathname}`
         })
       });
@@ -383,9 +392,16 @@ import { formatPrice } from '../../utils/formatPrice';
                         <h3 className="text-2xl font-black text-emerald-950 tracking-tight group-hover:text-emerald-600 transition-colors">
                           {booking.title}
                         </h3>
-                        <div className="flex gap-6 text-gray-400 font-bold text-xs uppercase pt-2">
+                        <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-gray-400 font-bold text-xs uppercase pt-2">
                           <span className="flex items-center gap-1"><Calendar size={14} /> {new Date(booking.booked_at).toLocaleDateString()}</span>
                           <span className="flex items-center gap-1"><CreditCard size={14} /> {formatPrice(booking.total_price ?? booking.price)} Ft</span>
+                          {booking.deposit_amount > 0 && (
+                            booking.deposit_paid ? (
+                              <span className="flex items-center gap-1 text-emerald-600 font-black"><CheckCircle2 size={14} /> Előleg: {formatPrice(booking.deposit_amount)} Ft (rendezve)</span>
+                            ) : (
+                              <span className="flex items-center gap-1 text-amber-600 font-black"><Clock size={14} /> Előleg: {formatPrice(booking.deposit_amount)} Ft{booking.deposit_deadline ? ` (${formatHungarianDate(booking.deposit_deadline)}-ig)` : ''}</span>
+                            )
+                          )}
                         </div>
                       </div>
 
@@ -426,8 +442,13 @@ import { formatPrice } from '../../utils/formatPrice';
                           </div>
                         )}
                         {booking.status === 'pending' && (
-                          <div className="text-[10px] font-bold text-amber-600/90">
+                          <div className="text-[10px] font-bold text-amber-600/90 text-right">
                             Jóváhagyás után fizethető
+                            {booking.deposit_amount > 0 && (
+                              <div className="text-[9px] text-amber-500 font-semibold">
+                                Előleg: {formatPrice(booking.deposit_amount)} Ft vagy Teljes összeg
+                              </div>
+                            )}
                           </div>
                         )}
                         {booking.status === 'expired' && (
@@ -435,14 +456,53 @@ import { formatPrice } from '../../utils/formatPrice';
                             Nem került jóváhagyásra a túra indulásáig
                           </div>
                         )}
-                        {booking.status === 'confirmed' && booking.payment_status !== 'paid' && (
-                          <button
-                            onClick={() => handlePay(booking.id)}
-                            className="px-5 py-2 bg-emerald-600 text-white rounded-full font-black text-xs uppercase tracking-widest hover:bg-emerald-700 transition shadow-md shadow-emerald-600/20"
-                          >
-                            Fizetés
-                          </button>
-                        )}
+                        {booking.status === 'confirmed' && booking.payment_status !== 'paid' && (() => {
+                          const hasDeposit = booking.deposit_amount != null && Number(booking.deposit_amount) > 0;
+                          const depositPaid = !!booking.deposit_paid;
+                          const totalPrice = Number(booking.total_price || booking.price || 0);
+                          const depositAmount = Number(booking.deposit_amount || 0);
+                          const remainderAmount = Math.max(0, totalPrice - depositAmount);
+
+                          if (hasDeposit && !depositPaid) {
+                            return (
+                              <div className="flex flex-col gap-2 items-end">
+                                <button
+                                  onClick={() => handlePay(booking.id, 'deposit')}
+                                  className="px-4 py-2 bg-amber-500 text-white rounded-full font-black text-xs uppercase tracking-widest hover:bg-amber-600 transition shadow-md shadow-amber-500/20"
+                                >
+                                  Előleg: {formatPrice(depositAmount)} Ft
+                                </button>
+                                <button
+                                  onClick={() => handlePay(booking.id, 'full')}
+                                  className="px-4 py-2 bg-emerald-600 text-white rounded-full font-black text-xs uppercase tracking-widest hover:bg-emerald-700 transition shadow-md shadow-emerald-600/20"
+                                >
+                                  Teljes: {formatPrice(totalPrice)} Ft
+                                </button>
+                              </div>
+                            );
+                          }
+                          if (hasDeposit && depositPaid) {
+                            return (
+                              <div className="flex flex-col gap-1 items-end">
+                                <div className="text-[10px] font-black uppercase text-amber-600 tracking-widest">Előleg fizetve ✓</div>
+                                <button
+                                  onClick={() => handlePay(booking.id, 'remainder')}
+                                  className="px-4 py-2 bg-emerald-600 text-white rounded-full font-black text-xs uppercase tracking-widest hover:bg-emerald-700 transition shadow-md shadow-emerald-600/20"
+                                >
+                                  Maradék: {formatPrice(remainderAmount)} Ft
+                                </button>
+                              </div>
+                            );
+                          }
+                          return (
+                            <button
+                              onClick={() => handlePay(booking.id)}
+                              className="px-5 py-2 bg-emerald-600 text-white rounded-full font-black text-xs uppercase tracking-widest hover:bg-emerald-700 transition shadow-md shadow-emerald-600/20"
+                            >
+                              Fizetés
+                            </button>
+                          );
+                        })()}
                         {booking.payment_status === 'paid' && (
                           <div className={`font-black uppercase tracking-widest ${
                             booking.status === 'cancelled'

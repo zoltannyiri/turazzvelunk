@@ -200,30 +200,43 @@ const sendAdminCancellationApprovedEmail = async ({ to, userName, userEmail, tou
     return sendMail({ to, subject, text, html });
 };
 
-const sendPaymentEmail = async ({ to, name, tourId, tourTitle, amount, startDate, endDate }) => {
+const sendPaymentEmail = async ({ to, name, tourId, tourTitle, amount, startDate, endDate, paymentType, totalAmount }) => {
     const { subject, text, html } = buildPaymentEmail({
         name,
         tourTitle,
         amount,
         startDate,
-        endDate
+        endDate,
+        paymentType,
+        totalAmount
     });
+    const notifTitle = paymentType === 'deposit'
+        ? `Sikeres előlegfizetés: ${tourTitle}`
+        : paymentType === 'remainder'
+            ? `Sikeres hátralékfizetés: ${tourTitle}`
+            : `Sikeres fizetés: ${tourTitle}`;
+    const notifMsg = paymentType === 'deposit'
+        ? `${formatAmount(amount)} előleg befizetését rögzítettük.`
+        : `${formatAmount(amount)} befizetését rögzítettük.`;
+
     return sendMail({
         to,
         subject,
         text,
         html,
-        notification: tourNotification(tourId, `Sikeres fizetés: ${tourTitle}`, `${formatAmount(amount)} befizetését rögzítettük.`)
+        notification: tourNotification(tourId, notifTitle, notifMsg)
     });
 };
 
-const sendAdminPaymentEmail = async ({ to, userName, tourTitle, amount, startDate, endDate }) => {
+const sendAdminPaymentEmail = async ({ to, userName, tourTitle, amount, startDate, endDate, paymentType, totalAmount }) => {
     const { subject, text, html } = buildAdminPaymentEmail({
         userName,
         tourTitle,
         amount,
         startDate,
-        endDate
+        endDate,
+        paymentType,
+        totalAmount
     });
     return sendMail({ to, subject, text, html });
 };
@@ -241,7 +254,7 @@ const sendAdminNotification = async ({ subject, message }) => {
     );
 };
 
-const sendAdminPaymentNotification = async ({ userName, tourTitle, amount, startDate, endDate }) => {
+const sendAdminPaymentNotification = async ({ userName, tourTitle, amount, startDate, endDate, paymentType, totalAmount }) => {
     const recipients = await getAdminRecipients();
     if (!recipients.length) return;
     await Promise.all(
@@ -251,7 +264,9 @@ const sendAdminPaymentNotification = async ({ userName, tourTitle, amount, start
             tourTitle,
             amount,
             startDate,
-            endDate
+            endDate,
+            paymentType,
+            totalAmount
         }))
     );
 };

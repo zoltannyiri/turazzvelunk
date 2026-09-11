@@ -30,30 +30,40 @@ const finalizePaidBooking = async ({ payment, booking }) => {
         const [userRows] = await db.query('SELECT name, email FROM users WHERE id = ?', [payment.user_id]);
         const title = tourRows[0]?.title || 'ismeretlen túra';
         const userName = userRows[0]?.name || 'Ismeretlen felhasználó';
+        const isDeposit = payment.payment_type === 'deposit';
+        const isRemainder = payment.payment_type === 'remainder';
+        const typeLabel = isDeposit ? ' (Előleg)' : isRemainder ? ' (Hátralék)' : '';
+        const paidAmount = Number(payment.amount || booking?.total_price || 0);
+
         await logActivity({
             type: 'booking_paid',
-            message: `${userName} befizette a túrát: ${title}`,
+            message: `${userName} befizette a túrát${typeLabel}: ${title} (${paidAmount} Ft)`,
             userId: payment.user_id,
             tourId: payment.tour_id,
             bookingId: payment.booking_id
         });
+        const totalAmount = Number(booking?.total_price || 0);
         if (userRows.length > 0 && userRows[0].email) {
             await sendPaymentEmail({
                 to: userRows[0].email,
                 name: userName,
                 tourId: payment.tour_id,
                 tourTitle: title,
-                amount: booking?.total_price || payment.amount,
+                amount: paidAmount,
                 startDate: tourRows[0]?.start_date,
-                endDate: tourRows[0]?.end_date
+                endDate: tourRows[0]?.end_date,
+                paymentType: payment.payment_type,
+                totalAmount
             });
         }
         await sendAdminPaymentNotification({
             userName,
             tourTitle: title,
-            amount: payment.amount || 0,
+            amount: paidAmount,
             startDate: tourRows[0]?.start_date,
-            endDate: tourRows[0]?.end_date
+            endDate: tourRows[0]?.end_date,
+            paymentType: payment.payment_type,
+            totalAmount
         });
     } catch (logErr) {
         console.error('Tevékenységnapló hiba:', logErr.message);
@@ -69,7 +79,7 @@ const getClientOrigin = (req) => {
 };
 
 exports.createCheckoutSession = async (req, res) => {
-    const { booking_id, return_url } = req.body;
+    const { booking_id, return_url, payment_type } = req.body;
     const user_id = req.user.id;
 
     if (!process.env.STRIPE_SECRET_KEY) {
@@ -78,7 +88,8 @@ exports.createCheckoutSession = async (req, res) => {
 
     try {
         const [bookingRows] = await db.query(
-            `SELECT b.id, b.status, b.payment_status, b.tour_id, b.total_price, t.title, t.price,
+            `SELECT b.id, b.status, b.payment_status, b.deposit_paid, b.tour_id, b.total_price, t.title, t.price,
+                    t.deposit_amount, t.deposit_deadline,
                     t.start_date <= ? AS tour_started
              FROM bookings b
              JOIN tours t ON b.tour_id = t.id
@@ -99,7 +110,25 @@ exports.createCheckoutSession = async (req, res) => {
             return res.status(400).json({ message: 'A foglalás már ki van fizetve.' });
         }
 
-        const amountToPay = Number(booking.total_price || booking.price || 0);
+        // Determine effective payment type and amount
+        const hasDeposit = booking.deposit_amount !== null && Number(booking.deposit_amount) > 0;
+        let effectivePaymentType = 'full';
+        let amountToPay = Number(booking.total_price || booking.price || 0);
+
+        if (hasDeposit) {
+            if (booking.deposit_paid) {
+                // Deposit already paid — only remainder can be paid
+                effectivePaymentType = 'remainder';
+                amountToPay = Math.max(0, Number(booking.total_price || booking.price || 0) - Number(booking.deposit_amount));
+            } else if (payment_type === 'deposit') {
+                effectivePaymentType = 'deposit';
+                amountToPay = Number(booking.deposit_amount);
+            } else {
+                // full payment (default when deposit is available)
+                effectivePaymentType = 'full';
+                amountToPay = Number(booking.total_price || booking.price || 0);
+            }
+        }
 
         const defaultReturnUrl = `${getClientOrigin(req)}/profile`;
         let baseReturnUrl = defaultReturnUrl;
@@ -135,7 +164,16 @@ exports.createCheckoutSession = async (req, res) => {
                         currency: 'huf',
                         unit_amount: Math.round(amountToPay * 100),
                         product_data: {
-                            name: booking.title
+                            name: effectivePaymentType === 'deposit'
+                                ? `${booking.title} - Előleg`
+                                : effectivePaymentType === 'remainder'
+                                    ? `${booking.title} - Hátralék`
+                                    : `${booking.title} - Részvételi díj`,
+                            description: effectivePaymentType === 'deposit'
+                                ? `Előleg befizetése a(z) ${booking.title} túrára.`
+                                : effectivePaymentType === 'remainder'
+                                    ? `Fennmaradó összeg (hátralék) befizetése a(z) ${booking.title} túrára.`
+                                    : `Teljes részvételi díj befizetése a(z) ${booking.title} túrára.`
                         }
                     }
                 }
@@ -148,8 +186,8 @@ exports.createCheckoutSession = async (req, res) => {
         });
 
         await db.query(
-            'INSERT INTO booking_payments (stripe_session_id, user_id, tour_id, booking_id, amount, currency, status) VALUES (?, ?, ?, ?, ?, ?, ?)',
-            [session.id, user_id, booking.tour_id, booking.id, amountToPay, 'huf', 'pending']
+            'INSERT INTO booking_payments (stripe_session_id, user_id, tour_id, booking_id, amount, currency, status, payment_type) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+            [session.id, user_id, booking.tour_id, booking.id, amountToPay, 'huf', 'pending', effectivePaymentType]
         );
 
         res.json({ url: session.url });
@@ -206,16 +244,31 @@ exports.handleWebhook = async (req, res) => {
             let bookingUpdated = false;
             if (payment.booking_id) {
                 const [bookingRows] = await conn.query(
-                    'SELECT id, payment_status, total_price FROM bookings WHERE id = ? LIMIT 1 FOR UPDATE',
+                    'SELECT id, payment_status, deposit_paid, total_price FROM bookings WHERE id = ? LIMIT 1 FOR UPDATE',
                     [payment.booking_id]
                 );
                 bookingRow = bookingRows[0] || null;
-                if (bookingRow && bookingRow.payment_status !== 'paid') {
-                    await conn.query(
-                        'UPDATE bookings SET payment_status = ?, paid_at = NOW() WHERE id = ? AND payment_status <> ?',
-                        ['paid', payment.booking_id, 'paid']
-                    );
-                    bookingUpdated = true;
+                if (bookingRow) {
+                    if (payment.payment_type === 'deposit' && !bookingRow.deposit_paid) {
+                        await conn.query(
+                            'UPDATE bookings SET deposit_paid = 1, deposit_paid_at = NOW() WHERE id = ?',
+                            [payment.booking_id]
+                        );
+                        bookingUpdated = true;
+                    } else if ((payment.payment_type === 'full' || payment.payment_type === 'remainder') && bookingRow.payment_status !== 'paid') {
+                        await conn.query(
+                            'UPDATE bookings SET payment_status = ?, paid_at = NOW() WHERE id = ? AND payment_status <> ?',
+                            ['paid', payment.booking_id, 'paid']
+                        );
+                        bookingUpdated = true;
+                    } else if (!payment.payment_type && bookingRow.payment_status !== 'paid') {
+                        // Legacy: no payment_type, treat as full
+                        await conn.query(
+                            'UPDATE bookings SET payment_status = ?, paid_at = NOW() WHERE id = ? AND payment_status <> ?',
+                            ['paid', payment.booking_id, 'paid']
+                        );
+                        bookingUpdated = true;
+                    }
                 }
             }
 
@@ -274,15 +327,33 @@ exports.confirmCheckoutSession = async (req, res) => {
             const bookingId = session?.metadata?.booking_id;
             if (bookingId) {
                 const [bookingRows] = await db.query(
-                    'SELECT payment_status, tour_id, total_price FROM bookings WHERE id = ? AND user_id = ? LIMIT 1',
+                    'SELECT payment_status, deposit_paid, tour_id, total_price FROM bookings WHERE id = ? AND user_id = ? LIMIT 1',
                     [bookingId, user_id]
                 );
+                const [paymentTypeRows] = await db.query(
+                    'SELECT payment_type FROM booking_payments WHERE stripe_session_id = ? LIMIT 1',
+                    [session_id]
+                );
+                const paymentTypeVal = paymentTypeRows[0]?.payment_type || 'full';
                 const alreadyPaid = bookingRows[0]?.payment_status === 'paid';
-                if (!alreadyPaid) {
-                    await db.query(
-                        'UPDATE bookings SET payment_status = ?, paid_at = NOW() WHERE id = ?',
-                        ['paid', bookingId]
-                    );
+                const depositAlreadyPaid = bookingRows[0]?.deposit_paid;
+
+                const needsUpdate =
+                    (paymentTypeVal === 'deposit' && !depositAlreadyPaid) ||
+                    ((paymentTypeVal === 'full' || paymentTypeVal === 'remainder') && !alreadyPaid);
+
+                if (needsUpdate) {
+                    if (paymentTypeVal === 'deposit') {
+                        await db.query(
+                            'UPDATE bookings SET deposit_paid = 1, deposit_paid_at = NOW() WHERE id = ?',
+                            [bookingId]
+                        );
+                    } else {
+                        await db.query(
+                            'UPDATE bookings SET payment_status = ?, paid_at = NOW() WHERE id = ?',
+                            ['paid', bookingId]
+                        );
+                    }
                     try {
                         const [tourRows] = await db.query('SELECT title, start_date, end_date FROM tours WHERE id = ?', [bookingRows[0]?.tour_id]);
                         const [userRows] = await db.query('SELECT name, email FROM users WHERE id = ?', [user_id]);
@@ -295,23 +366,34 @@ exports.confirmCheckoutSession = async (req, res) => {
                             tourId: bookingRows[0]?.tour_id || null,
                             bookingId
                         });
+                        const isDep = paymentTypeVal === 'deposit';
+                        const isRem = paymentTypeVal === 'remainder';
+                        const pTypeLabel = isDep ? ' (Előleg)' : isRem ? ' (Hátralék)' : '';
+                        const [paidAmountRows] = await db.query('SELECT amount FROM booking_payments WHERE stripe_session_id = ? LIMIT 1', [session_id]);
+                        const confirmedAmount = Number(paidAmountRows[0]?.amount || (isDep ? bookingRows[0]?.deposit_amount : bookingRows[0]?.total_price) || 0);
+
+                        const totalAmount = Number(bookingRows[0]?.total_price || 0);
                         if (userRows.length > 0 && userRows[0].email) {
                             await sendPaymentEmail({
                                 to: userRows[0].email,
                                 name: userName,
                                 tourId: bookingRows[0]?.tour_id,
                                 tourTitle: title,
-                                amount: bookingRows[0]?.total_price || 0,
+                                amount: confirmedAmount,
                                 startDate: tourRows[0]?.start_date,
-                                endDate: tourRows[0]?.end_date
+                                endDate: tourRows[0]?.end_date,
+                                paymentType: paymentTypeVal,
+                                totalAmount
                             });
                         }
                         await sendAdminPaymentNotification({
                             userName,
                             tourTitle: title,
-                            amount: bookingRows[0]?.total_price || 0,
+                            amount: confirmedAmount,
                             startDate: tourRows[0]?.start_date,
-                            endDate: tourRows[0]?.end_date
+                            endDate: tourRows[0]?.end_date,
+                            paymentType: paymentTypeVal,
+                            totalAmount
                         });
                     } catch (logErr) {
                         console.error('Tevékenységnapló hiba:', logErr.message);

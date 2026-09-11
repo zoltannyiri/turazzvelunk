@@ -219,7 +219,9 @@ exports.getMyBookings = async (req, res) => {
         const [myBookings] = await db.query(
             `SELECT bookings.id, bookings.status, bookings.booked_at, bookings.payment_status, bookings.paid_at,
                          bookings.extra_price, bookings.total_price, bookings.refund_amount, bookings.refund_status,
+                         bookings.deposit_paid, bookings.deposit_paid_at,
                          tours.id AS tour_id, tours.title, tours.location, tours.image_url, tours.price,
+                         tours.deposit_amount, tours.deposit_deadline,
                          (
                              SELECT r.status FROM booking_cancel_requests r
                              WHERE r.booking_id = bookings.id
@@ -304,7 +306,7 @@ exports.getAllBookings = async (req, res) => {
                 b.*, 
                 t.title, t.location, t.price, t.description, t.image_url, 
                 t.duration, t.difficulty, t.category, t.subcategory, t.start_date, t.end_date,
-                t.max_participants,
+                t.max_participants, t.deposit_amount, t.deposit_deadline,
                 u.name AS user_name, u.email 
             FROM bookings b
             JOIN tours t ON b.tour_id = t.id
@@ -503,6 +505,7 @@ exports.getBookingStatusByTourId = async (req, res) => {
         await expireStaleBookings();
         const [rows] = await db.query(
             `SELECT b.id, b.status, b.payment_status,
+                    b.deposit_paid, b.deposit_paid_at,
                     b.extra_price, b.total_price,
                     b.refund_amount, b.refund_status,
                     (
@@ -533,6 +536,8 @@ exports.getBookingStatusByTourId = async (req, res) => {
             bookingId,
             status: rows[0].status,
             payment_status: rows[0].payment_status || null,
+            deposit_paid: !!rows[0].deposit_paid,
+            deposit_paid_at: rows[0].deposit_paid_at || null,
             cancel_request_status: rows[0].cancel_request_status || null,
             extra_price: rows[0].extra_price ?? 0,
             total_price: rows[0].total_price ?? 0,

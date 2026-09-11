@@ -22,6 +22,8 @@ const TourDetailsScreen = () => {
   const [bookingStatus, setBookingStatus] = useState(null);
   const [bookingId, setBookingId] = useState(null);
   const [paymentStatus, setPaymentStatus] = useState(null);
+  const [depositPaid, setDepositPaid] = useState(false);
+  const [depositPaidAt, setDepositPaidAt] = useState(null);
   const [bookingTotals, setBookingTotals] = useState({ total: 0, extra: 0 });
   const [cancelRequestStatus, setCancelRequestStatus] = useState(null);
   const [cancelReason, setCancelReason] = useState('');
@@ -96,7 +98,9 @@ const TourDetailsScreen = () => {
     start_date: '',
     end_date: '',
     max_participants: '',
-    equipment_prices: {}
+    equipment_prices: {},
+    deposit_amount: '',
+    deposit_deadline: ''
   });
 
   const fromCalendar = location.state?.from === 'calendar';
@@ -212,6 +216,8 @@ const TourDetailsScreen = () => {
     setBookingStatus(checkData.status || null);
     setBookingId(checkData.bookingId || null);
     setPaymentStatus(checkData.payment_status || null);
+    setDepositPaid(!!checkData.deposit_paid);
+    setDepositPaidAt(checkData.deposit_paid_at || null);
     setCancelRequestStatus(checkData.cancel_request_status || null);
     if (checkData.isBooked && Array.isArray(checkData.equipment_ids)) {
       setSelectedEquipmentIds(checkData.equipment_ids);
@@ -589,7 +595,9 @@ const TourDetailsScreen = () => {
       start_date: startDate,
       end_date: endDate,
       max_participants: tour.max_participants || '',
-      equipment_prices: {}
+      equipment_prices: {},
+      deposit_amount: tour.deposit_amount != null ? String(tour.deposit_amount) : '',
+      deposit_deadline: toDateInputValue(tour.deposit_deadline) || ''
     });
     setTourEditEquipment([]);
     setTourEditSelectedEquipmentIds([]);
@@ -653,6 +661,8 @@ const TourDetailsScreen = () => {
         price: parsePriceInput(tourEditForm.price),
         duration,
         max_participants: Number(tourEditForm.max_participants),
+        deposit_amount: tourEditForm.deposit_amount !== '' && tourEditForm.deposit_amount != null ? parsePriceInput(tourEditForm.deposit_amount) : null,
+        deposit_deadline: tourEditForm.deposit_deadline || null,
         equipment_prices: tourEditEquipment
           .filter((item) => {
             const equipmentId = Number(item.id);
@@ -728,7 +738,7 @@ const TourDetailsScreen = () => {
           setIsBooked(true);
           setBookingStatus('waitlist');
         } else {
-          toast.success("🎉 Jelentkezés elküldve! Az adminisztrátor jóváhagyása után kapni fogsz egy emailt, és megnyílik a fizetés.");
+          toast.success("Jelentkezés elküldve! Az adminisztrátor jóváhagyása után kapni fogsz egy emailt, és megnyílik a fizetés.");
           setIsBooked(true);
           setBookingStatus('pending');
         }
@@ -798,7 +808,7 @@ const TourDetailsScreen = () => {
     }
   };
 
-  const handlePay = async () => {
+  const handlePay = async (paymentType = 'full') => {
     if (!bookingId || paymentSubmitting) return;
     const ok = window.confirm('Fizetés után az eszközöket már nem lehet visszamondani. Folytatod a fizetést?');
     if (!ok) return;
@@ -812,6 +822,7 @@ const TourDetailsScreen = () => {
         },
         body: JSON.stringify({
           booking_id: bookingId,
+          payment_type: paymentType,
           return_url: `${window.location.origin}${window.location.pathname}`
         })
       });
@@ -1525,39 +1536,107 @@ const TourDetailsScreen = () => {
                   <div className="text-4xl font-black italic tracking-tighter">
                     {formatPrice(displayTotal)} <span className="text-lg not-italic text-emerald-500">Ft</span>
                   </div>
+
+                  {tour?.deposit_amount > 0 && (
+                    <div className="mt-2.5 p-3 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-xs">
+                      <div className="flex items-center justify-between font-black text-amber-300">
+                        <span>Előleg összege:</span>
+                        <span>{formatPrice(tour.deposit_amount)} Ft</span>
+                      </div>
+                      {tour.deposit_deadline && (
+                        <div className="text-[10px] font-bold text-amber-200/70 mt-0.5">
+                          Előleg határideje: {formatHungarianDate(tour.deposit_deadline)}
+                        </div>
+                      )}
+                    </div>
+                  )}
+
                   {paymentStatus === 'paid' && (
                     <div className={`mt-2 inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-black uppercase tracking-widest ${
                       bookingStatus === 'cancelled'
                         ? 'bg-rose-600 text-white shadow-md shadow-rose-600/30'
                         : 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
                     }`}>
-                      <CheckCircle2 size={14} /> Fizetve
+                      <CheckCircle2 size={14} /> Teljes összeg kifizetve
                     </div>
                   )}
+
                   {displayExtra > 0 && (
                     <div className="text-[10px] font-black uppercase tracking-widest text-emerald-300 mt-2">
                       Alapár: {formatPrice(basePrice)} Ft · Extra: {formatPrice(displayExtra)} Ft
                     </div>
                   )}
-                  {isBooked && bookingStatus === 'confirmed' && paymentStatus !== 'paid' && (
-                    <button
-                      onClick={handlePay}
-                      disabled={!bookingId || paymentSubmitting}
-                      className={`mt-4 w-full py-3 rounded-xl font-black text-xs uppercase tracking-widest border flex items-center justify-center gap-2 transition ${
-                        paymentSubmitting || !bookingId
-                          ? 'bg-slate-800 text-slate-500 border-slate-700 cursor-not-allowed'
-                          : 'bg-emerald-500/15 text-emerald-200 border-emerald-500/40 hover:bg-emerald-500 hover:text-slate-900'
-                      }`}
-                    >
-                      {paymentSubmitting && (
-                        <span
-                          className="h-4 w-4 rounded-full border-2 border-emerald-200 border-t-emerald-500 animate-spin"
-                          aria-hidden="true"
-                        ></span>
-                      )}
-                      {paymentSubmitting ? 'Fizetés...' : 'Fizetés most'}
-                    </button>
+
+                  {isBooked && bookingStatus === 'pending' && (
+                    <div className="mt-3 p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-[11px] font-bold text-amber-200 text-center">
+                      ⏳ Jóváhagyás után fizethető{tour?.deposit_amount > 0 ? ` (Előleg: ${formatPrice(tour.deposit_amount)} Ft vagy Teljes összeg)` : ''}
+                    </div>
                   )}
+
+                  {isBooked && bookingStatus === 'confirmed' && paymentStatus !== 'paid' && (() => {
+                    const hasDeposit = tour?.deposit_amount != null && Number(tour.deposit_amount) > 0;
+                    const totalPrice = Number(displayTotal || 0);
+                    const depositAmount = Number(tour?.deposit_amount || 0);
+                    const remainderAmount = Math.max(0, totalPrice - depositAmount);
+
+                    if (hasDeposit && !depositPaid) {
+                      return (
+                        <div className="mt-4 space-y-2">
+                          <button
+                            onClick={() => handlePay('deposit')}
+                            disabled={!bookingId || paymentSubmitting}
+                            className="w-full py-3 px-4 rounded-xl font-black text-xs uppercase tracking-widest bg-amber-500 text-slate-950 hover:bg-amber-400 transition shadow-lg shadow-amber-500/20 flex items-center justify-center gap-2 disabled:opacity-50"
+                          >
+                            {paymentSubmitting ? 'Fizetés folyamatban...' : `Előleg fizetése (${formatPrice(depositAmount)} Ft)`}
+                          </button>
+                          <button
+                            onClick={() => handlePay('full')}
+                            disabled={!bookingId || paymentSubmitting}
+                            className="w-full py-2.5 px-4 rounded-xl font-black text-xs uppercase tracking-widest bg-emerald-500/15 text-emerald-200 border border-emerald-500/40 hover:bg-emerald-500 hover:text-slate-900 transition flex items-center justify-center gap-2 disabled:opacity-50"
+                          >
+                            Teljes összeg fizetése ({formatPrice(totalPrice)} Ft)
+                          </button>
+                        </div>
+                      );
+                    }
+
+                    if (hasDeposit && depositPaid) {
+                      return (
+                        <div className="mt-4 space-y-2">
+                          <div className="py-2 px-3 rounded-xl bg-amber-500/15 border border-amber-500/30 text-amber-300 text-xs font-black uppercase tracking-wider text-center">
+                            Előleg fizetve ✓ ({formatPrice(depositAmount)} Ft)
+                          </div>
+                          <button
+                            onClick={() => handlePay('remainder')}
+                            disabled={!bookingId || paymentSubmitting}
+                            className="w-full py-3 px-4 rounded-xl font-black text-xs uppercase tracking-widest bg-emerald-500 text-slate-950 hover:bg-emerald-400 transition shadow-lg shadow-emerald-500/20 flex items-center justify-center gap-2 disabled:opacity-50"
+                          >
+                            {paymentSubmitting ? 'Fizetés folyamatban...' : `Hátralék fizetése (${formatPrice(remainderAmount)} Ft)`}
+                          </button>
+                        </div>
+                      );
+                    }
+
+                    return (
+                      <button
+                        onClick={() => handlePay('full')}
+                        disabled={!bookingId || paymentSubmitting}
+                        className={`mt-4 w-full py-3 rounded-xl font-black text-xs uppercase tracking-widest border flex items-center justify-center gap-2 transition ${
+                          paymentSubmitting || !bookingId
+                            ? 'bg-slate-800 text-slate-500 border-slate-700 cursor-not-allowed'
+                            : 'bg-emerald-500/15 text-emerald-200 border-emerald-500/40 hover:bg-emerald-500 hover:text-slate-900'
+                        }`}
+                      >
+                        {paymentSubmitting && (
+                          <span
+                            className="h-4 w-4 rounded-full border-2 border-emerald-200 border-t-emerald-500 animate-spin"
+                            aria-hidden="true"
+                          ></span>
+                        )}
+                        {paymentSubmitting ? 'Fizetés...' : 'Fizetés most'}
+                      </button>
+                    );
+                  })()}
                 </div>
 
                 <div className="space-y-3 mb-8 text-xs">
@@ -2164,6 +2243,47 @@ const TourDetailsScreen = () => {
                   onChange={(e) => setTourEditForm((current) => ({ ...current, price: formatPriceInput(e.target.value) }))}
                   className="w-full p-4 bg-slate-50 border-none rounded-2xl mt-1"
                 />
+              </div>
+              <div className="md:col-span-2">
+                <div className="flex items-center gap-3 mb-3 px-1">
+                  <label className="flex items-center gap-2 cursor-pointer select-none">
+                    <input
+                      type="checkbox"
+                      className="h-4 w-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
+                      checked={!!tourEditForm.deposit_amount || tourEditForm.deposit_amount === '0'}
+                      onChange={(e) => setTourEditForm((prev) => ({
+                        ...prev,
+                        deposit_amount: e.target.checked ? '0' : '',
+                        deposit_deadline: e.target.checked ? prev.deposit_deadline : ''
+                      }))}
+                    />
+                    <span className="text-[10px] font-black uppercase text-slate-400">Előleg szükséges (opcionális)</span>
+                  </label>
+                </div>
+                {(tourEditForm.deposit_amount !== '' && tourEditForm.deposit_amount != null) && (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 bg-amber-50/60 rounded-2xl border border-amber-100">
+                    <div>
+                      <label className="text-[10px] font-black uppercase text-slate-400 ml-1">Előleg összege (Ft)</label>
+                      <input
+                        type="text"
+                        inputMode="numeric"
+                        className="w-full p-4 bg-white border-none rounded-2xl mt-1 font-bold text-slate-900"
+                        value={formatPriceInput(tourEditForm.deposit_amount)}
+                        onChange={(e) => setTourEditForm((prev) => ({ ...prev, deposit_amount: formatPriceInput(e.target.value) }))}
+                        placeholder="Pl. 15 000"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[10px] font-black uppercase text-slate-400 ml-1">Előleg határideje</label>
+                      <input
+                        type="date"
+                        className="w-full p-4 bg-white border-none rounded-2xl mt-1 font-bold text-emerald-900"
+                        value={tourEditForm.deposit_deadline}
+                        onChange={(e) => setTourEditForm((prev) => ({ ...prev, deposit_deadline: e.target.value }))}
+                      />
+                    </div>
+                  </div>
+                )}
               </div>
               <div>
                 <label className="text-[10px] font-black uppercase text-slate-400 ml-4">Kezdés</label>

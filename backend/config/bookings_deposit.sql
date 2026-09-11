@@ -1,0 +1,3 @@
+ALTER TABLE bookings
+  ADD COLUMN deposit_paid TINYINT(1) NOT NULL DEFAULT 0,
+  ADD COLUMN deposit_paid_at TIMESTAMP NULL;

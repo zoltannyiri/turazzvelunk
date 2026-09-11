@@ -1,0 +1,3 @@
+ALTER TABLE tours
+  ADD COLUMN deposit_amount INT(11) DEFAULT NULL,
+  ADD COLUMN deposit_deadline DATE DEFAULT NULL;

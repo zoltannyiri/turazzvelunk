@@ -548,12 +548,29 @@ const buildAdminCancellationApprovedEmail = ({ userName, userEmail, tourTitle, s
     return { subject, text, html };
 };
 
-const buildPaymentEmail = ({ name, tourTitle, amount, startDate, endDate }) => {
+const buildPaymentEmail = ({ name, tourTitle, amount, startDate, endDate, paymentType, totalAmount }) => {
     const safeName = escapeHtml(name || '');
     const safeTitle = escapeHtml(tourTitle || '');
     const dateRange = formatDateRange(startDate, endDate) || '-';
-    const subject = `Sikeres befizetés: ${safeTitle}`;
-    const text = `Szia ${safeName}!\n\nA befizetésed sikeres volt.\nTúra: ${safeTitle}\nIdőpont: ${dateRange}\nÖsszeg: ${formatPrice(amount)}\n`;
+    const isDeposit = paymentType === 'deposit';
+    const isRemainder = paymentType === 'remainder';
+
+    let subject = `Sikeres befizetés: ${safeTitle}`;
+    let typeDescription = 'A befizetésed sikeres volt.';
+    let amountLabel = 'Összeg';
+    if (isDeposit) {
+        subject = `Sikeres előlegfizetés: ${safeTitle}`;
+        typeDescription = 'Az előleg befizetésed sikeres volt.';
+        amountLabel = 'Befizetett előleg';
+    } else if (isRemainder) {
+        subject = `Sikeres hátralékfizetés: ${safeTitle}`;
+        typeDescription = 'A hátralék befizetésed sikeres volt. A teljes részvételi díj rendezve!';
+        amountLabel = 'Befizetett hátralék';
+    }
+
+    const remainder = (isDeposit && totalAmount) ? Math.max(0, Number(totalAmount) - Number(amount)) : 0;
+    const remainderText = remainder > 0 ? `\nFennmaradó hátralék: ${formatPrice(remainder)}` : '';
+    const text = `Szia ${safeName}!\n\n${typeDescription}\nTúra: ${safeTitle}\nIdőpont: ${dateRange}\n${amountLabel}: ${formatPrice(amount)}${remainderText}\n`;
     const html = `
         <div style="background: #f4f7fb; padding: 32px 16px; font-family: 'Trebuchet MS', 'Segoe UI', Arial, sans-serif; color: #1f2933;">
             <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width: 640px; margin: 0 auto; border-collapse: collapse;">
@@ -595,12 +612,46 @@ const buildPaymentEmail = ({ name, tourTitle, amount, startDate, endDate }) => {
     return { subject, text, html };
 };
 
-const buildAdminPaymentEmail = ({ userName, tourTitle, amount, startDate, endDate }) => {
+const buildAdminPaymentEmail = ({ userName, tourTitle, amount, startDate, endDate, paymentType, totalAmount }) => {
     const safeName = escapeHtml(userName || '');
     const safeTitle = escapeHtml(tourTitle || '');
     const dateRange = formatDateRange(startDate, endDate) || '-';
-    const subject = `Befizetés: ${safeTitle}`;
-    const text = `${safeName} befizette a túrát.\nTúra: ${safeTitle}\nIdőpont: ${dateRange}\nÖsszeg: ${formatPrice(amount)}\n`;
+    const isDeposit = paymentType === 'deposit';
+    const isRemainder = paymentType === 'remainder';
+
+    let subject = `Befizetés: ${safeTitle}`;
+    let typeDescription = `${safeName} befizette a túrát.`;
+    let amountLabel = 'Összeg';
+    let extraRows = '';
+
+    if (isDeposit) {
+        subject = `Előleg befizetés: ${safeTitle}`;
+        typeDescription = `${safeName} befizette az előleget a túrára.`;
+        amountLabel = 'Befizetett előleg';
+        const remainder = totalAmount ? Math.max(0, Number(totalAmount) - Number(amount)) : 0;
+        if (remainder > 0) {
+            extraRows = `
+                <tr>
+                    <td style="padding: 12px 16px; font-size: 13px; color: #64748b;">Fennmaradó összeg (hátralék)</td>
+                    <td style="padding: 12px 16px; font-size: 14px; color: #b45309; font-weight: 700;">${formatPrice(remainder)}</td>
+                </tr>
+            `;
+        }
+    } else if (isRemainder) {
+        subject = `Hátralék befizetés: ${safeTitle}`;
+        typeDescription = `${safeName} rendezte a túra fennmaradó összegét (hátralékát). A teljes részvételi díj kifizetve!`;
+        amountLabel = 'Befizetett hátralék';
+    } else {
+        subject = `Teljes befizetés: ${safeTitle}`;
+        typeDescription = `${safeName} befizette a teljes részvételi díjat a túrára.`;
+        amountLabel = 'Befizetett összeg';
+    }
+
+    const remainderText = (isDeposit && totalAmount && Math.max(0, Number(totalAmount) - Number(amount)) > 0)
+        ? `\nFennmaradó összeg (hátralék): ${formatPrice(Math.max(0, Number(totalAmount) - Number(amount)))}`
+        : '';
+
+    const text = `${typeDescription}\nTúra: ${safeTitle}\nIdőpont: ${dateRange}\n${amountLabel}: ${formatPrice(amount)}${remainderText}\n`;
     const html = `
         <div style="background: #f4f7fb; padding: 32px 16px; font-family: 'Trebuchet MS', 'Segoe UI', Arial, sans-serif; color: #1f2933;">
             <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width: 640px; margin: 0 auto; border-collapse: collapse;">
@@ -612,8 +663,8 @@ const buildAdminPaymentEmail = ({ userName, tourTitle, amount, startDate, endDat
                 </tr>
                 <tr>
                     <td style="background: #ffffff; padding: 28px; border-left: 1px solid #e2e8f0; border-right: 1px solid #e2e8f0;">
-                        <h2 style="margin: 0 0 12px; font-size: 22px; color: #0f172a;">Befizetés: ${safeTitle}</h2>
-                        <p style="margin: 0 0 16px; color: #334155;">${safeName} befizette a túrát.</p>
+                        <h2 style="margin: 0 0 12px; font-size: 22px; color: #0f172a;">${subject}</h2>
+                        <p style="margin: 0 0 16px; color: #334155;">${typeDescription}</p>
                         <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="border-collapse: collapse; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px;">
                             <tr>
                                 <td style="padding: 12px 16px; font-size: 13px; color: #64748b;">Túra</td>
@@ -624,9 +675,10 @@ const buildAdminPaymentEmail = ({ userName, tourTitle, amount, startDate, endDat
                                 <td style="padding: 12px 16px; font-size: 14px; color: #0f172a;">${dateRange}</td>
                             </tr>
                             <tr>
-                                <td style="padding: 12px 16px; font-size: 13px; color: #64748b;">Összeg</td>
+                                <td style="padding: 12px 16px; font-size: 13px; color: #64748b;">${amountLabel}</td>
                                 <td style="padding: 12px 16px; font-size: 14px; color: #0f172a; font-weight: 600;">${formatPrice(amount)}</td>
                             </tr>
+                            ${extraRows}
                         </table>
                     </td>
                 </tr>

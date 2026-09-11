@@ -65,6 +65,7 @@ exports.getAllTours = async (req, res) => {
             SELECT t.id, t.title, t.location, t.price, t.duration, t.difficulty,
                    t.image_url, t.description, t.start_date, t.end_date,
                    t.max_participants, t.category, t.subcategory,
+                   t.deposit_amount, t.deposit_deadline,
                    COALESCE(b.booked_count, 0) AS booked_count,
                    COALESCE(w.waitlist_count, 0) AS waitlist_count
             FROM tours t
@@ -96,6 +97,7 @@ exports.getTourById = async (req, res) => {
             SELECT t.id, t.title, t.location, t.price, t.duration, t.difficulty,
             t.image_url, t.description, t.start_date, t.end_date,
             t.max_participants, t.category, t.subcategory,
+            t.deposit_amount, t.deposit_deadline,
             (SELECT COUNT(*) FROM bookings WHERE tour_id = t.id AND status IN ('pending', 'confirmed')) as booked_count,
             (SELECT COUNT(*) FROM bookings WHERE tour_id = t.id AND status = 'waitlist') as waitlist_count
             FROM tours t 
@@ -179,8 +181,10 @@ exports.getTourEquipmentOptions = async (req, res) => {
 };
 
 exports.createTour = async (req, res) => {
-    const { title, location, description, price, duration, difficulty, category, subcategory, image_url, start_date, end_date, max_participants, equipment_prices } = req.body;
+    const { title, location, description, price, duration, difficulty, category, subcategory, image_url, start_date, end_date, max_participants, equipment_prices, deposit_amount, deposit_deadline } = req.body;
     const durationValue = duration === "" || duration === null || duration === undefined ? null : Number(duration);
+    const depositAmountValue = deposit_amount !== null && deposit_amount !== undefined && deposit_amount !== '' ? Number(deposit_amount) : null;
+    const depositDeadlineValue = deposit_deadline || null;
     if (start_date) {
         const today = new Date();
         today.setHours(0, 0, 0, 0);
@@ -205,8 +209,8 @@ exports.createTour = async (req, res) => {
         }
 
         const [result] = await db.query(
-            'INSERT INTO tours (created_by, title, location, description, price, duration, difficulty, category, subcategory, image_url, start_date, end_date, max_participants) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-            [req.user.id, title, location, description, price, durationValue, difficulty, category, subcategory, image_url, start_date, end_date, max_participants]
+            'INSERT INTO tours (created_by, title, location, description, price, duration, difficulty, category, subcategory, image_url, start_date, end_date, max_participants, deposit_amount, deposit_deadline) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+            [req.user.id, title, location, description, price, durationValue, difficulty, category, subcategory, image_url, start_date, end_date, max_participants, depositAmountValue, depositDeadlineValue]
         );
 
         const tourId = result.insertId;

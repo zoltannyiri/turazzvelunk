@@ -37,8 +37,15 @@ const TourCard = ({ tour }) => {
             {tour.subcategory}
           </div>
         )}
-        <div className="absolute bottom-4 right-4 bg-emerald-600 text-white px-4 py-2 rounded-2xl font-black shadow-lg">
-          {formatPrice(tour.price)} Ft
+        <div className="absolute bottom-4 right-4 flex flex-col items-end gap-1">
+          <div className="bg-emerald-600 text-white px-4 py-2 rounded-2xl font-black shadow-lg text-sm">
+            {formatPrice(tour.price)} Ft
+          </div>
+          {tour.deposit_amount > 0 && (
+            <div className="bg-amber-500 text-slate-950 px-2.5 py-0.5 rounded-xl font-black text-[10px] uppercase tracking-wider shadow-md">
+              Előleg: {formatPrice(tour.deposit_amount)} Ft
+            </div>
+          )}
         </div>
       </div>
 
