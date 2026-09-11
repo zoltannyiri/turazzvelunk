@@ -2,11 +2,12 @@ import React, { useCallback, useContext, useEffect, useMemo, useState } from 're
 import { Link, Navigate, useSearchParams } from 'react-router-dom';
 import {
   ArrowRight, BookOpen, Calendar, Camera, Clock3, Edit3, ImagePlus,
-  PenSquare, Search, Sparkles, Trash2, User, X
+  PenSquare, Search, Share2, Sparkles, Trash2, User, X
 } from 'lucide-react';
 import { AuthContext } from '../../context/AuthContext';
 import { toast } from 'react-toastify';
 import RichTextEditor from '../../components/RichTextEditor';
+import BlogShareModal from '../../components/BlogShareModal';
 
 const initialEditor = { title: '', content: '' };
 
@@ -30,6 +31,7 @@ const BlogScreen = () => {
   const [submitting, setSubmitting] = useState(false);
   const [editorLoading, setEditorLoading] = useState(false);
   const [deletingId, setDeletingId] = useState(null);
+  const [sharingPost, setSharingPost] = useState(null);
   const assetBase = (import.meta.env.VITE_API_URL || '').replace(/\/api\/?$/, '');
 
   const fetchPosts = async () => {
@@ -175,6 +177,36 @@ const BlogScreen = () => {
     year: 'numeric', month: 'long', day: 'numeric'
   }).format(new Date(value));
 
+  const handleShare = async (post, e) => {
+    if (e?.stopPropagation) e.stopPropagation();
+    if (e?.preventDefault) e.preventDefault();
+    if (!post) return;
+
+    const isMobile = typeof window !== 'undefined' && 
+      (/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ||
+      (window.matchMedia && window.matchMedia('(max-width: 768px)').matches && 'ontouchstart' in window));
+
+    // Mobilon meghívjuk a telefon natív megosztóját, ha van
+    if (isMobile && typeof navigator !== 'undefined' && navigator.share) {
+      const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+      const shareUrl = isLocalhost 
+        ? `https://turazzvelunk.vercel.app/blog/${post.id}` 
+        : `${window.location.origin}/blog/${post.id}`;
+      try {
+        await navigator.share({
+          title: post.title || 'Túrázz Velünk',
+          url: shareUrl,
+        });
+        return;
+      } catch (err) {
+        if (err?.name === 'AbortError') return;
+      }
+    }
+
+    // Asztali gépen megnyitjuk a megosztó modalt
+    setSharingPost(post);
+  };
+
   const AdminActions = ({ post, light = false }) => user?.role === 'admin' && (
     <div className="flex items-center gap-2">
       <button
@@ -280,7 +312,17 @@ const BlogScreen = () => {
                 <div className="relative z-10 flex min-h-[30rem] flex-col justify-between p-7 md:p-12">
                   <div className="flex items-center justify-between gap-4">
                     <span className="rounded-full bg-emerald-400 px-4 py-2 text-[10px] font-black uppercase tracking-widest text-emerald-950">Legfrissebb történet</span>
-                    <AdminActions post={featuredPost} light />
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={(e) => handleShare(featuredPost, e)}
+                        className="p-2.5 rounded-xl bg-white/15 text-white hover:bg-white/25 transition"
+                        title="Megosztás"
+                      >
+                        <Share2 size={16} />
+                      </button>
+                      <AdminActions post={featuredPost} light />
+                    </div>
                   </div>
                   <div className="max-w-3xl">
                     <div className="flex flex-wrap items-center gap-4 text-xs font-bold text-white/65">
@@ -334,7 +376,17 @@ const BlogScreen = () => {
                         </Link>
                         <div className="mt-auto flex items-center justify-between gap-3 pt-6">
                           <span className="flex items-center gap-1.5 text-xs font-bold text-slate-400"><User size={14} /> {post.author_name}</span>
-                          <AdminActions post={post} />
+                          <div className="flex items-center gap-2">
+                            <button
+                              type="button"
+                              onClick={(e) => handleShare(post, e)}
+                              className="p-2.5 rounded-xl bg-slate-50 text-slate-500 hover:bg-emerald-50 hover:text-emerald-600 transition"
+                              title="Megosztás"
+                            >
+                              <Share2 size={16} />
+                            </button>
+                            <AdminActions post={post} />
+                          </div>
                         </div>
                       </div>
                     </article>
@@ -429,6 +481,12 @@ const BlogScreen = () => {
           </div>
         </div>
       )}
+
+      <BlogShareModal
+        isOpen={!!sharingPost}
+        onClose={() => setSharingPost(null)}
+        post={sharingPost}
+      />
     </div>
   );
 };

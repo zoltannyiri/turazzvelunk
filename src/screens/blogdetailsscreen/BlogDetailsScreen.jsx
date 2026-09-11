@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import { AuthContext } from '../../context/AuthContext';
 import { toast } from 'react-toastify';
+import BlogShareModal from '../../components/BlogShareModal';
 
 const normalizeDisplayContent = (content, assetBase) => {
   const value = String(content || '');
@@ -34,6 +35,7 @@ const BlogDetailsScreen = () => {
   const [loading, setLoading] = useState(true);
   const [readProgress, setReadProgress] = useState(0);
   const [copied, setCopied] = useState(false);
+  const [shareModalOpen, setShareModalOpen] = useState(false);
   const assetBase = (import.meta.env.VITE_API_URL || '').replace(/\/api\/?$/, '');
 
   useEffect(() => {
@@ -81,19 +83,33 @@ const BlogDetailsScreen = () => {
     year: 'numeric', month: 'long', day: 'numeric'
   }).format(new Date(value));
 
-  const handleShare = async () => {
-    const shareData = { title: post.title, url: window.location.href };
-    try {
-      if (navigator.share) {
-        await navigator.share(shareData);
+  const handleShare = async (e) => {
+    if (e?.stopPropagation) e.stopPropagation();
+    if (e?.preventDefault) e.preventDefault();
+
+    const isMobile = typeof window !== 'undefined' && 
+      (/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ||
+      (window.matchMedia && window.matchMedia('(max-width: 768px)').matches && 'ontouchstart' in window));
+
+    // Mobilon meghívjuk a natív megosztót, ha támogatott
+    if (isMobile && typeof navigator !== 'undefined' && navigator.share) {
+      const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+      const shareUrl = isLocalhost 
+        ? `https://turazzvelunk.vercel.app/blog/${id}` 
+        : window.location.href;
+      try {
+        await navigator.share({
+          title: post?.title || document.title || 'Túrázz Velünk',
+          url: shareUrl,
+        });
         return;
+      } catch (err) {
+        if (err?.name === 'AbortError') return;
       }
-      await navigator.clipboard.writeText(window.location.href);
-      setCopied(true);
-      window.setTimeout(() => setCopied(false), 1800);
-    } catch (error) {
-      if (error?.name !== 'AbortError') toast.error('Nem sikerült megosztani a cikket.');
     }
+
+    // Asztali gépen pedig megnyitjuk a kényelmes megosztó panelt
+    setShareModalOpen(true);
   };
 
   if (loading) {
@@ -187,8 +203,11 @@ const BlogDetailsScreen = () => {
                 </div>
               </div>
             </div>
-            <button onClick={handleShare} className="flex w-full items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-5 py-4 text-xs font-black uppercase tracking-widest text-slate-600 transition hover:border-emerald-300 hover:text-emerald-600">
-              {copied ? <Check size={17} /> : <Share2 size={17} />} {copied ? 'Link másolva' : 'Megosztás'}
+            <button 
+              onClick={handleShare} 
+              className="flex w-full items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-5 py-4 text-xs font-black uppercase tracking-widest text-slate-600 transition hover:border-emerald-300 hover:text-emerald-600 hover:shadow-sm"
+            >
+              <Share2 size={17} /> Megosztás
             </button>
             {post.updated_at && new Date(post.updated_at).getTime() > new Date(post.created_at).getTime() + 1000 && (
               <div className="px-3 text-center text-[10px] font-bold text-slate-400">Frissítve: {formatDate(post.updated_at)}</div>
@@ -223,6 +242,12 @@ const BlogDetailsScreen = () => {
           </section>
         )}
       </main>
+
+      <BlogShareModal
+        isOpen={shareModalOpen}
+        onClose={() => setShareModalOpen(false)}
+        post={post}
+      />
     </div>
   );
 };
