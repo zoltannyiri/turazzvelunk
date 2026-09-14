@@ -86,6 +86,7 @@ const TourDetailsScreen = () => {
   const [tourEditLockedEquipmentIds, setTourEditLockedEquipmentIds] = useState([]);
   const [tourEditAvailability, setTourEditAvailability] = useState({});
   const [tourEditConflicts, setTourEditConflicts] = useState({});
+  const [tourEditDepositEnabled, setTourEditDepositEnabled] = useState(false);
   const [tourEditForm, setTourEditForm] = useState({
     title: '',
     location: '',
@@ -584,6 +585,8 @@ const TourDetailsScreen = () => {
     if (user?.role !== 'admin' || !tour) return;
     const startDate = toDateInputValue(tour.start_date);
     const endDate = toDateInputValue(tour.end_date);
+    const hasDeposit = tour.deposit_amount != null && tour.deposit_amount !== '' && Number(tour.deposit_amount) > 0;
+    setTourEditDepositEnabled(hasDeposit);
     setTourEditForm({
       title: tour.title || '',
       location: tour.location || '',
@@ -662,13 +665,19 @@ const TourDetailsScreen = () => {
         toast.error('A túra időintervalluma hibás.');
         return;
       }
+      const depositAmount = parsePriceInput(tourEditForm.deposit_amount);
+      if (tourEditDepositEnabled && (!Number.isFinite(depositAmount) || depositAmount < 1)) {
+        toast.error('Az előleg összege nem lehet 0.');
+        setTourEditSaving(false);
+        return;
+      }
       const payload = {
         ...tourEditForm,
         price: parsePriceInput(tourEditForm.price),
         duration,
         max_participants: Number(tourEditForm.max_participants),
-        deposit_amount: tourEditForm.deposit_amount !== '' && tourEditForm.deposit_amount != null ? parsePriceInput(tourEditForm.deposit_amount) : null,
-        deposit_deadline: tourEditForm.deposit_deadline || null,
+        deposit_amount: tourEditDepositEnabled ? depositAmount : null,
+        deposit_deadline: tourEditDepositEnabled && tourEditForm.deposit_deadline ? tourEditForm.deposit_deadline : null,
         equipment_prices: tourEditEquipment
           .filter((item) => {
             const equipmentId = Number(item.id);
@@ -684,6 +693,7 @@ const TourDetailsScreen = () => {
             quantity: Math.max(1, Number(tourEditForm.equipment_quantities?.[item.id] || 1))
           }))
       };
+      delete payload.equipment_quantities;
       const res = await fetch(`${import.meta.env.VITE_API_URL}/tours/${id}`, {
         method: 'PUT',
         headers: {
@@ -2257,17 +2267,23 @@ const TourDetailsScreen = () => {
                     <input
                       type="checkbox"
                       className="h-4 w-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
-                      checked={!!tourEditForm.deposit_amount || tourEditForm.deposit_amount === '0'}
-                      onChange={(e) => setTourEditForm((prev) => ({
-                        ...prev,
-                        deposit_amount: e.target.checked ? '0' : '',
-                        deposit_deadline: e.target.checked ? prev.deposit_deadline : ''
-                      }))}
+                      checked={tourEditDepositEnabled}
+                      onChange={(e) => {
+                        const checked = e.target.checked;
+                        setTourEditDepositEnabled(checked);
+                        if (!checked) {
+                          setTourEditForm((prev) => ({
+                            ...prev,
+                            deposit_amount: '',
+                            deposit_deadline: ''
+                          }));
+                        }
+                      }}
                     />
                     <span className="text-[10px] font-black uppercase text-slate-400">Előleg szükséges (opcionális)</span>
                   </label>
                 </div>
-                {(tourEditForm.deposit_amount !== '' && tourEditForm.deposit_amount != null) && (
+                {tourEditDepositEnabled && (
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 bg-amber-50/60 rounded-2xl border border-amber-100">
                     <div>
                       <label className="text-[10px] font-black uppercase text-slate-400 ml-1">Előleg összege (Ft)</label>

@@ -269,6 +269,9 @@ exports.updateTour = async (req, res) => {
         if ("equipment_prices" in updates) {
             delete updates.equipment_prices;
         }
+        if ("equipment_quantities" in updates) {
+            delete updates.equipment_quantities;
+        }
         const [currentTourRows] = await db.query(
             'SELECT id, start_date, end_date FROM tours WHERE id = ?',
             [id]
@@ -350,16 +353,37 @@ exports.updateTour = async (req, res) => {
                 });
             }
         }
+        const ALLOWED_TOUR_COLUMNS = new Set([
+            'title', 'location', 'description', 'price', 'duration',
+            'difficulty', 'category', 'subcategory', 'image_url',
+            'start_date', 'end_date', 'max_participants',
+            'deposit_amount', 'deposit_deadline'
+        ]);
+
+        if ("deposit_amount" in updates) {
+            updates.deposit_amount = (updates.deposit_amount !== null && updates.deposit_amount !== undefined && updates.deposit_amount !== '')
+                ? Number(updates.deposit_amount)
+                : null;
+        }
+
+        if ("deposit_deadline" in updates) {
+            updates.deposit_deadline = updates.deposit_deadline || null;
+        }
+
         const fields = [];
         const values = [];
 
         for (const [key, value] of Object.entries(updates)) {
-            fields.push(`${key} = ?`);
-            values.push(value);
+            if (ALLOWED_TOUR_COLUMNS.has(key)) {
+                fields.push(`${key} = ?`);
+                values.push(value);
+            }
         }
-        values.push(id);
-        const sql = `UPDATE tours SET ${fields.join(', ')} WHERE id = ?`;
-        await db.query(sql, values);
+        if (fields.length > 0) {
+            values.push(id);
+            const sql = `UPDATE tours SET ${fields.join(', ')} WHERE id = ?`;
+            await db.query(sql, values);
+        }
         if (equipmentPrices) {
             await db.query('DELETE FROM tour_equipment_prices WHERE tour_id = ?', [id]);
             await Promise.all(

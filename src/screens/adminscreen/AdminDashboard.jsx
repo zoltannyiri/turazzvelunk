@@ -910,6 +910,7 @@ const AdminDashboard = () => {
           quantity: Math.max(1, Number(newTour.equipment_quantities?.[item.id] || 1))
         }))
     };
+    delete payload.equipment_quantities;
 
     if (newTour.start_date instanceof Date) {
       const startDate = new Date(newTour.start_date);
@@ -940,6 +941,7 @@ const AdminDashboard = () => {
       setIsModalOpen(false);
       setEditingTourId(null);
       setNewTour(initialTourState);
+      setIsDepositEnabled(false);
       setSelectedEquipmentIds([]);
       setLockedEquipmentIds([]);
       setInitialTourEquipmentIds([]);
@@ -1007,6 +1009,8 @@ const AdminDashboard = () => {
 
   const openTourEditor = (tour) => {
     setEditingTourId(tour.id);
+    const hasDeposit = tour.deposit_amount != null && tour.deposit_amount !== '' && Number(tour.deposit_amount) > 0;
+    setIsDepositEnabled(hasDeposit);
     setSelectedEquipmentIds([]);
     setLockedEquipmentIds([]);
     setInitialTourEquipmentIds([]);
@@ -1204,6 +1208,7 @@ const AdminDashboard = () => {
                       return acc;
                     }, {});
                     setNewTour({ ...initialTourState, equipment_prices: equipmentMap });
+                    setIsDepositEnabled(false);
                     setIsModalOpen(true);
                   }}
                 >
@@ -2510,7 +2515,12 @@ const AdminDashboard = () => {
 
       {isModalOpen && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-6">
-          <div className="absolute inset-0 bg-emerald-950/60 backdrop-blur-xl" onClick={() => setIsModalOpen(false)}></div>
+          <div className="absolute inset-0 bg-emerald-950/60 backdrop-blur-xl" onClick={() => {
+    setIsModalOpen(false);
+    setEditingTourId(null);
+    setIsDepositEnabled(false);
+    setNewTour(initialTourState);
+  }}></div>
           <div className="relative bg-white w-full max-w-3xl rounded-[3rem] shadow-2xl p-8 md:p-10 overflow-y-auto max-h-[90vh] animate-in zoom-in duration-300">
             <div className="flex items-center justify-between gap-4 mb-8">
               <h2 className="text-3xl font-black text-emerald-950 italic">
@@ -2518,7 +2528,12 @@ const AdminDashboard = () => {
               </h2>
               <button
                 type="button"
-                onClick={() => setIsModalOpen(false)}
+                onClick={() => {
+    setIsModalOpen(false);
+    setEditingTourId(null);
+    setIsDepositEnabled(false);
+    setNewTour(initialTourState);
+  }}
                 className="p-3 rounded-2xl bg-slate-100 text-slate-500 hover:bg-slate-200 transition"
                 aria-label="Ablak bezárása"
               >
