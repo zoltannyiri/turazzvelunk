@@ -28,10 +28,12 @@ const sendMail = async ({ to, subject, html, text, replyTo, from, notification }
         text,
         ...(replyTo ? { replyTo } : {})
     });
-    try {
-        await createEmailNotifications({ recipients: to, subject, message: text, notification });
-    } catch (notificationError) {
-        console.error('Webes értesítés mentési hiba:', notificationError.message);
+    if (notification) {
+        try {
+            await createEmailNotifications({ recipients: to, subject, message: text, notification });
+        } catch (notificationError) {
+            console.error('Webes értesítés mentési hiba:', notificationError.message);
+        }
     }
     return result;
 };

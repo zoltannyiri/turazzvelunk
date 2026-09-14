@@ -41,4 +41,7 @@ router.delete('/users/:id', protect, adminOnly, authController.adminDeleteUser);
 router.get('/users/:id', protect, adminOnly, authController.getUserById);
 router.get('/users/:id/public', protect, authController.getPublicUserById);
 
+router.post('/forgot-password', authController.forgotPassword);
+router.post('/reset-password', authController.resetPassword);
+
 module.exports = router;

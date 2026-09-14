@@ -1,7 +1,8 @@
 const db = require('../config/db');
+const crypto = require('crypto');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
-const { sendRegistrationEmail, sendAccountDeletedEmail } = require('../services/emailService');
+const { sendRegistrationEmail, sendAccountDeletedEmail, sendPasswordResetEmail } = require('../services/emailService');
 const { logActivity } = require('../services/activityService');
 
 exports.register = async (req, res) => {
@@ -262,5 +263,76 @@ exports.adminDeleteUser = async (req, res) => {
         res.json({ message: 'Felhasználó törölve.' });
     } catch (err) {
         res.status(500).json({ message: 'Felhasználó törlése sikertelen.', error: err.message });
+    }
+};
+
+exports.forgotPassword = async (req, res) => {
+    const { email } = req.body;
+    if (!email) {
+        return res.status(400).json({ message: 'Az email cím megadása kötelező.' });
+    }
+    try {
+        // Always respond with success to prevent email enumeration
+        const [users] = await db.query('SELECT id, name FROM users WHERE email = ?', [email]);
+        if (users.length > 0) {
+            const user = users[0];
+            // Delete any existing unused tokens for this user
+            await db.query('DELETE FROM password_reset_tokens WHERE user_id = ?', [user.id]);
+            // Generate a secure random token
+            const token = crypto.randomBytes(32).toString('hex');
+            const expiresAt = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
+            await db.query(
+                'INSERT INTO password_reset_tokens (user_id, token, expires_at) VALUES (?, ?, ?)',
+                [user.id, token, expiresAt]
+            );
+            const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+            const resetUrl = `${frontendUrl}/reset-password?token=${token}`;
+            try {
+                await sendPasswordResetEmail({ to: email, name: user.name, resetUrl });
+            } catch (emailErr) {
+                console.error('Jelszó visszaállítás email hiba:', emailErr.message);
+            }
+        }
+        // Always return 200 regardless of whether email exists
+        res.json({ message: 'Ha az email cím szerepel rendszerünkben, hamarosan megkapod a visszaállítási linket.' });
+    } catch (err) {
+        console.error('Elfelejtett jelszó hiba:', err);
+        res.status(500).json({ message: 'Szerver hiba történt.' });
+    }
+};
+
+exports.resetPassword = async (req, res) => {
+    const { token, password } = req.body;
+    if (!token || !password) {
+        return res.status(400).json({ message: 'A token és az új jelszó megadása kötelező.' });
+    }
+    if (password.length < 6) {
+        return res.status(400).json({ message: 'A jelszónak legalább 6 karakter hosszúnak kell lennie.' });
+    }
+    try {
+        const [rows] = await db.query(
+            `SELECT prt.id, prt.user_id, prt.expires_at, prt.used
+             FROM password_reset_tokens prt
+             WHERE prt.token = ?`,
+            [token]
+        );
+        if (rows.length === 0) {
+            return res.status(400).json({ message: 'Érvénytelen vagy lejárt visszaállítási link.' });
+        }
+        const resetEntry = rows[0];
+        if (resetEntry.used) {
+            return res.status(400).json({ message: 'Ez a visszaállítási link már felhasználásra került.' });
+        }
+        if (new Date(resetEntry.expires_at) < new Date()) {
+            return res.status(400).json({ message: 'A visszaállítási link lejárt. Kérj újat!' });
+        }
+        const salt = await bcrypt.genSalt(10);
+        const hashedPassword = await bcrypt.hash(password, salt);
+        await db.query('UPDATE users SET password = ? WHERE id = ?', [hashedPassword, resetEntry.user_id]);
+        await db.query('UPDATE password_reset_tokens SET used = 1 WHERE id = ?', [resetEntry.id]);
+        res.json({ message: 'A jelszavad sikeresen megváltozott. Most bejelentkezhetsz.' });
+    } catch (err) {
+        console.error('Jelszó visszaállítás hiba:', err);
+        res.status(500).json({ message: 'Szerver hiba történt.' });
     }
 };

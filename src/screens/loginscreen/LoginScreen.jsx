@@ -90,7 +90,11 @@ const LoginScreen = () => {
           )}
         </form>
 
-        <p className="text-center mt-8 text-gray-600">
+        <p className="text-center mt-4">
+            <Link to="/forgot-password" className="text-sm text-gray-400 hover:text-emerald-700 transition font-medium">Elfelejtett jelszó?</Link>
+          </p>
+
+        <p className="text-center mt-6 text-gray-600">
           Még nincs fiókod? <Link to="/register" className="text-emerald-700 font-bold hover:underline">Regisztrálj!</Link>
         </p>
       </div>

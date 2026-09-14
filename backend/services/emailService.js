@@ -17,7 +17,8 @@ const {
     buildPaymentEmail,
     buildAdminPaymentEmail,
     buildAdminEmail,
-    buildAccountDeletedEmail
+    buildAccountDeletedEmail,
+    buildPasswordResetEmail
 } = require('./emailTemplates');
 
 const getAdminRecipients = async () => {
@@ -382,6 +383,17 @@ const sendWaitlistPromotedEmail = async ({ to, name, tourId, tourTitle, startDat
     });
 };
 
+
+const sendPasswordResetEmail = async ({ to, name, resetUrl }) => {
+    const { subject, text, html } = buildPasswordResetEmail({ name, resetUrl });
+    return sendMail({
+        to,
+        subject,
+        text,
+        html
+    });
+};
+
 module.exports = {
     sendRegistrationEmail,
     sendBookingEmail,
@@ -404,5 +416,6 @@ module.exports = {
     sendAdminCancellationApprovedNotification,
     sendAdminRemovedBookingNotification,
     sendAdminPaymentNotification,
-    sendAccountDeletedEmail
+    sendAccountDeletedEmail,
+    sendPasswordResetEmail
 };

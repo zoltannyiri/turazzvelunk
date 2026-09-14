@@ -18,6 +18,7 @@ import AboutScreen from "./screens/aboutscreen/AboutScreen";
 import BlogScreen from "./screens/blogscreen/BlogScreen";
 import BlogDetailsScreen from "./screens/blogdetailsscreen/BlogDetailsScreen";
 import ContactScreen from "./screens/contactscreen/ContactScreen";
+import ResetPasswordScreen from "./screens/resetpasswordscreen/ResetPasswordScreen";
 
 function App() {
   return (
@@ -40,6 +41,8 @@ function App() {
 
         <Route path="/login" element={<LoginScreen />} />
         <Route path="/register" element={<RegisterScreen />} />
+        <Route path="/forgot-password" element={<ResetPasswordScreen mode="forgot" />} />
+        <Route path="/reset-password" element={<ResetPasswordScreen mode="reset" />} />
       </Routes>
       <ToastContainer position="bottom-right" theme="colored" />
     </Router>

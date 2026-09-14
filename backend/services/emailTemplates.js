@@ -893,6 +893,56 @@ const buildWaitlistPromotedEmail = ({ name, tourTitle, startDate, endDate, total
     return { subject, text, html };
 };
 
+
+const buildPasswordResetEmail = ({ name, resetUrl }) => {
+    const safeName = escapeHtml(name || '');
+    const safeUrl = escapeHtml(resetUrl || '');
+    const subject = 'Jelszó visszaállítása — Túrázz Velünk';
+    const text = `Szia ${safeName}!\n\nKaptuk a jelszó-visszaállítási kérelmedet.\nAz alábbi linkre kattintva állíthatod be az új jelszavadat (1 óráig érvényes):\n${resetUrl}\n\nHa nem te kérted, hagyd figyelmen kívül ezt az emailt.\n\nÜdvözlettel,\nTúrázz Velünk csapata`;
+    const html = `
+        <div style="background: #f4f7fb; padding: 32px 16px; font-family: 'Trebuchet MS', 'Segoe UI', Arial, sans-serif; color: #1f2933;">
+            <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width: 640px; margin: 0 auto; border-collapse: collapse;">
+                <tr>
+                    <td style="background: #0f172a; padding: 24px 28px; border-radius: 16px 16px 0 0;">
+                        <div style="color: #f8fafc; font-size: 20px; font-weight: 700; letter-spacing: 0.4px;">Túrázz Velünk</div>
+                        <div style="color: #94a3b8; font-size: 13px; margin-top: 6px;">Kaland. Természet. Közös élmények.</div>
+                    </td>
+                </tr>
+                <tr>
+                    <td style="background: #ffffff; padding: 36px 28px;">
+                        <h2 style="margin: 0 0 16px; font-size: 22px; color: #0f172a;">Jelszó visszaállítása</h2>
+                        <p style="margin: 0 0 12px; font-size: 15px; color: #374151;">Szia <strong>${safeName}</strong>!</p>
+                        <p style="margin: 0 0 24px; font-size: 15px; color: #374151;">
+                            Jelszóvisszaállítást kezdeményeztél. Kattints az alábbi gombra az új jelszó beállításához.
+                        </p>
+                        <div style="text-align: center; margin: 32px 0;">
+                            <a href="${safeUrl}" style="display: inline-block; background: #065f46; color: #ffffff; text-decoration: none; padding: 14px 36px; border-radius: 12px; font-size: 16px; font-weight: 700; letter-spacing: 0.3px;">
+                                Jelszó visszaállítása
+                            </a>
+                        </div>
+                        <p style="margin: 0 0 8px; font-size: 13px; color: #6b7280;">
+                            Ez a link <strong>1 óráig érvényes</strong>. Ha nem te kérted a visszaállítást, hagyd figyelmen kívül ezt az emailt — fiókodhoz nem férnek hozzá.
+                        </p>
+                        <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 24px 0;" />
+                        <p style="margin: 0; font-size: 12px; color: #9ca3af;">
+                            Ha a gomb nem működik, másold be ezt a linket a böngésződbe:<br />
+                            <span style="color: #065f46; word-break: break-all;">${safeUrl}</span>
+                        </p>
+                    </td>
+                </tr>
+                <tr>
+                    <td style="background: #f8fafc; padding: 16px 28px; border-radius: 0 0 16px 16px; text-align: center;">
+                        <p style="margin: 0; font-size: 12px; color: #9ca3af;">
+                            &copy; ${new Date().getFullYear()} Túrázz Velünk &mdash; Minden jog fenntartva
+                        </p>
+                    </td>
+                </tr>
+            </table>
+        </div>
+    `;
+    return { subject, text, html };
+};
+
 module.exports = {
     buildRegistrationEmail,
     buildBookingEmail,
@@ -910,5 +960,6 @@ module.exports = {
     buildPaymentEmail,
     buildAdminPaymentEmail,
     buildAdminEmail,
-    buildAccountDeletedEmail
+    buildAccountDeletedEmail,
+    buildPasswordResetEmail
 };
