@@ -84,6 +84,7 @@ const AdminDashboard = () => {
   const [errorLoading, setErrorLoading] = useState(false);
   const [errorSearch, setErrorSearch] = useState('');
   const [errorLevelFilter, setErrorLevelFilter] = useState('');
+  const [isDepositEnabled, setIsDepositEnabled] = useState(false);
   const activityLabels = useMemo(() => ({
     user_registered: 'Regisztráció',
     booking_created: 'Túrára jelentkezés',
@@ -877,6 +878,13 @@ const AdminDashboard = () => {
       const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
       return diffDays >= 0 ? diffDays + 1 : newTour.duration;
     };
+
+    const depositAmount = parsePriceInput(newTour.deposit_amount);
+
+    if (isDepositEnabled && (!Number.isFinite(depositAmount) || depositAmount < 1)) {
+      toast.error('Az előleg összege nem lehet 0.');
+      return;
+    }
     
     const payload = {
       ...newTour,
@@ -885,7 +893,7 @@ const AdminDashboard = () => {
       end_date: formatDate(newTour.end_date),
       duration: calculateDuration(newTour.start_date, newTour.end_date),
       max_participants: parseInt(newTour.max_participants),
-      deposit_amount: newTour.deposit_amount !== '' && newTour.deposit_amount != null ? parsePriceInput(newTour.deposit_amount) : null,
+      deposit_amount: isDepositEnabled ? depositAmount : null,
       deposit_deadline: newTour.deposit_deadline instanceof Date ? formatDate(newTour.deposit_deadline) : null,
       equipment_prices: equipment
         .filter((item) =>
@@ -2623,17 +2631,25 @@ const AdminDashboard = () => {
                     <input
                       type="checkbox"
                       className="h-4 w-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
-                      checked={!!newTour.deposit_amount || newTour.deposit_amount === '0'}
-                      onChange={e => setNewTour(prev => ({
-                        ...prev,
-                        deposit_amount: e.target.checked ? '0' : '',
-                        deposit_deadline: e.target.checked ? prev.deposit_deadline : null
-                      }))}
+                      checked={isDepositEnabled}
+                      onChange={(e) => {
+                        const checked = e.target.checked;
+
+                        setIsDepositEnabled(checked);
+
+                        if (!checked) {
+                          setNewTour(prev => ({
+                            ...prev,
+                            deposit_amount: '',
+                            deposit_deadline: null
+                          }));
+                        }
+                      }}
                     />
                     <span className="text-[10px] font-black uppercase text-slate-400">Előleg szükséges (opcionális)</span>
                   </label>
                 </div>
-                {(newTour.deposit_amount !== '' && newTour.deposit_amount != null) && (
+                {isDepositEnabled && (
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 bg-amber-50/60 rounded-2xl border border-amber-100">
                     <div>
                       <label className="text-[10px] font-black uppercase text-slate-400 ml-1">Előleg összege (Ft)</label>
