@@ -2655,6 +2655,12 @@ const AdminDashboard = () => {
                         dateFormat="yyyy.MM.dd"
                         placeholderText="Dátum kiválasztása"
                         minDate={new Date()}
+                        maxDate={(() => {
+                          if (!(newTour.start_date instanceof Date)) return null;
+                          const previousDay = new Date(newTour.start_date);
+                          previousDay.setDate(previousDay.getDate() - 1);
+                          return previousDay;
+                        })()}
                         className="w-full p-4 bg-white border-none rounded-2xl mt-1"
                         wrapperClassName="w-full"
                       />
