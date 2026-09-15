@@ -225,6 +225,9 @@ exports.createTour = async (req, res) => {
     const durationValue = duration === "" || duration === null || duration === undefined ? null : Number(duration);
     const depositAmountValue = deposit_amount !== null && deposit_amount !== undefined && deposit_amount !== '' ? Number(deposit_amount) : null;
     const depositDeadlineValue = deposit_deadline || null;
+    if (depositAmountValue > Number(price)) {
+        return res.status(400).json({ message: "Az előleg összege nem lehet nagyobb a túra díjánál." });
+    }
     if (depositAmountValue > 0 && !depositDeadlineIsBeforeStart(depositDeadlineValue, start_date)) {
         return res.status(400).json({ message: "Az előleg határidejének meg kell előznie a túra kezdetét." });
     }
@@ -303,7 +306,7 @@ exports.updateTour = async (req, res) => {
             updates.deposit_deadline = updates.deposit_deadline || null;
         }
         const [currentTourRows] = await db.query(
-            'SELECT id, start_date, end_date, deposit_amount, deposit_deadline FROM tours WHERE id = ?',
+            'SELECT id, price, start_date, end_date, deposit_amount, deposit_deadline FROM tours WHERE id = ?',
             [id]
         );
         if (currentTourRows.length === 0) {
@@ -311,12 +314,18 @@ exports.updateTour = async (req, res) => {
         }
         const effectiveStartDate = updates.start_date ?? currentTourRows[0].start_date;
         const effectiveEndDate = updates.end_date ?? currentTourRows[0].end_date;
+        const effectivePrice = Object.prototype.hasOwnProperty.call(updates, 'price')
+            ? Number(updates.price)
+            : Number(currentTourRows[0].price);
         const effectiveDepositAmount = Object.prototype.hasOwnProperty.call(updates, 'deposit_amount')
             ? updates.deposit_amount
             : currentTourRows[0].deposit_amount;
         const effectiveDepositDeadline = Object.prototype.hasOwnProperty.call(updates, 'deposit_deadline')
             ? updates.deposit_deadline
             : currentTourRows[0].deposit_deadline;
+        if (Number(effectiveDepositAmount) > effectivePrice) {
+            return res.status(400).json({ message: "Az előleg összege nem lehet nagyobb a túra díjánál." });
+        }
         if (Number(effectiveDepositAmount) > 0 && !depositDeadlineIsBeforeStart(effectiveDepositDeadline, effectiveStartDate)) {
             return res.status(400).json({ message: "Az előleg határidejének meg kell előznie a túra kezdetét." });
         }

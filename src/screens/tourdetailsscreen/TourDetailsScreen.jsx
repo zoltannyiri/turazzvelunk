@@ -682,9 +682,14 @@ const TourDetailsScreen = () => {
         return;
       }
       const depositAmount = parsePriceInput(tourEditForm.deposit_amount);
+      const tourPrice = parsePriceInput(tourEditForm.price);
       if (tourEditDepositEnabled && (!Number.isFinite(depositAmount) || depositAmount < 1)) {
         toast.error('Az előleg összege nem lehet 0.');
         setTourEditSaving(false);
+        return;
+      }
+      if (tourEditDepositEnabled && depositAmount > tourPrice) {
+        toast.error('Az előleg összege nem lehet nagyobb a túra díjánál.');
         return;
       }
       if (
@@ -698,7 +703,7 @@ const TourDetailsScreen = () => {
       }
       const payload = {
         ...tourEditForm,
-        price: parsePriceInput(tourEditForm.price),
+        price: tourPrice,
         duration,
         max_participants: Number(tourEditForm.max_participants),
         deposit_amount: tourEditDepositEnabled ? depositAmount : null,

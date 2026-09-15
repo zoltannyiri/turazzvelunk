@@ -880,9 +880,15 @@ const AdminDashboard = () => {
     };
 
     const depositAmount = parsePriceInput(newTour.deposit_amount);
+    const tourPrice = parsePriceInput(newTour.price);
 
     if (isDepositEnabled && (!Number.isFinite(depositAmount) || depositAmount < 1)) {
       toast.error('Az előleg összege nem lehet 0.');
+      return;
+    }
+
+    if (isDepositEnabled && depositAmount > tourPrice) {
+      toast.error('Az előleg összege nem lehet nagyobb a túra díjánál.');
       return;
     }
 
@@ -904,7 +910,7 @@ const AdminDashboard = () => {
     
     const payload = {
       ...newTour,
-      price: parsePriceInput(newTour.price),
+      price: tourPrice,
       start_date: formatDate(newTour.start_date),
       end_date: formatDate(newTour.end_date),
       duration: calculateDuration(newTour.start_date, newTour.end_date),
