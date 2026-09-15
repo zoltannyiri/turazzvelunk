@@ -885,6 +885,22 @@ const AdminDashboard = () => {
       toast.error('Az előleg összege nem lehet 0.');
       return;
     }
+
+    if (
+      isDepositEnabled &&
+      newTour.deposit_deadline instanceof Date &&
+      newTour.start_date instanceof Date
+    ) {
+      const depositDeadline = new Date(newTour.deposit_deadline);
+      const startDate = new Date(newTour.start_date);
+      depositDeadline.setHours(0, 0, 0, 0);
+      startDate.setHours(0, 0, 0, 0);
+
+      if (depositDeadline >= startDate) {
+        toast.error('Az előleg határidejének meg kell előznie a túra kezdetét.');
+        return;
+      }
+    }
     
     const payload = {
       ...newTour,
@@ -2589,10 +2605,18 @@ const AdminDashboard = () => {
                     minDate={new Date()}
                     onChange={(update) => {
                       const [start, end] = update;
-                      setNewTour({
-                        ...newTour,
-                        start_date: start,
-                        end_date: end
+                      setNewTour((current) => {
+                        const deadlineIsInvalid =
+                          current.deposit_deadline instanceof Date &&
+                          start instanceof Date &&
+                          current.deposit_deadline >= start;
+
+                        return {
+                          ...current,
+                          start_date: start,
+                          end_date: end,
+                          deposit_deadline: deadlineIsInvalid ? null : current.deposit_deadline
+                        };
                       });
                       if (start && end) {
                         fetchEquipmentAvailability(start, end);

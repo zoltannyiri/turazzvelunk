@@ -14,6 +14,22 @@ import { formatPrice, formatPriceInput, parsePriceInput } from '../../utils/form
 // de új komment és válasz nem küldhető.
 const COMMENTS_ENABLED = false;
 
+const getPreviousDateInputValue = (dateValue) => {
+  if (!dateValue) return undefined;
+  const date = new Date(`${dateValue}T00:00:00Z`);
+  if (Number.isNaN(date.getTime())) return undefined;
+  date.setUTCDate(date.getUTCDate() - 1);
+  return date.toISOString().slice(0, 10);
+};
+
+const getTodayDateInputValue = () => {
+  const today = new Date();
+  const year = today.getFullYear();
+  const month = String(today.getMonth() + 1).padStart(2, '0');
+  const day = String(today.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
 const TourDetailsScreen = () => {
   const { id } = useParams();
   const location = useLocation();
@@ -669,6 +685,15 @@ const TourDetailsScreen = () => {
       if (tourEditDepositEnabled && (!Number.isFinite(depositAmount) || depositAmount < 1)) {
         toast.error('Az előleg összege nem lehet 0.');
         setTourEditSaving(false);
+        return;
+      }
+      if (
+        tourEditDepositEnabled &&
+        tourEditForm.deposit_deadline &&
+        tourEditForm.start_date &&
+        tourEditForm.deposit_deadline >= tourEditForm.start_date
+      ) {
+        toast.error('Az előleg határidejének meg kell előznie a túra kezdetét.');
         return;
       }
       const payload = {
@@ -2302,6 +2327,8 @@ const TourDetailsScreen = () => {
                         type="date"
                         className="w-full p-4 bg-white border-none rounded-2xl mt-1 font-bold text-emerald-900"
                         value={tourEditForm.deposit_deadline}
+                        min={getTodayDateInputValue()}
+                        max={getPreviousDateInputValue(tourEditForm.start_date)}
                         onChange={(e) => setTourEditForm((prev) => ({ ...prev, deposit_deadline: e.target.value }))}
                       />
                     </div>
@@ -2316,7 +2343,14 @@ const TourDetailsScreen = () => {
                   value={tourEditForm.start_date}
                   onChange={(e) => {
                     const startDate = e.target.value;
-                    setTourEditForm((current) => ({ ...current, start_date: startDate }));
+                    setTourEditForm((current) => ({
+                      ...current,
+                      start_date: startDate,
+                      deposit_deadline:
+                        current.deposit_deadline && startDate && current.deposit_deadline >= startDate
+                          ? ''
+                          : current.deposit_deadline
+                    }));
                     if (startDate && tourEditForm.end_date) {
                       fetchTourEditAvailability(startDate, tourEditForm.end_date);
                     }

@@ -82,6 +82,25 @@ const getEquipmentConflictMessage = (conflicts) => {
     return 'Az időszakban a megadott darabszám meghaladja a szabad készletet: ' + details + '.';
 };
 
+const getDateOnlyKey = (value) => {
+    if (!value) return null;
+    if (value instanceof Date) {
+        if (Number.isNaN(value.getTime())) return null;
+        const year = value.getFullYear();
+        const month = String(value.getMonth() + 1).padStart(2, '0');
+        const day = String(value.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+    }
+    const match = String(value).match(/^(\d{4})-(\d{2})-(\d{2})/);
+    return match ? match[0] : null;
+};
+
+const depositDeadlineIsBeforeStart = (depositDeadline, startDate) => {
+    const deadlineKey = getDateOnlyKey(depositDeadline);
+    const startKey = getDateOnlyKey(startDate);
+    return !deadlineKey || !startKey || deadlineKey < startKey;
+};
+
 exports.getAllTours = async (req, res) => {
     try {
         await expireStaleBookings();
@@ -206,6 +225,9 @@ exports.createTour = async (req, res) => {
     const durationValue = duration === "" || duration === null || duration === undefined ? null : Number(duration);
     const depositAmountValue = deposit_amount !== null && deposit_amount !== undefined && deposit_amount !== '' ? Number(deposit_amount) : null;
     const depositDeadlineValue = deposit_deadline || null;
+    if (depositAmountValue > 0 && !depositDeadlineIsBeforeStart(depositDeadlineValue, start_date)) {
+        return res.status(400).json({ message: "Az előleg határidejének meg kell előznie a túra kezdetét." });
+    }
     if (start_date) {
         const today = new Date();
         today.setHours(0, 0, 0, 0);
@@ -272,8 +294,16 @@ exports.updateTour = async (req, res) => {
         if ("equipment_quantities" in updates) {
             delete updates.equipment_quantities;
         }
+        if ("deposit_amount" in updates) {
+            updates.deposit_amount = (updates.deposit_amount !== null && updates.deposit_amount !== undefined && updates.deposit_amount !== '')
+                ? Number(updates.deposit_amount)
+                : null;
+        }
+        if ("deposit_deadline" in updates) {
+            updates.deposit_deadline = updates.deposit_deadline || null;
+        }
         const [currentTourRows] = await db.query(
-            'SELECT id, start_date, end_date FROM tours WHERE id = ?',
+            'SELECT id, start_date, end_date, deposit_amount, deposit_deadline FROM tours WHERE id = ?',
             [id]
         );
         if (currentTourRows.length === 0) {
@@ -281,6 +311,15 @@ exports.updateTour = async (req, res) => {
         }
         const effectiveStartDate = updates.start_date ?? currentTourRows[0].start_date;
         const effectiveEndDate = updates.end_date ?? currentTourRows[0].end_date;
+        const effectiveDepositAmount = Object.prototype.hasOwnProperty.call(updates, 'deposit_amount')
+            ? updates.deposit_amount
+            : currentTourRows[0].deposit_amount;
+        const effectiveDepositDeadline = Object.prototype.hasOwnProperty.call(updates, 'deposit_deadline')
+            ? updates.deposit_deadline
+            : currentTourRows[0].deposit_deadline;
+        if (Number(effectiveDepositAmount) > 0 && !depositDeadlineIsBeforeStart(effectiveDepositDeadline, effectiveStartDate)) {
+            return res.status(400).json({ message: "Az előleg határidejének meg kell előznie a túra kezdetét." });
+        }
         let equipmentForConflictCheck = equipmentPrices;
         if (!equipmentForConflictCheck && ('start_date' in updates || 'end_date' in updates)) {
             const [currentEquipment] = await db.query(
@@ -359,16 +398,6 @@ exports.updateTour = async (req, res) => {
             'start_date', 'end_date', 'max_participants',
             'deposit_amount', 'deposit_deadline'
         ]);
-
-        if ("deposit_amount" in updates) {
-            updates.deposit_amount = (updates.deposit_amount !== null && updates.deposit_amount !== undefined && updates.deposit_amount !== '')
-                ? Number(updates.deposit_amount)
-                : null;
-        }
-
-        if ("deposit_deadline" in updates) {
-            updates.deposit_deadline = updates.deposit_deadline || null;
-        }
 
         const fields = [];
         const values = [];
