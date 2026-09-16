@@ -185,6 +185,7 @@ exports.getTourEquipmentOptions = async (req, res) => {
         const tour = tourRows[0];
         const [rows] = await db.query(
             `SELECT e.id, e.name, e.description, e.total_quantity,
+                    e.is_passenger_transport, e.seats_per_unit,
                     COALESCE(tp.price, tour_booked.booked_price, 0) AS price,
                     COALESCE(tp.quantity, e.total_quantity) AS assigned_quantity,
                     COALESCE(tour_booked.qty, 0) AS booked_quantity
@@ -206,11 +207,17 @@ exports.getTourEquipmentOptions = async (req, res) => {
         const data = rows.map((row) => {
             const assigned = Number(row.assigned_quantity || 0);
             const booked = Number(row.booked_quantity || 0);
+            const isPassengerTransport = Boolean(Number(row.is_passenger_transport));
+            const seatsPerUnit = isPassengerTransport ? Math.max(1, Number(row.seats_per_unit || 1)) : 1;
+            const assignedCapacity = isPassengerTransport ? assigned * seatsPerUnit : assigned;
             return {
                 ...row,
+                is_passenger_transport: isPassengerTransport,
+                seats_per_unit: isPassengerTransport ? seatsPerUnit : null,
                 assigned_quantity: assigned,
+                assigned_capacity: assignedCapacity,
                 booked_quantity: booked,
-                available_quantity: Math.max(0, assigned - booked)
+                available_quantity: Math.max(0, assignedCapacity - booked)
             };
         });
 
@@ -358,7 +365,8 @@ exports.updateTour = async (req, res) => {
                     .filter(([equipmentId]) => Number.isFinite(equipmentId))
             );
             const [bookedEquipment] = await db.query(
-                `SELECT be.equipment_id, e.name, SUM(be.quantity) AS booked_quantity,
+                `SELECT be.equipment_id, e.name, e.is_passenger_transport, e.seats_per_unit,
+                        SUM(be.quantity) AS booked_quantity,
                         COALESCE(MAX(tp.price), MAX(be.price), 0) AS protected_price
                  FROM booking_equipments be
                  JOIN bookings b ON b.id = be.booking_id
@@ -366,7 +374,7 @@ exports.updateTour = async (req, res) => {
                  LEFT JOIN tour_equipment_prices tp
                    ON tp.tour_id = b.tour_id AND tp.equipment_id = be.equipment_id
                  WHERE b.tour_id = ? AND b.status IN ('pending', 'confirmed')
-                 GROUP BY be.equipment_id, e.name`,
+                 GROUP BY be.equipment_id, e.name, e.is_passenger_transport, e.seats_per_unit`,
                 [id]
             );
             const blockedRemovals = bookedEquipment.filter(
@@ -390,7 +398,11 @@ exports.updateTour = async (req, res) => {
             }
             const blockedQuantityReductions = bookedEquipment.filter((item) => {
                 const submitted = submittedEquipment.get(Number(item.equipment_id));
-                return submitted && Number(submitted.quantity || 1) < Number(item.booked_quantity || 0);
+                if (!submitted) return false;
+                const capacityPerUnit = Number(item.is_passenger_transport)
+                    ? Math.max(1, Number(item.seats_per_unit || 1))
+                    : 1;
+                return Number(submitted.quantity || 1) * capacityPerUnit < Number(item.booked_quantity || 0);
             });
             if (blockedQuantityReductions.length > 0) {
                 const details = blockedQuantityReductions
@@ -467,6 +479,7 @@ exports.getEquipmentAvailabilityByRange = async (req, res) => {
         const excludedTourId = Number(exclude_tour_id) || 0;
         const [rows] = await db.query(
             `SELECT e.id, e.name, e.description, e.total_quantity,
+                    e.is_passenger_transport, e.seats_per_unit,
                     COALESCE(other_tours.assigned_qty, 0) AS other_assigned_quantity,
                     COALESCE(this_tour.assigned_qty, 0) AS current_assigned_quantity,
                     COALESCE(this_tour_booked.qty, 0) AS current_booked_quantity,
@@ -504,13 +517,17 @@ exports.getEquipmentAvailabilityByRange = async (req, res) => {
             const availableForThisTour = Math.max(0, total - otherAssigned);
             const currentAssigned = Number(row.current_assigned_quantity || 0);
             const booked = Number(row.current_booked_quantity || 0);
-            const minAllowed = Math.max(1, booked);
+            const isPassengerTransport = Boolean(Number(row.is_passenger_transport));
+            const seatsPerUnit = isPassengerTransport ? Math.max(1, Number(row.seats_per_unit || 1)) : 1;
+            const minAllowed = Math.max(1, Math.ceil(booked / seatsPerUnit));
 
             return {
                 id: row.id,
                 name: row.name,
                 description: row.description,
                 total_quantity: total,
+                is_passenger_transport: isPassengerTransport,
+                seats_per_unit: isPassengerTransport ? seatsPerUnit : null,
                 other_assigned_quantity: otherAssigned,
                 current_assigned_quantity: currentAssigned,
                 current_booked_quantity: booked,

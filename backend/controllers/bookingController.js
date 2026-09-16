@@ -17,6 +17,48 @@ const {
 const { logActivity } = require('../services/activityService');
 const { expireStaleBookings, getBudapestDateKey } = require('../services/bookingExpirationService');
 
+const getBookableEquipmentRows = async (tourId, equipmentIds, excludeBookingId = null) => {
+    if (!equipmentIds.length) return [];
+    const excludeSql = excludeBookingId ? 'AND b.id <> ?' : '';
+    const params = [tourId, tourId];
+    if (excludeBookingId) params.push(excludeBookingId);
+    params.push(...equipmentIds);
+
+    const [rows] = await db.query(
+        `SELECT e.id, e.name, e.total_quantity,
+                e.is_passenger_transport, e.seats_per_unit,
+                COALESCE(tp.price, 0) AS price,
+                tp.quantity AS assigned_quantity,
+                COALESCE(tour_booked.qty, 0) AS booked_quantity
+         FROM equipment e
+         JOIN tour_equipment_prices tp
+           ON tp.equipment_id = e.id AND tp.tour_id = ?
+         LEFT JOIN (
+           SELECT be.equipment_id, SUM(be.quantity) AS qty
+           FROM booking_equipments be
+           JOIN bookings b ON b.id = be.booking_id
+           WHERE b.tour_id = ? AND b.status IN ('pending', 'confirmed')
+             ${excludeSql}
+           GROUP BY be.equipment_id
+         ) tour_booked ON tour_booked.equipment_id = e.id
+         WHERE e.id IN (${equipmentIds.map(() => '?').join(',')})`,
+        params
+    );
+    return rows;
+};
+
+const getAvailableBookingUnits = (row) => {
+    const assignedUnits = Number(row.assigned_quantity || 0);
+    const seatsPerUnit = Number(row.is_passenger_transport)
+        ? Math.max(1, Number(row.seats_per_unit || 1))
+        : 1;
+    return Math.max(0, assignedUnits * seatsPerUnit - Number(row.booked_quantity || 0));
+};
+
+const getEquipmentSoldOutMessage = (row) => Number(row.is_passenger_transport)
+    ? `A(z) "${row.name}" járművön sajnos elfogytak az ülőhelyek erre a túrára.`
+    : `A(z) "${row.name}" eszköz sajnos elfogyott erre a túrára.`;
+
 exports.createBooking = async (req, res) => {
     const { tour_id, equipment_ids } = req.body;
     const user_id = req.user.id;
@@ -62,29 +104,15 @@ exports.createBooking = async (req, res) => {
 
         let extraTotal = 0;
         if (selectedEquipmentIds.length > 0) {
-            const [equipRows] = await db.query(
-                `SELECT e.id, e.name, e.total_quantity,
-                        COALESCE(tp.price, 0) AS price,
-                        COALESCE(tp.quantity, e.total_quantity) AS assigned_quantity,
-                        COALESCE(tour_booked.qty, 0) AS booked_quantity
-                 FROM equipment e
-                 LEFT JOIN tour_equipment_prices tp
-                   ON tp.equipment_id = e.id AND tp.tour_id = ?
-                 LEFT JOIN (
-                   SELECT be.equipment_id, SUM(be.quantity) AS qty
-                   FROM booking_equipments be
-                   JOIN bookings b ON b.id = be.booking_id
-                   WHERE b.tour_id = ? AND b.status IN ('pending', 'confirmed')
-                   GROUP BY be.equipment_id
-                 ) tour_booked ON tour_booked.equipment_id = e.id
-                 WHERE e.id IN (${selectedEquipmentIds.map(() => '?').join(',')})`,
-                [tour_id, tour_id, ...selectedEquipmentIds]
-            );
+            const equipRows = await getBookableEquipmentRows(tour_id, selectedEquipmentIds);
+            if (equipRows.length !== selectedEquipmentIds.length) {
+                return res.status(400).json({ message: 'A kiválasztott eszközök egyike nem tartozik ehhez a túrához.' });
+            }
 
             for (const row of equipRows) {
-                const available = Math.max(0, Number(row.assigned_quantity || 0) - Number(row.booked_quantity || 0));
+                const available = getAvailableBookingUnits(row);
                 if (available <= 0) {
-                    return res.status(400).json({ message: `A(z) "${row.name}" eszköz sajnos elfogyott erre a túrára.` });
+                    return res.status(400).json({ message: getEquipmentSoldOutMessage(row) });
                 }
                 extraTotal += Number(row.price || 0);
             }
@@ -894,30 +922,15 @@ exports.updateBookingEquipment = async (req, res) => {
 
         let extraTotal = 0;
         if (equipmentIds.length > 0) {
-            const [equipRows] = await db.query(
-                `SELECT e.id, e.name, e.total_quantity,
-                        COALESCE(tp.price, 0) AS price,
-                        COALESCE(tp.quantity, e.total_quantity) AS assigned_quantity,
-                        COALESCE(tour_booked.qty, 0) AS booked_quantity
-                 FROM equipment e
-                 LEFT JOIN tour_equipment_prices tp
-                     ON tp.equipment_id = e.id AND tp.tour_id = ?
-                 LEFT JOIN (
-                     SELECT be.equipment_id, SUM(be.quantity) AS qty
-                     FROM booking_equipments be
-                     JOIN bookings b ON b.id = be.booking_id
-                     WHERE b.tour_id = ? AND b.status IN ('pending', 'confirmed')
-                         AND b.id <> ?
-                     GROUP BY be.equipment_id
-                 ) tour_booked ON tour_booked.equipment_id = e.id
-                 WHERE e.id IN (${equipmentIds.map(() => '?').join(',')})`,
-                [booking.tour_id, booking.tour_id, bookingId, ...equipmentIds]
-            );
+            const equipRows = await getBookableEquipmentRows(booking.tour_id, equipmentIds, bookingId);
+            if (equipRows.length !== equipmentIds.length) {
+                return res.status(400).json({ message: 'A kiválasztott eszközök egyike nem tartozik ehhez a túrához.' });
+            }
 
             for (const row of equipRows) {
-                const available = Math.max(0, Number(row.assigned_quantity || 0) - Number(row.booked_quantity || 0));
+                const available = getAvailableBookingUnits(row);
                 if (available <= 0) {
-                    return res.status(400).json({ message: `A(z) "${row.name}" eszköz sajnos elfogyott erre a túrára.` });
+                    return res.status(400).json({ message: getEquipmentSoldOutMessage(row) });
                 }
                 extraTotal += Number(row.price || 0);
             }
@@ -984,6 +997,22 @@ exports.promoteWaitlistBooking = async (req, res) => {
         const booking = bookingRows[0];
         if (booking.current_status !== 'waitlist') {
             return res.status(400).json({ message: "Ez a foglalás nem szerepel a várólistán." });
+        }
+
+        const [waitlistEquipment] = await db.query(
+            'SELECT equipment_id FROM booking_equipments WHERE booking_id = ?',
+            [bookingId]
+        );
+        const waitlistEquipmentIds = waitlistEquipment.map((item) => Number(item.equipment_id));
+        if (waitlistEquipmentIds.length > 0) {
+            const equipmentRows = await getBookableEquipmentRows(booking.tour_id, waitlistEquipmentIds);
+            if (equipmentRows.length !== waitlistEquipmentIds.length) {
+                return res.status(409).json({ message: 'A jelentkező egyik kiválasztott eszköze már nem tartozik a túrához.' });
+            }
+            const soldOutEquipment = equipmentRows.find((row) => getAvailableBookingUnits(row) <= 0);
+            if (soldOutEquipment) {
+                return res.status(409).json({ message: getEquipmentSoldOutMessage(soldOutEquipment) });
+            }
         }
 
         const [promotionResult] = await db.query(

@@ -62,7 +62,13 @@ const AdminDashboard = () => {
   const [bookingPaymentFilter, setBookingPaymentFilter] = useState('all');
   const [cancelSearch, setCancelSearch] = useState('');
   const [cancelStatusFilter, setCancelStatusFilter] = useState('all');
-  const [newEquipment, setNewEquipment] = useState({ name: '', description: '', total_quantity: '' });
+  const [newEquipment, setNewEquipment] = useState({
+    name: '',
+    description: '',
+    total_quantity: '',
+    is_passenger_transport: false,
+    seats_per_unit: ''
+  });
   const [equipmentAvailability, setEquipmentAvailability] = useState({});
   const [equipmentConflicts, setEquipmentConflicts] = useState({});
   const [initialTourEquipmentIds, setInitialTourEquipmentIds] = useState([]);
@@ -752,6 +758,10 @@ const AdminDashboard = () => {
       toast.error('Add meg az eszköz nevét.');
       return;
     }
+    if (newEquipment.is_passenger_transport && Number(newEquipment.seats_per_unit) < 1) {
+      toast.error('Add meg, hány ülőhely van egy járműben.');
+      return;
+    }
     try {
       const res = await fetch(`${import.meta.env.VITE_API_URL}/equipment`, {
         method: 'POST',
@@ -762,13 +772,21 @@ const AdminDashboard = () => {
         body: JSON.stringify({
           name: newEquipment.name.trim(),
           description: newEquipment.description,
-          total_quantity: Number(newEquipment.total_quantity || 0)
+          total_quantity: Number(newEquipment.total_quantity || 0),
+          is_passenger_transport: newEquipment.is_passenger_transport,
+          seats_per_unit: newEquipment.is_passenger_transport ? Number(newEquipment.seats_per_unit) : null
         })
       });
       const data = await res.json();
       if (res.ok) {
         toast.success(data.message || 'Eszköz létrehozva.');
-        setNewEquipment({ name: '', description: '', total_quantity: '' });
+        setNewEquipment({
+          name: '',
+          description: '',
+          total_quantity: '',
+          is_passenger_transport: false,
+          seats_per_unit: ''
+        });
         fetchEquipment();
       } else {
         toast.error(data.message || 'Hiba történt.');
@@ -779,6 +797,10 @@ const AdminDashboard = () => {
   };
 
   const handleEquipmentUpdate = async (item) => {
+    if (Number(item.is_passenger_transport) && Number(item.seats_per_unit) < 1) {
+      toast.error('Add meg, hány ülőhely van egy járműben.');
+      return;
+    }
     try {
       const res = await fetch(`${import.meta.env.VITE_API_URL}/equipment/${item.id}`, {
         method: 'PUT',
@@ -789,7 +811,9 @@ const AdminDashboard = () => {
         body: JSON.stringify({
           name: item.name,
           description: item.description,
-          total_quantity: Number(item.total_quantity || 0)
+          total_quantity: Number(item.total_quantity || 0),
+          is_passenger_transport: Boolean(Number(item.is_passenger_transport)),
+          seats_per_unit: Number(item.is_passenger_transport) ? Number(item.seats_per_unit) : null
         })
       });
       const data = await res.json();
@@ -2467,6 +2491,28 @@ const AdminDashboard = () => {
                         onChange={(e) => setNewEquipment((prev) => ({ ...prev, description: e.target.value }))}
                         className="w-full p-3 bg-white border border-slate-100 rounded-2xl md:col-span-2"
                       />
+                      <label className="md:col-span-2 flex items-center gap-3 p-3 bg-white border border-slate-100 rounded-2xl cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={newEquipment.is_passenger_transport}
+                          onChange={(e) => setNewEquipment((prev) => ({
+                            ...prev,
+                            is_passenger_transport: e.target.checked,
+                            seats_per_unit: e.target.checked ? prev.seats_per_unit : ''
+                          }))}
+                          className="h-5 w-5 accent-emerald-600"
+                        />
+                        <span className="text-xs font-black uppercase tracking-wider text-slate-600">Utasszállítás?</span>
+                      </label>
+                      <input
+                        type="number"
+                        min="1"
+                        disabled={!newEquipment.is_passenger_transport}
+                        placeholder="Férőhely / jármű"
+                        value={newEquipment.seats_per_unit}
+                        onChange={(e) => setNewEquipment((prev) => ({ ...prev, seats_per_unit: e.target.value }))}
+                        className="w-full p-3 bg-white border border-slate-100 rounded-2xl md:col-span-2 disabled:opacity-40"
+                      />
                     </div>
                     <button
                       onClick={handleEquipmentCreate}
@@ -2508,6 +2554,32 @@ const AdminDashboard = () => {
                                 setEquipment((prev) => prev.map((row) => row.id === item.id ? { ...row, description: e.target.value } : row))
                               }
                               className="w-full p-3 bg-slate-50 border border-slate-100 rounded-2xl md:col-span-2"
+                            />
+                            <label className="md:col-span-2 flex items-center gap-3 p-3 bg-slate-50 border border-slate-100 rounded-2xl cursor-pointer">
+                              <input
+                                type="checkbox"
+                                checked={Boolean(Number(item.is_passenger_transport))}
+                                onChange={(e) =>
+                                  setEquipment((prev) => prev.map((row) => row.id === item.id ? {
+                                    ...row,
+                                    is_passenger_transport: e.target.checked,
+                                    seats_per_unit: e.target.checked ? (row.seats_per_unit || '') : ''
+                                  } : row))
+                                }
+                                className="h-5 w-5 accent-emerald-600"
+                              />
+                              <span className="text-xs font-black uppercase tracking-wider text-slate-600">Utasszállítás?</span>
+                            </label>
+                            <input
+                              type="number"
+                              min="1"
+                              disabled={!Number(item.is_passenger_transport)}
+                              placeholder="Férőhely / jármű"
+                              value={item.seats_per_unit || ''}
+                              onChange={(e) =>
+                                setEquipment((prev) => prev.map((row) => row.id === item.id ? { ...row, seats_per_unit: e.target.value } : row))
+                              }
+                              className="w-full p-3 bg-slate-50 border border-slate-100 rounded-2xl md:col-span-2 disabled:opacity-40"
                             />
                           </div>
                           <div className="mt-4 flex flex-wrap gap-2">
@@ -2778,6 +2850,8 @@ const AdminDashboard = () => {
                       const isUnavailable = availableFromStock <= 0 && !wasInitiallyAssigned;
                       const currentQty = Number(newTour.equipment_quantities?.[item.id] || 1);
                       const maxAssignQty = availableFromStock + (wasInitiallyAssigned ? currentQty : 0);
+                      const isPassengerTransport = Boolean(Number(item.is_passenger_transport));
+                      const seatsPerUnit = isPassengerTransport ? Math.max(1, Number(item.seats_per_unit || 1)) : 1;
 
                       return (
                         <div
@@ -2820,9 +2894,14 @@ const AdminDashboard = () => {
                                 <span className={`font-bold text-sm tracking-tight truncate ${isSelected ? 'text-slate-900' : 'text-slate-700'}`}>
                                   {item.name}
                                 </span>
+                                {isPassengerTransport && (
+                                  <span className="text-[10px] font-black uppercase tracking-wider text-sky-700 bg-sky-100 px-2 py-0.5 rounded-md border border-sky-200 shrink-0">
+                                    {seatsPerUnit} férőhely / jármű
+                                  </span>
+                                )}
                                 {isLocked && (
                                   <span className="text-[10px] font-black uppercase tracking-wider text-amber-700 bg-amber-100/80 px-2 py-0.5 rounded-md border border-amber-200 shrink-0">
-                                    🔒 Foglalás alatt
+                                    Foglalás alatt
                                   </span>
                                 )}
                                 {isUnavailable && !isSelected && (
@@ -2914,11 +2993,16 @@ const AdminDashboard = () => {
                                     max: {maxAssignQty} db
                                   </span>
                                 )}
+                                {isPassengerTransport && (
+                                  <span className="text-[9px] text-sky-700 font-black mt-0.5 text-center">
+                                    {currentQty * seatsPerUnit} ülőhely
+                                  </span>
+                                )}
                               </div>
 
                               <div className="flex flex-col">
                                 <span className="text-[9px] font-black uppercase tracking-wider text-slate-400 mb-1">
-                                  Bérleti díj / db
+                                  {isPassengerTransport ? 'Díj / ülőhely' : 'Bérleti díj / db'}
                                 </span>
                                 <div className="relative h-10">
                                   <input

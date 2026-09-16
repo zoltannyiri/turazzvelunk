@@ -1830,18 +1830,19 @@ const TourDetailsScreen = () => {
                               const isBookedByMe = initialEquipmentIds.some((id) => Number(id) === Number(item.id));
                               const availableCount = Number(item.available_quantity || 0);
                               const isAvailable = isBookedByMe || availableCount > 0;
+                              const availabilityUnit = Number(item.is_passenger_transport) ? 'ülőhely' : 'db';
 
                               return (
                                 <label 
                                   key={item.id} 
-                                  className={`flex items-center justify-between gap-3 p-2 rounded-xl transition ${
+                                  className={`flex flex-col items-stretch gap-1.5 p-2 rounded-xl transition ${
                                     !isAvailable && !isBookedByMe ? 'opacity-60 bg-red-500/5 cursor-not-allowed' : 'hover:bg-white/5 cursor-pointer'
                                   }`}
                                 >
-                                  <div className="flex items-center gap-2.5">
+                                  <div className="flex items-start gap-2.5 min-w-0">
                                     <input
                                       type="checkbox"
-                                      className="accent-emerald-500 h-4 w-4 rounded"
+                                      className="accent-emerald-500 h-4 w-4 rounded shrink-0 mt-0.5"
                                       disabled={isEquipmentSelectionClosed || paymentStatus === 'paid' || (!isAvailable && !isBookedByMe)}
                                       checked={selectedEquipmentIds.includes(item.id)}
                                       onChange={(e) => {
@@ -1854,7 +1855,7 @@ const TourDetailsScreen = () => {
                                         );
                                       }}
                                     />
-                                    <div className="flex flex-col">
+                                    <div className="flex flex-col min-w-0 flex-1">
                                       <span className={`font-bold ${!isAvailable && !isBookedByMe ? 'text-slate-400 line-through' : 'text-white'}`}>
                                         {item.name}
                                       </span>
@@ -1863,20 +1864,20 @@ const TourDetailsScreen = () => {
                                       )}
                                     </div>
                                   </div>
-                                  <div className="text-right shrink-0">
-                                    <div className="text-emerald-300 font-black">{formatPrice(item.price)} Ft</div>
+                                  <div className="min-w-0 pl-[26px] text-left">
+                                    <div className="text-emerald-300 font-black whitespace-nowrap">{formatPrice(item.price)} Ft</div>
                                     {isBookedByMe ? (
-                                      <div className="text-[10px] font-bold text-emerald-400">
-                                        Lefoglalva nálad {availableCount > 0 ? `(szabad: ${availableCount} db)` : ''}
+                                      <div className="text-[10px] font-bold text-emerald-400 break-words">
+                                        {Number(item.is_passenger_transport) ? 'Ülőhely lefoglalva nálad' : 'Lefoglalva nálad'} {availableCount > 0 ? `(szabad: ${availableCount} ${availabilityUnit})` : ''}
                                       </div>
                                     ) : isAvailable ? (
                                       availableCount === 1 ? (
                                         <div className="text-[10px] font-black uppercase tracking-wider text-amber-300">
-                                          Már csak 1 db!
+                                          Már csak 1 {availabilityUnit}!
                                         </div>
                                       ) : (
                                         <div className="text-[10px] text-slate-400">
-                                          Elérhető: {availableCount} db
+                                          Elérhető: {availableCount} {availabilityUnit}
                                         </div>
                                       )
                                     ) : (
@@ -2007,18 +2008,19 @@ const TourDetailsScreen = () => {
                               const isBookedByMe = initialEquipmentIds.some((id) => Number(id) === Number(item.id));
                               const availableCount = Number(item.available_quantity || 0);
                               const isAvailable = isBookedByMe || availableCount > 0;
+                              const availabilityUnit = Number(item.is_passenger_transport) ? 'ülőhely' : 'db';
 
                               return (
                                 <label 
                                   key={item.id} 
-                                  className={`flex items-center justify-between gap-3 p-2 rounded-xl transition ${
+                                  className={`flex flex-col items-stretch gap-1.5 p-2 rounded-xl transition ${
                                     !isAvailable && !isBookedByMe ? 'opacity-60 bg-red-500/5 cursor-not-allowed' : 'hover:bg-white/5 cursor-pointer'
                                   }`}
                                 >
-                                  <div className="flex items-center gap-2.5">
+                                  <div className="flex items-start gap-2.5 min-w-0">
                                     <input
                                       type="checkbox"
-                                      className="accent-emerald-500 h-4 w-4 rounded"
+                                      className="accent-emerald-500 h-4 w-4 rounded shrink-0 mt-0.5"
                                       disabled={isEquipmentSelectionClosed || paymentStatus === 'paid' || (!isAvailable && !isBookedByMe)}
                                       checked={selectedEquipmentIds.includes(item.id)}
                                       onChange={(e) => {
@@ -2031,7 +2033,7 @@ const TourDetailsScreen = () => {
                                         );
                                       }}
                                     />
-                                    <div className="flex flex-col">
+                                    <div className="flex flex-col min-w-0 flex-1">
                                       <span className={`font-bold ${!isAvailable && !isBookedByMe ? 'text-slate-400 line-through' : 'text-white'}`}>
                                         {item.name}
                                       </span>
@@ -2040,20 +2042,20 @@ const TourDetailsScreen = () => {
                                       )}
                                     </div>
                                   </div>
-                                  <div className="text-right shrink-0">
-                                    <div className="text-emerald-300 font-black">{formatPrice(item.price)} Ft</div>
+                                  <div className="min-w-0 pl-[26px] text-left">
+                                    <div className="text-emerald-300 font-black whitespace-nowrap">{formatPrice(item.price)} Ft</div>
                                     {isBookedByMe ? (
-                                      <div className="text-[10px] font-bold text-emerald-400">
-                                        Lefoglalva nálad {availableCount > 0 ? `(szabad: ${availableCount} db)` : ''}
+                                      <div className="text-[10px] font-bold text-emerald-400 break-words">
+                                        {Number(item.is_passenger_transport) ? 'Ülőhely lefoglalva nálad' : 'Lefoglalva nálad'} {availableCount > 0 ? `(szabad: ${availableCount} ${availabilityUnit})` : ''}
                                       </div>
                                     ) : isAvailable ? (
                                       availableCount === 1 ? (
                                         <div className="text-[10px] font-black uppercase tracking-wider text-amber-300">
-                                          Már csak 1 db!
+                                          Már csak 1 {availabilityUnit}!
                                         </div>
                                       ) : (
                                         <div className="text-[10px] text-slate-400">
-                                          Elérhető: {availableCount} db
+                                          Elérhető: {availableCount} {availabilityUnit}
                                         </div>
                                       )
                                     ) : (
@@ -2098,18 +2100,19 @@ const TourDetailsScreen = () => {
                         {equipmentOptions.map((item) => {
                           const isAvailable = Number(item.available_quantity || 0) > 0;
                           const availableCount = Number(item.available_quantity || 0);
+                          const availabilityUnit = Number(item.is_passenger_transport) ? 'ülőhely' : 'db';
 
                           return (
                             <label 
                               key={item.id} 
-                              className={`flex items-center justify-between gap-3 p-2 rounded-xl transition ${
+                              className={`flex flex-col items-stretch gap-1.5 p-2 rounded-xl transition ${
                                 !isAvailable ? 'opacity-60 bg-red-500/5 cursor-not-allowed' : 'hover:bg-white/5 cursor-pointer'
                               }`}
                             >
-                              <div className="flex items-center gap-2.5">
+                              <div className="flex items-start gap-2.5 min-w-0">
                                 <input
                                   type="checkbox"
-                                  className="accent-emerald-500 h-4 w-4 rounded"
+                                  className="accent-emerald-500 h-4 w-4 rounded shrink-0 mt-0.5"
                                   disabled={!isAvailable}
                                   checked={selectedEquipmentIds.includes(item.id)}
                                   onChange={(e) => {
@@ -2121,7 +2124,7 @@ const TourDetailsScreen = () => {
                                     );
                                   }}
                                 />
-                                <div className="flex flex-col">
+                                <div className="flex flex-col min-w-0 flex-1">
                                   <span className={`font-bold ${!isAvailable ? 'text-slate-400 line-through' : 'text-white'}`}>
                                     {item.name}
                                   </span>
@@ -2130,16 +2133,16 @@ const TourDetailsScreen = () => {
                                   )}
                                 </div>
                               </div>
-                              <div className="text-right shrink-0">
-                                <div className="text-emerald-300 font-black">{formatPrice(item.price)} Ft</div>
+                              <div className="min-w-0 pl-[26px] text-left">
+                                <div className="text-emerald-300 font-black whitespace-nowrap">{formatPrice(item.price)} Ft</div>
                                 {isAvailable ? (
                                   availableCount === 1 ? (
                                     <div className="text-[10px] font-black uppercase tracking-wider text-amber-300">
-                                      Már csak 1 db!
+                                      Már csak 1 {availabilityUnit}!
                                     </div>
                                   ) : (
                                     <div className="text-[10px] text-slate-400">
-                                      Elérhető: {availableCount} db
+                                      Elérhető: {availableCount} {availabilityUnit}
                                     </div>
                                   )
                                 ) : (
@@ -2436,6 +2439,8 @@ const TourDetailsScreen = () => {
                       const isUnavailable = availableFromStock <= 0 && !wasInitiallyAssigned;
                       const currentQty = Number(tourEditForm.equipment_quantities?.[item.id] || 1);
                       const maxAssignQty = availableFromStock + (wasInitiallyAssigned ? currentQty : 0);
+                      const isPassengerTransport = Boolean(Number(item.is_passenger_transport));
+                      const seatsPerUnit = isPassengerTransport ? Math.max(1, Number(item.seats_per_unit || 1)) : 1;
 
                       return (
                         <div
@@ -2478,9 +2483,14 @@ const TourDetailsScreen = () => {
                                 <span className={`font-bold text-sm tracking-tight truncate ${isSelected ? 'text-slate-900' : 'text-slate-700'}`}>
                                   {item.name}
                                 </span>
+                                {isPassengerTransport && (
+                                  <span className="text-[10px] font-black uppercase tracking-wider text-sky-700 bg-sky-100 px-2 py-0.5 rounded-md border border-sky-200 shrink-0">
+                                    {seatsPerUnit} férőhely / jármű
+                                  </span>
+                                )}
                                 {isLocked && (
                                   <span className="text-[10px] font-black uppercase tracking-wider text-amber-700 bg-amber-100/80 px-2 py-0.5 rounded-md border border-amber-200 shrink-0">
-                                    🔒 Foglalás alatt
+                                    Foglalás alatt
                                   </span>
                                 )}
                                 {isUnavailable && !isSelected && (
@@ -2572,11 +2582,16 @@ const TourDetailsScreen = () => {
                                     max: {maxAssignQty} db
                                   </span>
                                 )}
+                                {isPassengerTransport && (
+                                  <span className="text-[9px] text-sky-700 font-black mt-0.5 text-center">
+                                    {currentQty * seatsPerUnit} ülőhely
+                                  </span>
+                                )}
                               </div>
 
                               <div className="flex flex-col">
                                 <span className="text-[9px] font-black uppercase tracking-wider text-slate-400 mb-1">
-                                  Bérleti díj / db
+                                  {isPassengerTransport ? 'Díj / ülőhely' : 'Bérleti díj / db'}
                                 </span>
                                 <div className="relative h-10">
                                   <input
