@@ -15,8 +15,14 @@ import { formatPrice, formatPriceInput, parsePriceInput } from '../../utils/form
 
 registerLocale('hu', hu);
 import "../../App.css";
+import "./AdminDashboard.css";
 
 ChartJS.register(ArcElement, Tooltip, Legend);
+
+const ADMIN_CHART_COLORS = [
+  '#23583e', '#769577', '#c89553', '#8bafaa', '#8a6b56',
+  '#acc0a4', '#d7a17d', '#607a88', '#af9f76', '#557f68'
+];
 
 const getBookingRevenue = (booking) => {
   const storedTotal = Number(booking?.total_price);
@@ -532,10 +538,6 @@ const AdminDashboard = () => {
     }, {});
   }, [bookings, tours]);
 
-  const pieColors = [
-    '#10B981', '#34D399', '#059669', '#0EA5E9', '#6366F1', '#F59E0B', '#F97316', '#EC4899', '#8B5CF6', '#14B8A6'
-  ];
-
   const revenuePieData = useMemo(() => {
     const labels = Object.keys(categoryRevenue);
     return {
@@ -543,7 +545,7 @@ const AdminDashboard = () => {
       datasets: [
         {
           data: labels.map((label) => categoryRevenue[label]),
-          backgroundColor: labels.map((_, index) => pieColors[index % pieColors.length]),
+          backgroundColor: labels.map((_, index) => ADMIN_CHART_COLORS[index % ADMIN_CHART_COLORS.length]),
           borderWidth: 0
         }
       ]
@@ -557,7 +559,7 @@ const AdminDashboard = () => {
       datasets: [
         {
           data: labels.map((label) => toursByCategory[label]?.length || 0),
-          backgroundColor: labels.map((_, index) => pieColors[index % pieColors.length]),
+          backgroundColor: labels.map((_, index) => ADMIN_CHART_COLORS[index % ADMIN_CHART_COLORS.length]),
           borderWidth: 0
         }
       ]
@@ -1205,43 +1207,59 @@ const AdminDashboard = () => {
   };
 
   return (
-    <div className="bg-[#f4f7fb] min-h-screen font-sans">
-      <div className="max-w-7xl mx-auto px-4 md:px-8 py-8">
-        <div className="grid grid-cols-1 lg:grid-cols-[260px_1fr] gap-8">
-          <aside className="bg-white/80 border border-white rounded-[2.5rem] p-6 shadow-xl sticky top-6 self-start backdrop-blur-xl">
-            <div className="mb-8">
-              <div className="text-[10px] font-black uppercase tracking-[0.4em] text-emerald-600">Admin</div>
-              <div className="text-2xl font-black text-emerald-950">Vezérlőpult</div>
+    <div className="admin-dashboard min-h-screen">
+      <div className="mx-auto max-w-[1500px] px-4 py-6 md:px-8 md:py-10">
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-[245px_minmax(0,1fr)] lg:gap-10">
+          <aside className="admin-rail self-start lg:sticky lg:top-6">
+            <div className="admin-rail-brand">
+              <div className="admin-eyebrow">Túrázz Velünk / Admin</div>
+              <div className="admin-rail-title">Vezérlőpult<span>.</span></div>
+              <p>Túrák, közösség és foglalások egy helyen.</p>
             </div>
-            <nav className="grid gap-2">
+            <nav className="admin-nav" aria-label="Adminisztráció">
               {tabs.map((tab) => {
                 const Icon = tab.icon;
                 const isActive = activeTab === tab.id;
                 return (
                   <button
                     key={tab.id}
+                    type="button"
                     onClick={() => setActiveTab(tab.id)}
-                    className={`flex items-center gap-3 px-4 py-3 rounded-2xl font-black text-sm transition-all ${isActive ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-600/20' : 'bg-white text-slate-600 hover:bg-emerald-50'}`}
+                    aria-current={isActive ? 'page' : undefined}
+                    className={`admin-nav-item ${isActive ? 'is-active' : ''}`}
                   >
-                    <Icon size={18} /> {tab.label}
+                    <Icon size={17} strokeWidth={1.8} />
+                    <span>{tab.label}</span>
+                    {tab.id === 'bookings' && pendingBookingCount > 0 && <span className="admin-nav-count">{pendingBookingCount}</span>}
+                    {tab.id === 'waitlists' && totalWaitlistCount > 0 && <span className="admin-nav-count">{totalWaitlistCount}</span>}
+                    {tab.id === 'cancellations' && pendingCancelCount > 0 && <span className="admin-nav-count">{pendingCancelCount}</span>}
                   </button>
                 );
               })}
             </nav>
-            <div className="mt-8 p-4 rounded-2xl bg-emerald-50 text-emerald-900 text-xs font-bold">
-              Napi státusz: {pendingBookingCount} nyitott kérelem
+            <div className="admin-rail-status">
+              <span className="admin-status-dot" />
+              <div>
+                <span className="admin-eyebrow">Mai figyelő</span>
+                <strong>{pendingBookingCount} nyitott kérelem</strong>
+              </div>
             </div>
           </aside>
 
-          <main className="space-y-8">
-            <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
+          <main className="admin-main min-w-0 space-y-8">
+            <header className="admin-page-header flex flex-col items-start justify-between gap-6 md:flex-row md:items-end">
               <div>
-                <h1 className="text-4xl md:text-5xl font-black text-emerald-950 tracking-tighter italic">Admin Dashboard</h1>
-                <div className="text-xs text-slate-400 font-black uppercase tracking-[0.3em] mt-2">Túrázz Velünk</div>
+                <p className="admin-eyebrow">Adminisztráció / {tabs.find((tab) => tab.id === activeTab)?.label}</p>
+                <h1 className="admin-page-title">{tabs.find((tab) => tab.id === activeTab)?.label}</h1>
+                <p className="admin-page-description">
+                  {activeTab === 'overview'
+                    ? 'A túrák és a közösség pillanatképe.'
+                    : 'A részletek és műveletek ezen a felületen kezelhetők.'}
+                </p>
               </div>
               {activeTab === 'tours' && (
                 <button 
-                  className="bg-emerald-600 hover:bg-emerald-700 text-white px-8 py-4 rounded-[2rem] font-black flex items-center gap-3 transition-all shadow-2xl shadow-emerald-600/20 active:scale-95"
+                  className="admin-primary-action"
                   onClick={() => {
                     setEditingTourId(null);
                     setSelectedEquipmentIds([]);
@@ -1258,40 +1276,43 @@ const AdminDashboard = () => {
                     setIsModalOpen(true);
                   }}
                 >
-                  <Plus size={20} /> ÚJ TÚRA LÉTREHOZÁSA
+                  <Plus size={18} /> Új túra létrehozása
                 </button>
               )}
             </header>
 
             {activeTab === 'overview' && (
-              <div className="grid gap-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                  <div className="bg-white rounded-[2.5rem] border border-slate-100 p-6 shadow-sm">
-                    <div className="text-[10px] uppercase tracking-widest text-slate-400 font-black">Túrák</div>
-                    <div className="text-3xl font-black text-emerald-950 mt-2">{totalTours}</div>
+              <div className="grid gap-7">
+                <div className="admin-overview-intro">
+                  <div>
+                    <span className="admin-eyebrow">Áttekintés</span>
+                    <h2>A lényeg egy pillantásra</h2>
                   </div>
-                  <div className="bg-white rounded-[2.5rem] border border-slate-100 p-6 shadow-sm">
-                    <div className="text-[10px] uppercase tracking-widest text-slate-400 font-black">Jelentkezések</div>
-                    <div className="text-3xl font-black text-emerald-950 mt-2">{totalBookings}</div>
-                  </div>
-                  <div className="bg-white rounded-[2.5rem] border border-slate-100 p-6 shadow-sm">
-                    <div className="text-[10px] uppercase tracking-widest text-slate-400 font-black">Felhasználók</div>
-                    <div className="text-3xl font-black text-emerald-950 mt-2">{totalUsers}</div>
-                  </div>
-                  <div className="bg-white rounded-[2.5rem] border border-slate-100 p-6 shadow-sm">
-                    <div className="text-[10px] uppercase tracking-widest text-slate-400 font-black">Bevétel</div>
-                    <div className="text-3xl font-black text-emerald-950 mt-2">{formatPrice(totalRevenue)} Ft</div>
-                  </div>
+                  <span>{new Date().toLocaleDateString('hu-HU', { year: 'numeric', month: 'long', day: 'numeric' })}</span>
+                </div>
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+                  {[
+                    { label: 'Túrák', value: totalTours, icon: Calendar, detail: 'Létrehozott túrák' },
+                    { label: 'Jelentkezések', value: totalBookings, icon: ListChecks, detail: 'Összes jelentkezés' },
+                    { label: 'Felhasználók', value: totalUsers, icon: Users, detail: 'Regisztrált tagok' },
+                    { label: 'Bevétel', value: `${formatPrice(totalRevenue)} Ft`, icon: DollarSign, detail: 'Túrák és eszközök' }
+                  ].map(({ label, value, icon, detail }) => (
+                    <article key={label} className="admin-stat-card">
+                      <div className="admin-stat-top"><span>{label}</span>{React.createElement(icon, { size: 19, strokeWidth: 1.8 })}</div>
+                      <strong>{value}</strong>
+                      <span className="admin-stat-detail">{detail}</span>
+                    </article>
+                  ))}
                 </div>
 
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                  <div className="bg-white rounded-[3rem] border border-slate-100 p-6 md:p-8 shadow-sm">
+                <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
+                  <div className="admin-chart-card">
                     <div className="flex items-center justify-between mb-6">
                       <div>
-                        <div className="text-[10px] font-black uppercase tracking-widest text-slate-400">Összes bevétel</div>
-                        <div className="text-xl font-black text-emerald-950">Kategóriák szerint</div>
+                        <div className="admin-eyebrow">Összes bevétel</div>
+                        <h3>Bevétel kategóriánként</h3>
                       </div>
-                      <div className="text-xs font-black text-emerald-600">{formatPrice(totalRevenue)} Ft</div>
+                      <div className="admin-chart-total">{formatPrice(totalRevenue)} Ft</div>
                     </div>
                     {Object.keys(categoryRevenue).length === 0 ? (
                       <div className="text-center text-slate-400 font-bold py-10">Nincs adat.</div>
@@ -1316,13 +1337,13 @@ const AdminDashboard = () => {
                     )}
                   </div>
 
-                  <div className="bg-white rounded-[3rem] border border-slate-100 p-6 md:p-8 shadow-sm">
+                  <div className="admin-chart-card">
                     <div className="flex items-center justify-between mb-6">
                       <div>
-                        <div className="text-[10px] font-black uppercase tracking-widest text-slate-400">Túrák</div>
-                        <div className="text-xl font-black text-emerald-950">Kategóriák szerint</div>
+                        <div className="admin-eyebrow">Túrák megoszlása</div>
+                        <h3>Túrák kategóriánként</h3>
                       </div>
-                      <div className="text-xs font-black text-emerald-600">{totalTours} db</div>
+                      <div className="admin-chart-total">{totalTours} db</div>
                     </div>
                     {Object.keys(toursByCategory).length === 0 ? (
                       <div className="text-center text-slate-400 font-bold py-10">Nincs adat.</div>
@@ -1344,7 +1365,7 @@ const AdminDashboard = () => {
             )}
 
             {activeTab === 'tours' && (
-              <div className="grid gap-8">
+              <div className="grid gap-5">
                 {toursLoading ? (
                   <div className="bg-white rounded-[2rem] border border-slate-100 p-10 text-center text-slate-400 font-bold">Betöltés...</div>
                 ) : Object.keys(sortedToursByCategory).length === 0 ? (
@@ -1354,15 +1375,15 @@ const AdminDashboard = () => {
                     const isCategoryExpanded = expandedCategories[category] ?? false;
 
                     return (
-                      <div key={category} className="space-y-4 rounded-[2.25rem] border border-slate-100 bg-white p-4 shadow-sm">
+                      <div key={category} className="admin-tour-group space-y-4">
                         <button
                           type="button"
                           onClick={() => setExpandedCategories((prev) => ({ ...prev, [category]: !prev[category] }))}
-                          className="w-full flex items-center justify-between gap-4 rounded-[1.5rem] px-4 py-3 text-left hover:bg-slate-50 transition"
+                          className="admin-tour-group-toggle w-full flex items-center justify-between gap-4 text-left transition"
                         >
                           <div className="flex items-center gap-3">
-                            <div className="text-xs font-black uppercase tracking-[0.3em] text-emerald-600">{category}</div>
-                            <span className="rounded-full bg-emerald-50 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.2em] text-emerald-700">
+                            <div className="font-serif text-xl text-[#173327]">{category}</div>
+                            <span className="rounded-full bg-[#edf2e9] px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.12em] text-[#477258]">
                               {items.length} db
                             </span>
                           </div>
@@ -1383,29 +1404,28 @@ const AdminDashboard = () => {
                               return (
                                 <div
                                   key={tour.id}
-                                  className={`rounded-[3rem] shadow-sm border overflow-hidden transition-all hover:shadow-xl cursor-pointer ${expired ? 'border-red-200 bg-red-50/70' : 'border-slate-100 bg-white'}`}
+                                  className={`admin-tour-card cursor-pointer overflow-hidden transition-all ${expired ? 'is-expired' : ''}`}
                                   onClick={() => navigate(`/tours/${tour.id}`)}
                                 >
-                                  <div className={`p-8 md:p-10 flex flex-col md:flex-row justify-between items-center gap-6 ${expired ? 'bg-gradient-to-r from-red-50 to-white' : 'bg-gradient-to-r from-white to-slate-50'}`}>
+                                  <div className="flex flex-col items-start justify-between gap-6 p-5 md:flex-row md:items-center md:p-7">
                                     <div className="flex items-center gap-6">
-                                      <div className={`w-16 h-16 rounded-3xl flex items-center justify-center ${expired ? 'bg-red-100 text-red-600' : 'bg-emerald-100 text-emerald-600'}`}>
-                                        <Calendar size={28} />
+                                      <div className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-xl ${expired ? 'bg-[#f6e8e4] text-[#9d5b4c]' : 'bg-[#e7efe6] text-[#326348]'}`}>
+                                        <Calendar size={23} strokeWidth={1.8} />
                                       </div>
                                       <div>
                                         <div className="flex flex-wrap items-center gap-2">
-                                          <h2 className={`text-2xl font-black ${expired ? 'text-red-700 line-through decoration-red-400' : 'text-emerald-950'}`}>{tour.title}</h2>
+                                          <h2 className={`font-serif text-2xl ${expired ? 'text-[#875d51]' : 'text-[#173327]'}`}>{tour.title}</h2>
                                           {expired && (
                                             <span className="inline-flex items-center rounded-full bg-red-600 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.2em] text-white">
                                               Lejárt
                                             </span>
                                           )}
                                         </div>
-                                        <div className="flex flex-wrap gap-3 mt-2 text-[10px] font-black uppercase tracking-tighter text-slate-400">
+                                        <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs font-medium text-[#68766c]">
                                           <span className="flex items-center gap-1"><Users size={14} /> {participants.length} Fő</span>
                                           <span>Max: {tour.max_participants || 0} fő</span>
-                                          <span>Pending: {pendingCount} fő</span>
+                                          <span>Függőben: {pendingCount} fő</span>
                                           <span className="flex items-center gap-1"><DollarSign size={14} /> {formatPrice(tour.price)} Ft</span>
-                                          <span>Nehézség: {tour.difficulty}</span>
                                           {tour.subcategory && <span>{tour.subcategory}</span>}
                                           {tour.start_date && tour.end_date && (
                                             <span>{new Date(tour.start_date).toLocaleDateString()} - {new Date(tour.end_date).toLocaleDateString()}</span>
@@ -1544,7 +1564,7 @@ const AdminDashboard = () => {
             )}
 
             {activeTab === 'bookings' && (
-              <div className="bg-white rounded-[3rem] shadow-sm border border-slate-100 overflow-hidden">
+              <div className="admin-panel">
                 <div className="p-8 md:p-10 flex items-center justify-between bg-gradient-to-r from-white to-slate-50">
                   <div>
                     <h2 className="text-2xl font-black text-emerald-950">Összes jelentkezés</h2>
@@ -1646,8 +1666,8 @@ const AdminDashboard = () => {
             )}
 
             {activeTab === 'waitlists' && (
-              <div className="space-y-6">
-                <div className="bg-white p-6 rounded-3xl shadow-sm border border-gray-100 flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <div className="admin-waitlists space-y-6">
+                <div className="admin-panel p-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
                   <div>
                     <h2 className="text-xl font-black text-gray-900 tracking-tight flex items-center gap-2">
                       <Clock className="text-amber-500" size={24} /> Várólisták kezelése
@@ -1825,7 +1845,7 @@ const AdminDashboard = () => {
             )}
 
             {activeTab === 'cancellations' && (
-              <div className="bg-white rounded-[3rem] shadow-sm border border-slate-100 overflow-hidden">
+              <div className="admin-panel">
                 <div className="p-8 md:p-10 flex items-center justify-between bg-gradient-to-r from-white to-slate-50">
                   <div>
                     <h2 className="text-2xl font-black text-emerald-950">Lejelentkezési kérelmek</h2>
@@ -1921,7 +1941,7 @@ const AdminDashboard = () => {
             )}
 
             {activeTab === 'users' && (
-              <div className="bg-white rounded-[3rem] shadow-sm border border-slate-100 overflow-hidden">
+              <div className="admin-panel">
                 <div className="p-8 md:p-10 flex items-center justify-between bg-gradient-to-r from-white to-slate-50">
                   <div>
                     <h2 className="text-2xl font-black text-emerald-950">Felhasználók</h2>
@@ -2027,7 +2047,7 @@ const AdminDashboard = () => {
             )}
 
             {activeTab === 'activity' && (
-              <div className="bg-white rounded-[3rem] shadow-sm border border-slate-100 overflow-hidden">
+              <div className="admin-panel">
                 <div className="p-8 md:p-10 flex items-center justify-between bg-gradient-to-r from-white to-slate-50">
                   <div>
                     <h2 className="text-2xl font-black text-emerald-950">Tevékenységnapló</h2>
@@ -2101,7 +2121,7 @@ const AdminDashboard = () => {
             )}
 
             {activeTab === 'errors' && (
-              <div className="bg-white rounded-[3rem] shadow-sm border border-slate-100 overflow-hidden">
+              <div className="admin-panel">
                 <div className="p-8 md:p-10 flex items-center justify-between bg-gradient-to-r from-white to-slate-50">
                   <div>
                     <h2 className="text-2xl font-black text-emerald-950">Hibanapló</h2>
@@ -2173,7 +2193,7 @@ const AdminDashboard = () => {
             )}
 
             {activeTab === 'email' && (
-              <div className="bg-white rounded-[3rem] shadow-sm border border-slate-100 overflow-hidden">
+              <div className="admin-panel">
                 <div className="p-8 md:p-10 flex items-center justify-between bg-gradient-to-r from-white to-slate-50">
                   <div>
                     <h2 className="text-2xl font-black text-emerald-950">Email küldés</h2>
@@ -2458,7 +2478,7 @@ const AdminDashboard = () => {
             )}
 
             {activeTab === 'equipment' && (
-              <div className="bg-white rounded-[3rem] shadow-sm border border-slate-100 overflow-hidden">
+              <div className="admin-panel">
                 <div className="p-8 md:p-10 flex items-center justify-between bg-gradient-to-r from-white to-slate-50">
                   <div>
                     <h2 className="text-2xl font-black text-emerald-950">Eszközök</h2>
@@ -2615,9 +2635,9 @@ const AdminDashboard = () => {
     setIsDepositEnabled(false);
     setNewTour(initialTourState);
   }}></div>
-          <div className="relative bg-white w-full max-w-3xl rounded-[3rem] shadow-2xl p-8 md:p-10 overflow-y-auto max-h-[90vh] animate-in zoom-in duration-300">
+          <div className="admin-tour-modal relative w-full max-w-3xl overflow-y-auto p-6 md:p-10 max-h-[90vh]">
             <div className="flex items-center justify-between gap-4 mb-8">
-              <h2 className="text-3xl font-black text-emerald-950 italic">
+              <h2 className="font-serif text-3xl text-[#173327]">
                 {editingTourId ? 'Túra szerkesztése' : 'Új túra meghirdetése'}
               </h2>
               <button
@@ -2849,7 +2869,7 @@ const AdminDashboard = () => {
                       const availableFromStock = Number(equipmentAvailability[item.id] ?? item.total_quantity ?? 0);
                       const isUnavailable = availableFromStock <= 0 && !wasInitiallyAssigned;
                       const currentQty = Number(newTour.equipment_quantities?.[item.id] || 1);
-                      const maxAssignQty = availableFromStock + (wasInitiallyAssigned ? currentQty : 0);
+                      const maxAssignQty = Math.max(0, availableFromStock);
                       const isPassengerTransport = Boolean(Number(item.is_passenger_transport));
                       const seatsPerUnit = isPassengerTransport ? Math.max(1, Number(item.seats_per_unit || 1)) : 1;
 
@@ -2951,13 +2971,15 @@ const AdminDashboard = () => {
                                     <input
                                       type="number"
                                       min={isLocked ? currentQty : 1}
-                                      max={maxAssignQty > 0 ? maxAssignQty : undefined}
+                                      max={maxAssignQty}
+                                      disabled={maxAssignQty < (isLocked ? currentQty : 1)}
                                       className="w-10 text-center font-black text-sm bg-transparent outline-none text-slate-800 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                                       value={newTour.equipment_quantities?.[item.id] ?? 1}
                                       onChange={(e) => {
                                         const val = parseInt(e.target.value) || 1;
                                         const minQ = isLocked ? currentQty : 1;
-                                        const clamped = maxAssignQty > 0 ? Math.min(Math.max(minQ, val), maxAssignQty) : Math.max(minQ, val);
+                                        if (maxAssignQty < minQ) return;
+                                        const clamped = Math.min(Math.max(minQ, val), maxAssignQty);
                                         setNewTour((prev) => ({
                                           ...prev,
                                           equipment_quantities: {
@@ -2971,9 +2993,9 @@ const AdminDashboard = () => {
                                   </div>
                                   <button
                                     type="button"
-                                    disabled={maxAssignQty > 0 && currentQty >= maxAssignQty}
+                                    disabled={currentQty >= maxAssignQty}
                                     onClick={() => {
-                                      const next = maxAssignQty > 0 ? Math.min(maxAssignQty, currentQty + 1) : currentQty + 1;
+                                      const next = Math.min(maxAssignQty, currentQty + 1);
                                       setNewTour((prev) => ({
                                         ...prev,
                                         equipment_quantities: {
@@ -2988,11 +3010,9 @@ const AdminDashboard = () => {
                                     <Plus size={13} strokeWidth={2.5} />
                                   </button>
                                 </div>
-                                {maxAssignQty > 0 && (
-                                  <span className="text-[9px] text-slate-400 font-semibold mt-0.5 text-center">
-                                    max: {maxAssignQty} db
-                                  </span>
-                                )}
+                                <span className={`mt-0.5 text-center text-[9px] font-semibold ${currentQty > maxAssignQty ? 'text-rose-600' : 'text-slate-400'}`}>
+                                  {currentQty > maxAssignQty ? `Készlethiány · max: ${maxAssignQty} db` : `max: ${maxAssignQty} db`}
+                                </span>
                                 {isPassengerTransport && (
                                   <span className="text-[9px] text-sky-700 font-black mt-0.5 text-center">
                                     {currentQty * seatsPerUnit} ülőhely
@@ -3079,7 +3099,7 @@ const AdminDashboard = () => {
                 <textarea rows="4" required value={newTour.description} className="w-full p-4 bg-slate-50 border-none rounded-2xl mt-1 font-medium" 
                   onChange={e => setNewTour({...newTour, description: e.target.value})}></textarea>
               </div>
-              <button type="submit" className="md:col-span-2 relative group overflow-hidden w-full py-5 rounded-[2rem] font-black text-xl bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-xl hover:-translate-y-1 transition-all active:scale-95 flex items-center justify-center gap-3">
+              <button type="submit" className="admin-tour-save md:col-span-2 relative group overflow-hidden w-full py-4 font-bold text-base text-white transition-all flex items-center justify-center gap-3">
                 <span className="relative z-10">{editingTourId ? 'MÓDOSÍTÁSOK MENTÉSE' : 'TÚRA KÖZZÉTÉTELE'}</span>
                 <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000"></div>
               </button>

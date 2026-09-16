@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Bell, CalendarDays, CheckCheck, Mail, MessageSquare, User, X } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { io } from 'socket.io-client';
+import './NotificationsBell.css';
 
 const NotificationsBell = () => {
   const navigate = useNavigate();
@@ -126,24 +127,24 @@ const NotificationsBell = () => {
         onClick={() => {
           setIsOpen((open) => !open);
         }}
-        className="relative p-2 text-slate-500 hover:text-emerald-600 hover:bg-emerald-50 rounded-xl transition-all"
+        className="notification-bell-button"
         aria-label="Értesítések"
         title="Értesítések"
       >
         <Bell size={19} />
         {unreadCount > 0 && (
-          <span className="absolute -top-1 -right-1 min-w-4 h-4 px-1 rounded-full bg-red-500 text-white text-[9px] font-black flex items-center justify-center ring-2 ring-white">
+          <span className="notification-unread-badge">
             {unreadCount > 99 ? '99+' : unreadCount}
           </span>
         )}
       </button>
 
       {isOpen && (
-        <div className="absolute right-0 top-12 w-[min(24rem,calc(100vw-2rem))] overflow-hidden rounded-3xl border border-slate-100 bg-white shadow-2xl shadow-slate-900/15 z-[160]">
-          <div className="flex items-center justify-between gap-3 px-5 py-4 border-b border-slate-100">
+        <div className="notification-panel">
+          <div className="notification-panel-header">
             <div>
-              <div className="font-black text-slate-900">Értesítések</div>
-              <div className="text-[10px] font-bold uppercase tracking-widest text-slate-400">
+              <div className="notification-panel-title">Értesítések</div>
+              <div className="notification-panel-caption">
                 {unreadCount > 0 ? `${unreadCount} olvasatlan` : 'Minden elolvasva'}
               </div>
             </div>
@@ -191,19 +192,15 @@ const NotificationsBell = () => {
                     key={notification.id}
                     type="button"
                     onClick={() => markAsRead(notification)}
-                    className={`w-full flex gap-3 px-5 py-4 text-left border-b border-slate-50 transition hover:bg-emerald-50/60 ${
-                      notification.is_read ? 'bg-white' : 'bg-emerald-50/40'
-                    }`}
+                    className={`notification-row ${notification.is_read ? '' : 'is-unread'}`}
                   >
-                    <span className={`mt-0.5 w-9 h-9 shrink-0 rounded-xl flex items-center justify-center ${
-                      notification.is_read ? 'bg-slate-100 text-slate-400' : 'bg-emerald-100 text-emerald-600'
-                    }`}>
+                    <span className={`notification-type-icon ${notification.is_read ? '' : 'is-unread'}`}>
                       <Icon size={17} />
                     </span>
                     <span className="min-w-0 flex-1">
                       <span className="flex items-start justify-between gap-3">
-                        <span className="text-sm font-black text-slate-900 leading-tight">{notification.title}</span>
-                        {!notification.is_read && <span className="mt-1.5 w-2 h-2 shrink-0 rounded-full bg-emerald-500" />}
+                        <span className="notification-row-title">{notification.title}</span>
+                        {!notification.is_read && <span className="notification-new-dot" />}
                       </span>
                       {notification.message && (
                         <span className="mt-1 block text-xs text-slate-500 leading-relaxed line-clamp-2">

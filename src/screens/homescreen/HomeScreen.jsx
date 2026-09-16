@@ -1,83 +1,184 @@
-import React from 'react';
+import { createElement } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowRight, Map, ShieldCheck, Zap, Camera } from 'lucide-react';
+import {
+  ArrowRight, CalendarDays, Compass, MapPin,
+  ShieldCheck, Users
+} from 'lucide-react';
+import './HomeScreen.css';
+
+const journeys = [
+  {
+    number: '01',
+    title: 'Hegyi túrák',
+    description: 'Gerincek, csúcsok és hosszú panorámák tapasztalt túravezetőkkel.',
+    image: 'https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?auto=format&fit=crop&q=85&w=1200'
+  },
+  {
+    number: '02',
+    title: 'Vízi túrák',
+    description: 'Folyók és tavak más nézőpontból, közös ritmusban a vízen.',
+    image: 'https://images.unsplash.com/photo-1530789253388-582c481c54b0?auto=format&fit=crop&q=85&w=1200'
+  },
+  {
+    number: '03',
+    title: 'Motoros túrák',
+    description: 'Kanyargós utak és gondosan felépített útvonalak két keréken.',
+    image: 'https://images.unsplash.com/photo-1558981806-ec527fa84c39?auto=format&fit=crop&q=85&w=1200'
+  }
+];
+
+const principles = [
+  {
+    icon: ShieldCheck,
+    title: 'Felkészült vezetők',
+    text: 'A túrákat olyan vezetők szervezik, akik ismerik az útvonalat, a terepet és a csapat igényeit.'
+  },
+  {
+    icon: Users,
+    title: 'Valódi közösség',
+    text: 'A fontos információk, a résztvevők és a csevegés egy helyen maradnak a jelentkezéstől az indulásig.'
+  },
+  {
+    icon: CalendarDays,
+    title: 'Átlátható szervezés',
+    text: 'Időpontok, elérhető helyek, felszerelések és fizetési részletek világosan, meglepetések nélkül.'
+  }
+];
 
 const HomeScreen = () => {
   return (
-    <div className="bg-white overflow-hidden">
-      {/* --- HERO SECTION --- */}
-      <section className="relative h-[90vh] flex items-center justify-center">
-        {/* Háttér kép overlay-el */}
-        <div className="absolute inset-0 z-0">
-          <img 
-            src="https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?auto=format&fit=crop&q=80&w=2070" 
-            className="w-full h-full object-cover"
-            alt="Mountains"
+    <main className="home-page">
+      <section className="home-hero">
+        <div className="home-hero-media" aria-hidden="true">
+          <img
+            src="https://images.unsplash.com/photo-1464278533981-50106e6176b1?auto=format&fit=crop&q=88&w=2200"
+            alt=""
           />
-          <div className="absolute inset-0 bg-black/40 backdrop-blur-[2px]"></div>
         </div>
+        <div className="home-hero-overlay" />
+        <div className="home-hero-inner">
+          <div className="home-hero-copy">
+            <span className="home-kicker">Vezetett túrák · valódi közösség</span>
+            <h1>Menj messzebb.<br /><em>Érkezz közelebb.</em></h1>
+            <p>
+              Közösen megélt utak hegyen, vízen és aszfalton.
+              Válassz túrát, készülj fel velünk, és indulj el egy jó csapattal.
+            </p>
+            <div className="home-hero-actions">
+              <Link to="/tours" className="home-button home-button-primary">
+                Túrák felfedezése <ArrowRight size={18} />
+              </Link>
+              <Link to="/calendar" className="home-button home-button-ghost">
+                <CalendarDays size={17} /> Túranaptár
+              </Link>
+            </div>
+          </div>
 
-        <div className="relative z-10 text-center px-6 max-w-5xl">
-          <span className="inline-block py-1 px-4 rounded-full bg-emerald-500/20 border border-emerald-400/30 text-emerald-400 text-sm font-bold tracking-widest uppercase mb-6 animate-fade-in">
-            Fedezd fel a járatlan utat
-          </span>
-          <h1 className="text-6xl md:text-8xl font-black text-white leading-tight mb-8 tracking-tighter">
-            A kaland ott kezdődik, ahol az <span className="text-emerald-400 underline decoration-emerald-500/50">aszfalt véget ér.</span>
-          </h1>
-          <p className="text-xl text-gray-200 mb-10 max-w-2xl mx-auto leading-relaxed">
-            Szakadj ki a hétköznapokból. Profi túravezetőkkel, kis létszámú csoportokkal és életre szóló élményekkel várunk a legszebb csúcsokon.
+          <div className="home-hero-note">
+            <span><MapPin size={15} /> Következő útvonal</span>
+            <strong>A tiéd lehet.</strong>
+            <p>A jó történetek ritkán kezdődnek a kanapén.</p>
+          </div>
+        </div>
+        <div className="home-scroll-label"><span /> Görgess tovább</div>
+      </section>
+
+      <section className="home-intro home-container">
+        <div className="home-section-heading">
+          <span className="home-kicker">Találd meg a saját utad</span>
+          <h2>Nem ugyanoda tartunk.<br />De együtt indulunk.</h2>
+        </div>
+        <div className="home-intro-copy">
+          <p>
+            Van, akit a csendes erdei ösvény, mást a magashegyi panoráma vagy
+            a hosszú országút hív. Mi abban segítünk, hogy megtaláld a hozzád
+            illő túrát és azokat, akikkel jó lesz végigmenni rajta.
           </p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Link to="/tours" className="group bg-emerald-600 hover:bg-emerald-500 text-white px-8 py-4 rounded-2xl font-black text-lg transition-all flex items-center gap-2 shadow-2xl shadow-emerald-600/20">
-              Túrák böngészése <ArrowRight className="group-hover:translate-x-1 transition-transform" />
+          <Link to="/tour-search">Segíts túrát választani <ArrowRight size={16} /></Link>
+        </div>
+      </section>
+
+      <section className="home-journeys home-container" aria-labelledby="journey-title">
+        <div className="home-journeys-header">
+          <div>
+            <span className="home-kicker">Útvonalak és élmények</span>
+            <h2 id="journey-title">Merre indulnál?</h2>
+          </div>
+          <Link to="/tours" className="home-text-link">Minden túra <ArrowRight size={16} /></Link>
+        </div>
+
+        <div className="home-journey-grid">
+          {journeys.map((journey) => (
+            <Link to="/tours" className="home-journey-card" key={journey.title}>
+              <img src={journey.image} alt="" />
+              <span className="home-journey-shade" />
+              <span className="home-journey-number">{journey.number}</span>
+              <span className="home-journey-content">
+                <strong>{journey.title}</strong>
+                <span>{journey.description}</span>
+              </span>
+              <span className="home-journey-arrow"><ArrowRight size={19} /></span>
             </Link>
-            <Link to="/about-us" className="bg-white/10 hover:bg-white/20 backdrop-blur-md text-white border border-white/30 px-8 py-4 rounded-2xl font-black text-lg transition-all">
-              Hogyan működik?
+          ))}
+        </div>
+      </section>
+
+      <section className="home-story">
+        <div className="home-container home-story-grid">
+          <div className="home-story-media">
+            <img
+              src="https://images.unsplash.com/photo-1551632811-561732d1e306?auto=format&fit=crop&q=86&w=1400"
+              alt="Túrázók egy hegyi ösvényen"
+            />
+            <span className="home-image-caption"><Compass size={15} /> Az út közösen válik történetté</span>
+          </div>
+          <div className="home-story-copy">
+            <span className="home-kicker">Több mint egy útvonal</span>
+            <h2>A túra már jóval az indulás előtt elkezdődik.</h2>
+            <p>
+              A jelentkezéstől a felszerelés kiválasztásán át a közös
+              beszélgetésig minden fontos részletet egy helyen találsz.
+              Így amikor eljön az indulás napja, már csak az útra kell figyelned.
+            </p>
+            <Link to="/about-us" className="home-button home-button-dark">
+              Így működik <ArrowRight size={18} />
             </Link>
           </div>
         </div>
       </section>
 
-      {/* --- ELŐNYÖK (Features) --- */}
-      <section className="py-24 px-6 max-w-7xl mx-auto">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-12">
-          <div className="space-y-4">
-            <div className="w-14 h-14 bg-emerald-100 rounded-2xl flex items-center justify-center text-emerald-700">
-              <ShieldCheck size={30} />
-            </div>
-            <h3 className="text-2xl font-black text-emerald-950">Maximális Biztonság</h3>
-            <p className="text-gray-600 leading-relaxed">Minősített hegyi vezetőkkel és modern felszereléssel gondoskodunk arról, hogy csak az élményre kelljen figyelned.</p>
-          </div>
-          <div className="space-y-4">
-            <div className="w-14 h-14 bg-orange-100 rounded-2xl flex items-center justify-center text-orange-600">
-              <Zap size={30} />
-            </div>
-            <h3 className="text-2xl font-black text-emerald-950">Valódi Kihívás</h3>
-            <p className="text-gray-600 leading-relaxed">Nincsenek "turista csapdák". Mi oda viszünk, ahová a tömeg már nem jut el. Teszteld a határaidat!</p>
-          </div>
-          <div className="space-y-4">
-            <div className="w-14 h-14 bg-blue-100 rounded-2xl flex items-center justify-center text-blue-600">
-              <Camera size={30} />
-            </div>
-            <h3 className="text-2xl font-black text-emerald-950">Örök Emlékek</h3>
-            <p className="text-gray-600 leading-relaxed">Profi fotókat készítünk az út során, hogy ne a telefonodat kelljen bújnod a csúcson.</p>
-          </div>
+      <section className="home-principles home-container" aria-labelledby="principles-title">
+        <div className="home-principles-heading">
+          <span className="home-kicker">Ami minden úton számít</span>
+          <h2 id="principles-title">Jól szervezett kalandok,<br />emberi léptékben.</h2>
+        </div>
+        <div className="home-principle-list">
+          {principles.map(({ icon, title, text }, index) => (
+            <article className="home-principle" key={title}>
+              <span className="home-principle-index">0{index + 1}</span>
+              <span className="home-principle-icon">{createElement(icon, { size: 21, strokeWidth: 1.7 })}</span>
+              <div>
+                <h3>{title}</h3>
+                <p>{text}</p>
+              </div>
+            </article>
+          ))}
         </div>
       </section>
 
-      {/* --- CTA SECTION --- */}
-      <section className="bg-emerald-950 py-20 px-6 rounded-[3rem] mx-4 mb-10 overflow-hidden relative">
-        <div className="max-w-4xl mx-auto text-center relative z-10">
-          <h2 className="text-4xl md:text-5xl font-black text-white mb-6">Készen állsz az első lépésre?</h2>
-          <p className="text-emerald-200/70 text-lg mb-10">Csatlakozz több mint 500 elégedett túrázóhoz és fedezd fel a Kárpátok vagy az Alpok legszebb részeit.</p>
-          <Link to="/register" className="inline-block bg-emerald-600 hover:bg-emerald-500 text-white px-10 py-5 rounded-2xl font-black text-xl transition-all hover:scale-105 shadow-xl shadow-orange-500/20">
-            Fiók létrehozása most
+      <section className="home-cta home-container">
+        <div className="home-cta-copy">
+          <span className="home-kicker">A következő történet</span>
+          <h2>Ott kezdődik,<br />ahol elindulsz.</h2>
+        </div>
+        <div className="home-cta-action">
+          <p>Nézd meg a közelgő túrákat, és foglald le a helyed a következő közös útra.</p>
+          <Link to="/tours" className="home-button home-button-light">
+            Indulok <ArrowRight size={18} />
           </Link>
         </div>
-        {/* Dekoratív elem */}
-        <div className="absolute top-0 right-0 -translate-y-1/2 translate-x-1/4 w-96 h-96 bg-emerald-500/10 rounded-full blur-3xl"></div>
       </section>
-    </div>
+    </main>
   );
 };
 

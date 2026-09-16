@@ -1,0 +1,420 @@
+.admin-dashboard {
+  --admin-ink: #173327;
+  --admin-green: #275940;
+  --admin-muted: #66766b;
+  --admin-line: #d9dfd5;
+  --admin-paper: #fffefa;
+  min-height: 100vh;
+  background: #f5f5f0;
+  color: var(--admin-ink);
+  font-family: inherit;
+}
+
+.admin-dashboard .admin-eyebrow {
+  display: block;
+  color: #658269;
+  font-size: 0.67rem;
+  font-weight: 800;
+  letter-spacing: 0.17em;
+  line-height: 1.5;
+  text-transform: uppercase;
+}
+
+.admin-rail {
+  overflow: hidden;
+  border: 1px solid #214934;
+  border-radius: 1.25rem;
+  background: #173327;
+  color: #f9faf4;
+  box-shadow: 0 16px 36px rgb(25 47 34 / 10%);
+}
+
+.admin-rail-brand {
+  padding: 1.7rem 1.25rem 1.5rem;
+  border-bottom: 1px solid rgb(255 255 255 / 13%);
+}
+
+.admin-rail-brand .admin-eyebrow {
+  color: #a9c4a7;
+}
+
+.admin-rail-title {
+  margin-top: 0.6rem;
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 1.8rem;
+  line-height: 1.15;
+  letter-spacing: -0.035em;
+}
+
+.admin-rail-title span {
+  color: #c9a66b;
+}
+
+.admin-rail-brand p {
+  margin-top: 0.75rem;
+  color: #b7c9b9;
+  font-size: 0.78rem;
+  line-height: 1.5;
+}
+
+.admin-nav {
+  display: grid;
+  gap: 0.2rem;
+  padding: 0.8rem;
+}
+
+.admin-nav-item {
+  display: flex;
+  min-height: 2.8rem;
+  width: 100%;
+  align-items: center;
+  gap: 0.72rem;
+  border: 1px solid transparent;
+  border-radius: 0.65rem;
+  padding: 0.55rem 0.85rem;
+  color: #c8d9c9;
+  font-size: 0.85rem;
+  font-weight: 600;
+  text-align: left;
+  transition: background-color 150ms, border-color 150ms, color 150ms;
+}
+
+.admin-nav-item:hover,
+.admin-nav-item:focus-visible {
+  background: rgb(255 255 255 / 9%);
+  color: white;
+}
+
+.admin-nav-item.is-active {
+  border-color: rgb(202 224 193 / 18%);
+  background: #eef3e9;
+  color: #173327;
+}
+
+.admin-nav-count {
+  margin-left: auto;
+  border-radius: 999px;
+  background: #bd8a5a;
+  padding: 0.1rem 0.4rem;
+  color: white;
+  font-size: 0.65rem;
+  font-weight: 800;
+}
+
+.admin-rail-status {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.7rem;
+  margin: 0.35rem 0.8rem 0.8rem;
+  border-top: 1px solid rgb(255 255 255 / 13%);
+  padding: 1.1rem 0.45rem 0.35rem;
+}
+
+.admin-rail-status .admin-eyebrow {
+  color: #a5baa8;
+}
+
+.admin-rail-status strong {
+  display: block;
+  margin-top: 0.2rem;
+  color: white;
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
+.admin-status-dot {
+  height: 0.55rem;
+  width: 0.55rem;
+  flex: none;
+  margin-top: 0.27rem;
+  border-radius: 50%;
+  background: #c5a56f;
+  box-shadow: 0 0 0 4px rgb(197 165 111 / 17%);
+}
+
+.admin-page-header {
+  border-bottom: 1px solid var(--admin-line);
+  padding: 0.5rem 0 1.6rem;
+}
+
+.admin-page-title {
+  margin-top: 0.4rem;
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: clamp(2.6rem, 5vw, 4.35rem);
+  font-weight: 400;
+  letter-spacing: -0.05em;
+  line-height: 1.08;
+}
+
+.admin-page-description {
+  margin-top: 0.7rem;
+  color: var(--admin-muted);
+  font-size: 0.95rem;
+}
+
+.admin-primary-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.6rem;
+  min-height: 2.9rem;
+  border-radius: 0.7rem;
+  background: var(--admin-green);
+  padding: 0.75rem 1.1rem;
+  color: white;
+  font-size: 0.82rem;
+  font-weight: 700;
+  transition: background-color 150ms, transform 150ms;
+}
+
+.admin-primary-action:hover {
+  background: #173d2a;
+  transform: translateY(-1px);
+}
+
+.admin-overview-intro {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.admin-overview-intro h2,
+.admin-chart-card h3 {
+  margin-top: 0.25rem;
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 1.65rem;
+  font-weight: 400;
+  letter-spacing: -0.03em;
+}
+
+.admin-overview-intro > span {
+  color: var(--admin-muted);
+  font-size: 0.75rem;
+  white-space: nowrap;
+}
+
+.admin-stat-card,
+.admin-chart-card,
+.admin-panel,
+.admin-tour-group {
+  border: 1px solid var(--admin-line);
+  border-radius: 1rem;
+  background: var(--admin-paper);
+  box-shadow: 0 6px 24px rgb(29 49 32 / 4%);
+}
+
+.admin-stat-card {
+  display: flex;
+  min-height: 10.2rem;
+  flex-direction: column;
+  padding: 1.25rem 1.35rem;
+}
+
+.admin-stat-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  color: #5e7262;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.admin-stat-top svg {
+  color: #7c9a7d;
+}
+
+.admin-stat-card strong {
+  margin-top: auto;
+  color: var(--admin-ink);
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: clamp(1.75rem, 2.5vw, 2.2rem);
+  font-weight: 400;
+  letter-spacing: -0.04em;
+  line-height: 1.1;
+}
+
+.admin-stat-detail {
+  margin-top: 0.45rem;
+  color: #7b897d;
+  font-size: 0.76rem;
+}
+
+.admin-chart-card {
+  min-width: 0;
+  padding: 1.5rem;
+}
+
+.admin-chart-total {
+  color: #38634a;
+  font-size: 0.78rem;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.admin-panel {
+  overflow: hidden;
+}
+
+.admin-main > .admin-panel > div:first-child {
+  border-bottom: 1px solid var(--admin-line);
+  background: var(--admin-paper);
+}
+
+.admin-panel h2 {
+  color: var(--admin-ink);
+  font-family: Georgia, 'Times New Roman', serif;
+  font-weight: 400;
+  letter-spacing: -0.03em;
+}
+
+.admin-main .admin-panel [class*='rounded-[2rem]'],
+.admin-main .admin-panel [class*='rounded-[3rem]'],
+.admin-main .admin-panel .rounded-3xl {
+  border-radius: 0.85rem;
+}
+
+.admin-main > .admin-panel [class*='bg-gradient-to-r'] {
+  background: var(--admin-paper);
+}
+
+.admin-main button.bg-emerald-600 {
+  background: var(--admin-green);
+}
+
+.admin-main button.bg-emerald-600:hover {
+  background: #173d2a;
+}
+
+.admin-main button.rounded-2xl {
+  border-radius: 0.65rem;
+}
+
+.admin-main .bg-slate-50,
+.admin-main .bg-gray-50 {
+  background: #f3f5ef;
+}
+
+.admin-main input:not([type='checkbox']):not([type='radio']),
+.admin-main select,
+.admin-main textarea {
+  border-color: #d8e0d5;
+}
+
+.admin-main input:focus-visible,
+.admin-main select:focus-visible,
+.admin-main textarea:focus-visible,
+.admin-nav-item:focus-visible,
+.admin-primary-action:focus-visible {
+  outline: 2px solid #6b9873;
+  outline-offset: 2px;
+}
+
+.admin-tour-group {
+  padding: 0.75rem;
+}
+
+.admin-tour-group-toggle {
+  border-radius: 0.65rem;
+  padding: 0.8rem 1rem;
+}
+
+.admin-tour-group-toggle:hover {
+  background: #f3f5ef;
+}
+
+.admin-tour-card {
+  border: 1px solid #dbe2d8;
+  border-radius: 0.85rem;
+  background: white;
+}
+
+.admin-tour-card:hover {
+  border-color: #98ad98;
+  box-shadow: 0 8px 24px rgb(29 49 32 / 9%);
+}
+
+.admin-tour-card.is-expired {
+  border-color: #e6d7d0;
+  background: #fffaf7;
+}
+
+.admin-waitlists > .admin-panel h2 {
+  font-family: Georgia, 'Times New Roman', serif;
+  font-weight: 400;
+}
+
+.admin-waitlists > div > [class*='rounded-3xl'] {
+  border-color: var(--admin-line);
+  border-radius: 0.9rem;
+  box-shadow: 0 6px 24px rgb(29 49 32 / 4%);
+}
+
+.admin-tour-modal {
+  border: 1px solid var(--admin-line);
+  border-radius: 1.2rem;
+  background: var(--admin-paper);
+  box-shadow: 0 25px 80px rgb(8 28 17 / 25%);
+}
+
+.admin-tour-modal label {
+  color: #667b69;
+  letter-spacing: 0.1em;
+}
+
+.admin-tour-modal input:not([type='checkbox']):not([type='radio']),
+.admin-tour-modal select,
+.admin-tour-modal textarea {
+  border: 1px solid #d8e0d5;
+  border-radius: 0.7rem;
+  background: #f5f7f2;
+  color: var(--admin-ink);
+}
+
+.admin-tour-modal input:focus-visible,
+.admin-tour-modal select:focus-visible,
+.admin-tour-modal textarea:focus-visible {
+  outline: 2px solid #6b9873;
+  outline-offset: 2px;
+}
+
+.admin-tour-save {
+  border-radius: 0.75rem;
+  background: var(--admin-green);
+}
+
+.admin-tour-save:hover {
+  background: #173d2a;
+}
+
+@media (max-width: 1023px) {
+  .admin-nav {
+    display: flex;
+    overflow-x: auto;
+    scrollbar-width: thin;
+  }
+
+  .admin-nav-item {
+    width: auto;
+    flex: none;
+    white-space: nowrap;
+  }
+
+  .admin-rail-brand p,
+  .admin-rail-status {
+    display: none;
+  }
+}
+
+@media (max-width: 639px) {
+  .admin-overview-intro {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .admin-chart-card {
+    padding: 1.1rem;
+  }
+}

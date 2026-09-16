@@ -4,11 +4,12 @@ import { AuthContext } from '../../context/AuthContext';
 import { 
   Plus, Minus, AlertTriangle,
   Clock, MapPin, Calendar, Users, ArrowLeft, 
-  Zap, Info, ShieldCheck, CheckCircle2, UserMinus, ThumbsUp, X, XCircle, Edit3, Trash2, ChevronDown, ChevronUp
+  Zap, Info, Share2, ShieldCheck, CheckCircle2, UserMinus, ThumbsUp, X, XCircle, Edit3, Trash2, ChevronDown, ChevronUp
 } from 'lucide-react';
 import { toast } from 'react-toastify';
 import { io } from 'socket.io-client';
 import { formatPrice, formatPriceInput, parsePriceInput } from '../../utils/formatPrice';
+import TourShareModal from '../../components/TourShareModal';
 
 // Ideiglenesen kikapcsolva: a meglévő kommentek olvashatók maradnak,
 // de új komment és válasz nem küldhető.
@@ -30,10 +31,23 @@ const getTodayDateInputValue = () => {
   return `${year}-${month}-${day}`;
 };
 
+const formatTourDate = (value) => {
+  if (!value) return 'Időpont egyeztetés alatt';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return 'Időpont egyeztetés alatt';
+  return new Intl.DateTimeFormat('hu-HU', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+    timeZone: 'UTC'
+  }).format(date);
+};
+
 const TourDetailsScreen = () => {
   const { id } = useParams();
   const location = useLocation();
   const [tour, setTour] = useState(null);
+  const [isShareOpen, setIsShareOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [isBooked, setIsBooked] = useState(false);
   const [bookingStatus, setBookingStatus] = useState(null);
@@ -1125,7 +1139,8 @@ const TourDetailsScreen = () => {
   if (!tour) return <div className="p-20 text-center font-black text-slate-400">Túra nem található.</div>;
 
   return (
-    <div className="bg-[#fcfdfe] min-h-screen pb-12 font-sans">
+    <div className="min-h-screen bg-[#f5f5f0] pb-12 font-sans">
+      {isShareOpen && <TourShareModal tour={tour} onClose={() => setIsShareOpen(false)} />}
       {paymentProcessing && (
         <div className="fixed inset-0 z-[200] bg-black/40 flex items-center justify-center px-6">
           <div className="bg-white rounded-3xl shadow-2xl border border-emerald-50 p-8 max-w-md text-center">
@@ -1135,55 +1150,61 @@ const TourDetailsScreen = () => {
           </div>
         </div>
       )}
-      {/* --- HERO SECTION - Kompaktabb magasság --- */}
-      <div className="relative h-[40vh] md:h-[45vh] w-full overflow-hidden shadow-lg">
-        <img src={tour.image_url} className="w-full h-full object-cover" alt={tour.title} />
-        <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-transparent to-black/20"></div>
-        
-        {/* Navigáció */}
-        <div className="absolute top-6 left-6 z-20">
-          <Link 
-            to={fromCalendar ? "/calendar" : "/tours"} 
-            className="inline-flex items-center gap-2 text-white bg-white/10 backdrop-blur-md border border-white/20 px-4 py-2 rounded-xl hover:bg-emerald-600 transition-all text-xs font-bold uppercase tracking-wider"
-          >
-            <ArrowLeft size={16} /> 
-            {fromCalendar ? "Vissza a naptárhoz" : "Vissza a túrákhoz"}
-          </Link>
-        </div>
+      <header className="relative isolate min-h-[30rem] overflow-hidden bg-[#173327] text-white md:min-h-[35rem]">
+        {tour.image_url && <img src={tour.image_url} className="absolute inset-0 h-full w-full object-cover" alt={tour.title} />}
+        <div className="absolute inset-0 bg-gradient-to-t from-[#10251c]/95 via-[#10251c]/45 to-[#10251c]/40" />
+        <div className="relative mx-auto flex min-h-[30rem] max-w-6xl flex-col justify-between px-6 pb-12 pt-7 md:min-h-[35rem] md:pb-16">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <Link
+              to={fromCalendar ? '/calendar' : '/tours'}
+              className="inline-flex items-center gap-2 border-b border-white/60 pb-1 text-sm font-medium text-white transition hover:border-white hover:text-[#dce8d3]"
+            >
+              <ArrowLeft size={16} />
+              {fromCalendar ? 'Vissza a naptárhoz' : 'Vissza a túrákhoz'}
+            </Link>
+            <button
+              type="button"
+              onClick={() => setIsShareOpen(true)}
+              className="inline-flex items-center gap-2 rounded-full border border-white/55 bg-[#10251c]/25 px-4 py-2 text-sm font-medium text-white transition hover:bg-white hover:text-[#173327]"
+            >
+              <Share2 size={16} /> Megosztás
+            </button>
+          </div>
 
-        {/* Cím */}
-        <div className="absolute bottom-8 left-0 w-full px-6 md:px-12">
-          <div className="max-w-6xl mx-auto">
-            <div className="flex items-center gap-2 text-emerald-400 font-bold uppercase tracking-widest text-[10px] mb-2">
-              <MapPin size={14} /> {tour.location}
-            </div>
-            <h1 className="text-3xl md:text-5xl font-black text-white leading-tight tracking-tighter uppercase italic">
+          <div className="max-w-4xl">
+            <p className="mb-4 text-xs font-semibold uppercase tracking-[0.22em] text-[#d5e7cb]">
+              {tour.category || 'Közös élmények'} <span className="mx-2 text-white/50">/</span> Túra
+            </p>
+            <h1 className="max-w-3xl font-serif text-5xl leading-[1.02] tracking-[-0.035em] text-white sm:text-6xl md:text-7xl">
               {tour.title}
             </h1>
+            <div className="mt-7 flex flex-wrap gap-x-7 gap-y-3 border-t border-white/35 pt-4 text-sm font-medium text-white/90">
+              <span className="inline-flex items-center gap-2"><MapPin size={16} /> {tour.location}</span>
+              <span className="inline-flex items-center gap-2"><Calendar size={16} /> {formatTourDate(tour.start_date)}</span>
+            </div>
           </div>
         </div>
-      </div>
+      </header>
 
-      {/* --- TARTALOM - Szűkebb konténer --- */}
-      <div className="max-w-6xl mx-auto px-6 grid grid-cols-1 lg:grid-cols-12 gap-8 mt-8">
+      <div className="mx-auto mt-9 grid max-w-6xl grid-cols-1 gap-8 px-6 lg:grid-cols-12">
         
         {/* Bal oldal - 8 oszlop */}
         <div className="lg:col-span-8 space-y-8">
 
-          {/* Tabok */}
-          <div className="bg-white p-2 rounded-2xl border border-slate-100 shadow-sm inline-flex gap-2">
+          {/* A bemutató és a közösségi részek navigációja. */}
+          <div className="flex max-w-full gap-6 overflow-x-auto border-b border-[#ced6c9]">
             <button
               onClick={() => setActiveTab('details')}
-              className={`px-4 py-2 rounded-xl text-[11px] font-black uppercase tracking-widest transition ${
-                activeTab === 'details' ? 'bg-emerald-600 text-white' : 'text-slate-500 hover:bg-slate-50'
+              className={`shrink-0 border-b-2 px-0 pb-3 text-sm font-semibold transition ${
+                activeTab === 'details' ? 'border-[#275940] text-[#173327]' : 'border-transparent text-[#687a6e] hover:text-[#173327]'
               }`}
             >
               Alapadatok
             </button>
             <button
               onClick={() => setActiveTab('posts')}
-              className={`px-4 py-2 rounded-xl text-[11px] font-black uppercase tracking-widest transition ${
-                activeTab === 'posts' ? 'bg-emerald-600 text-white' : 'text-slate-500 hover:bg-slate-50'
+              className={`shrink-0 border-b-2 px-0 pb-3 text-sm font-semibold transition ${
+                activeTab === 'posts' ? 'border-[#275940] text-[#173327]' : 'border-transparent text-[#687a6e] hover:text-[#173327]'
               }`}
             >
               Fontos információk
@@ -1191,8 +1212,8 @@ const TourDetailsScreen = () => {
             {user && isChatAllowed && (
               <button
                 onClick={() => setActiveTab('chat')}
-                className={`px-4 py-2 rounded-xl text-[11px] font-black uppercase tracking-widest transition ${
-                  activeTab === 'chat' ? 'bg-emerald-600 text-white' : 'text-slate-500 hover:bg-slate-50'
+                className={`shrink-0 border-b-2 px-0 pb-3 text-sm font-semibold transition ${
+                  activeTab === 'chat' ? 'border-[#275940] text-[#173327]' : 'border-transparent text-[#687a6e] hover:text-[#173327]'
                 }`}
               >
                 Csevegés
@@ -1202,36 +1223,38 @@ const TourDetailsScreen = () => {
 
           {activeTab === 'details' && (
             <>
-              {/* Info Grid - Kisebb kártyák */}
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                {[
-                  { icon: <Clock size={18}/>, label: 'Idő', val: `${tour.duration} nap` },
-                  { icon: <Zap size={18}/>, label: 'Szint', val: tour.difficulty },
-                  {
-                    icon: <Users size={18}/>,
-                    label: 'Elérhető helyek',
-                    val: `${Math.max(0, Number(tour.max_participants || 0) - Number(tour.booked_count || 0))} fő`
-                  },
-                  { icon: <MapPin size={18}/>, label: 'Kategória', val: tour.category || '-' }
-                ].map((item, i) => (
-                  <div key={i} className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm flex flex-col items-center text-center">
-                    <div className="text-emerald-500 mb-1">{item.icon}</div>
-                    <div className="text-[9px] text-slate-400 uppercase font-black tracking-tighter">{item.label}</div>
-                    <div className="font-bold text-slate-800 text-sm">{item.val}</div>
-                  </div>
-                ))}
-              </div>
-
-              {/* Leírás */}
-              <div className="bg-white p-8 rounded-3xl border border-slate-100 shadow-sm">
-                <div className="flex items-center gap-2 mb-4 text-emerald-600">
-                  <Info size={20} />
-                  <h2 className="text-lg font-black uppercase tracking-tight italic text-slate-900">A túra részletei</h2>
+              <section aria-labelledby="tour-facts-title">
+                <div className="mb-4 flex items-baseline justify-between gap-4">
+                  <h2 id="tour-facts-title" className="font-serif text-3xl text-[#173327]">Tudnivalók</h2>
+                  <span className="text-xs font-medium uppercase tracking-[0.12em] text-[#758579]">A túra adatai</span>
                 </div>
-                <p className="text-slate-600 leading-relaxed text-base font-medium">
+                <dl className="grid gap-x-10 sm:grid-cols-2">
+                  {[
+                    { icon: <Calendar size={19} strokeWidth={1.7} />, label: 'Időpont', value: `${formatTourDate(tour.start_date)} – ${formatTourDate(tour.end_date)}` },
+                    { icon: <Clock size={19} strokeWidth={1.7} />, label: 'Időtartam', value: tour.duration ? `${tour.duration} nap` : '—' },
+                    { icon: <MapPin size={19} strokeWidth={1.7} />, label: 'Helyszín', value: tour.location || '—' },
+                    { icon: <Zap size={19} strokeWidth={1.7} />, label: 'Nehézség', value: tour.difficulty || '—' },
+                    { icon: <Users size={19} strokeWidth={1.7} />, label: 'Elérhető helyek', value: `${Math.max(0, Number(tour.max_participants || 0) - Number(tour.booked_count || 0))} fő` },
+                    { icon: <Info size={19} strokeWidth={1.7} />, label: 'Túratípus', value: tour.category || '—' }
+                  ].map(({ icon, label, value }) => (
+                    <div key={label} className="flex gap-4 border-t border-[#d8dfd4] py-5">
+                      <span className="mt-0.5 shrink-0 text-[#477258]">{icon}</span>
+                      <div className="min-w-0">
+                        <dt className="text-xs font-semibold uppercase tracking-[0.12em] text-[#718174]">{label}</dt>
+                        <dd className="mt-1 text-base font-medium leading-snug text-[#20382a]">{value}</dd>
+                      </div>
+                    </div>
+                  ))}
+                </dl>
+              </section>
+
+              <section aria-labelledby="tour-description-title" className="border-l-[3px] border-[#799a6f] bg-[#ecefe6] px-6 py-8 md:px-10 md:py-10">
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#5e755f]">Ismerd meg az útvonalat</p>
+                <h2 id="tour-description-title" className="mt-2 font-serif text-3xl text-[#173327] md:text-4xl">A túra részletei</h2>
+                <p className="mt-6 whitespace-pre-line text-[1.05rem] leading-8 text-[#34493b]">
                   {tour.description}
                 </p>
-              </div>
+              </section>
 
               {user?.role === 'admin' && (
                 <div className="bg-white p-8 rounded-3xl border border-slate-100 shadow-sm">
@@ -1265,254 +1288,287 @@ const TourDetailsScreen = () => {
           )}
 
           {activeTab === 'posts' && (
-            <div className="space-y-6">
+            <section aria-labelledby="tour-posts-title" className="space-y-8">
+              <div className="border-b border-[#d8dfd4] pb-5">
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#648067]">A túra naplója</p>
+                <h2 id="tour-posts-title" className="mt-2 font-serif text-3xl text-[#173327] md:text-4xl">Fontos információk</h2>
+                <p className="mt-2 max-w-xl text-sm leading-6 text-[#65756a]">A túravezető közleményei és a túrához kapcsolódó tudnivalók egy helyen.</p>
+              </div>
               {user?.role === 'admin' && (
-                <form onSubmit={handleCreatePost} className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm space-y-4">
-                  <div className="text-[10px] font-black uppercase tracking-widest text-emerald-600">Admin bejegyzés</div>
+                <form onSubmit={handleCreatePost} className="space-y-4 border border-[#d5ded2] bg-[#ecf0e8] p-6 md:p-8">
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#5f7962]">Túravezetői közlemény</p>
+                    <h3 className="mt-1 font-serif text-2xl text-[#173327]">Új bejegyzés</h3>
+                  </div>
                   <input
                     type="text"
                     placeholder="Cím (opcionális)"
-                    className="w-full p-4 bg-slate-50 border-none rounded-2xl focus:ring-2 focus:ring-emerald-500 outline-none transition font-semibold"
+                    aria-label="Bejegyzés címe"
+                    className="w-full border border-[#cad6c9] bg-white px-4 py-3.5 text-[#20382a] outline-none transition placeholder:text-[#879489] focus:border-[#477258] focus:ring-1 focus:ring-[#477258]"
                     value={newPost.title}
                     onChange={(e) => setNewPost(prev => ({ ...prev, title: e.target.value }))}
                   />
                   <textarea
                     rows="4"
                     placeholder="Bejegyzés tartalma..."
-                    className="w-full p-4 bg-slate-50 border-none rounded-2xl focus:ring-2 focus:ring-emerald-500 outline-none transition font-medium"
+                    aria-label="Bejegyzés tartalma"
+                    className="w-full border border-[#cad6c9] bg-white px-4 py-3.5 leading-7 text-[#20382a] outline-none transition placeholder:text-[#879489] focus:border-[#477258] focus:ring-1 focus:ring-[#477258]"
                     value={newPost.content}
                     onChange={(e) => setNewPost(prev => ({ ...prev, content: e.target.value }))}
                     required
                   />
-                  <button className="bg-emerald-600 text-white px-6 py-3 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-emerald-700 transition">
+                  <button className="border border-[#193b2b] bg-[#193b2b] px-6 py-3 text-sm font-semibold text-white transition hover:bg-[#2e5c41]">
                     Közzététel
                   </button>
                 </form>
               )}
 
               {postsLoading ? (
-                <div className="flex items-center justify-center py-12">
-                  <div className="animate-spin h-8 w-8 border-4 border-emerald-500 border-t-transparent rounded-full"></div>
+                <div className="flex items-center gap-3 py-10 text-sm text-[#607367]" role="status">
+                  <div className="h-5 w-5 animate-spin rounded-full border-2 border-[#477258] border-t-transparent"></div>
+                  Bejegyzések betöltése...
                 </div>
               ) : posts.length === 0 ? (
-                <div className="text-center py-12 bg-white rounded-3xl border border-dashed border-slate-200">
-                  <p className="text-slate-500 font-semibold">Még nincs bejegyzés ennél a túránál.</p>
+                <div className="border-y border-[#d8dfd4] py-12">
+                  <p className="font-serif text-2xl text-[#173327]">Még nincs közlemény.</p>
+                  <p className="mt-2 text-sm text-[#65756a]">Ha új tudnivaló kerül fel a túrához, itt fog megjelenni.</p>
                 </div>
               ) : (
-                <div className="space-y-6">
-                  {posts.map((post) => (
-                    <div key={post.id} className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm">
-                      <div className={`flex items-center justify-between gap-4 ${expandedPostId === post.id ? 'mb-4' : ''}`}>
+                <div className="border-t border-[#d8dfd4]">
+                  {posts.map((post, index) => (
+                    <article key={post.id} className="border-b border-[#d8dfd4] py-6 md:py-7">
+                      <div className="flex items-start gap-4 md:gap-6">
+                        <span className="w-7 shrink-0 pt-1 font-serif text-lg text-[#819383] md:w-9">{String(index + 1).padStart(2, '0')}</span>
+                        <div className="min-w-0 flex-1">
                         <button
                           type="button"
                           onClick={() => setExpandedPostId((current) => current === post.id ? null : post.id)}
-                          className="min-w-0 flex-1 text-left rounded-2xl p-2 -m-2 hover:bg-slate-50 transition"
+                          className="group flex w-full min-w-0 items-start justify-between gap-4 text-left"
                           aria-expanded={expandedPostId === post.id}
                           aria-controls={`tour-post-${post.id}`}
                         >
-                          <div className="flex flex-wrap items-center gap-3 mb-1.5">
-                            <div className="text-[10px] font-black uppercase tracking-widest text-emerald-600">
-                              {post.author_name}
+                          <div className="min-w-0">
+                            <div className="mb-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-[#748478]">
+                              <span className="font-semibold text-[#42634b]">{post.author_name}</span>
+                              <span aria-hidden="true">·</span>
+                              <time dateTime={post.created_at}>{formatTourDate(post.created_at)}</time>
                             </div>
-                            <div className="text-[10px] font-bold text-slate-400">
-                              {new Date(post.created_at).toLocaleDateString()}
-                            </div>
+                            <h3 className="font-serif text-2xl leading-tight text-[#173327] transition group-hover:text-[#417050] md:text-[1.75rem]">
+                              {post.title || 'Bejegyzés'}
+                            </h3>
                           </div>
-                          <h3 className="truncate text-lg font-black text-slate-900">
-                            {post.title || 'Bejegyzés'}
-                          </h3>
+                          <span className="mt-1 shrink-0 text-[#477258]" aria-hidden="true">
+                            {expandedPostId === post.id ? <ChevronUp size={21} /> : <ChevronDown size={21} />}
+                          </span>
                         </button>
-                        <div className="flex items-center gap-2">
-                          <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-50 text-emerald-700 text-[9px] font-black uppercase tracking-widest">
-                            {tour?.location || 'Túra'}
-                          </div>
-                          {user?.role === 'admin' && (
-                            <div className="flex items-center gap-1.5 ml-1">
+                        {user?.role === 'admin' && (
+                          <div className="mt-4 flex flex-wrap items-center gap-2">
                               <button
+                                type="button"
                                 onClick={() => handleStartEditPost(post)}
-                                className="flex items-center gap-1 px-3 py-1 rounded-lg text-xs font-bold text-slate-600 hover:text-emerald-700 hover:bg-emerald-50 border border-slate-200 bg-white transition shadow-xs"
+                                className="inline-flex items-center gap-1.5 border-b border-[#a6b6a5] pb-0.5 text-xs font-semibold text-[#42634b] transition hover:border-[#173327] hover:text-[#173327]"
                                 title="Bejegyzés módosítása"
                               >
-                                <Edit3 size={13} className="text-emerald-600" />
+                                <Edit3 size={13} />
                                 <span>Módosítás</span>
                               </button>
                               <button
+                                type="button"
                                 onClick={() => handleDeletePost(post.id)}
                                 disabled={deletePostLoadingId === post.id}
-                                className="flex items-center gap-1 p-1.5 rounded-lg text-xs font-bold text-slate-400 hover:text-red-600 hover:bg-red-50 border border-slate-200 bg-white transition disabled:opacity-50"
+                                className="inline-flex items-center gap-1.5 border-b border-transparent pb-0.5 text-xs font-semibold text-[#857d72] transition hover:border-[#9c4c42] hover:text-[#9c4c42] disabled:opacity-50"
                                 title="Bejegyzés törlése"
                               >
-                                <Trash2 size={13} />
+                                <Trash2 size={13} /> Törlés
                               </button>
-                            </div>
-                          )}
-                          <button
-                            type="button"
-                            onClick={() => setExpandedPostId((current) => current === post.id ? null : post.id)}
-                            className="p-2 rounded-xl border border-slate-100 bg-white text-slate-500 hover:bg-slate-50 hover:text-emerald-700 transition"
-                            aria-label={expandedPostId === post.id ? 'Bejegyzés bezárása' : 'Bejegyzés lenyitása'}
-                            aria-expanded={expandedPostId === post.id}
-                            aria-controls={`tour-post-${post.id}`}
-                          >
-                            {expandedPostId === post.id ? <ChevronUp size={19} /> : <ChevronDown size={19} />}
-                          </button>
+                          </div>
+                        )}
                         </div>
                       </div>
 
                       {expandedPostId === post.id && (
-                        <div id={`tour-post-${post.id}`} className="animate-in fade-in slide-in-from-top-2 duration-200">
+                        <div id={`tour-post-${post.id}`} className="ml-11 mt-6 border-l-2 border-[#a8bea7] pl-5 md:ml-[3.75rem] md:pl-7">
                           {editingPostId === post.id ? (
-                            <form onSubmit={(e) => handleUpdatePost(e, post.id)} className="space-y-3 mb-4 p-5 bg-slate-50 rounded-2xl border border-emerald-100">
-                          <div className="text-[11px] font-black uppercase tracking-widest text-emerald-700 flex items-center gap-1.5">
-                            <Edit3 size={14} /> Bejegyzés módosítása
-                          </div>
-                          <input
-                            type="text"
-                            placeholder="Cím (opcionális)"
-                            className="w-full p-3.5 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none transition font-bold text-slate-900"
-                            value={editPostForm.title}
-                            onChange={(e) => setEditPostForm(prev => ({ ...prev, title: e.target.value }))}
-                          />
-                          <textarea
-                            rows="4"
-                            placeholder="Bejegyzés tartalma..."
-                            className="w-full p-3.5 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none transition font-medium text-slate-700"
-                            value={editPostForm.content}
-                            onChange={(e) => setEditPostForm(prev => ({ ...prev, content: e.target.value }))}
-                            required
-                          />
-                          <div className="flex items-center justify-end gap-2 pt-2">
-                            <button
-                              type="button"
-                              onClick={handleCancelEditPost}
-                              disabled={editPostSubmitting}
-                              className="px-4 py-2 rounded-xl text-xs font-bold text-slate-500 hover:bg-slate-200 transition"
-                            >
-                              Mégse
-                            </button>
-                            <button
-                              type="submit"
-                              disabled={editPostSubmitting}
-                              className="px-5 py-2.5 rounded-xl bg-emerald-600 text-white font-black text-xs uppercase tracking-widest hover:bg-emerald-700 transition disabled:opacity-50 flex items-center gap-1.5 shadow-sm"
-                            >
-                              {editPostSubmitting ? 'Mentés...' : 'Módosítások mentése'}
-                            </button>
-                          </div>
+                            <form onSubmit={(e) => handleUpdatePost(e, post.id)} className="mb-6 space-y-3 bg-[#ecf0e8] p-5 md:p-6">
+                              <div className="mb-4 flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.12em] text-[#42634b]">
+                                <Edit3 size={15} /> Bejegyzés módosítása
+                              </div>
+                              <input
+                                type="text"
+                                placeholder="Cím (opcionális)"
+                                aria-label="Bejegyzés címe"
+                                className="w-full border border-[#cad6c9] bg-white px-4 py-3 text-[#20382a] outline-none focus:border-[#477258] focus:ring-1 focus:ring-[#477258]"
+                                value={editPostForm.title}
+                                onChange={(e) => setEditPostForm(prev => ({ ...prev, title: e.target.value }))}
+                              />
+                              <textarea
+                                rows="4"
+                                placeholder="Bejegyzés tartalma..."
+                                aria-label="Bejegyzés tartalma"
+                                className="w-full border border-[#cad6c9] bg-white px-4 py-3 leading-7 text-[#20382a] outline-none focus:border-[#477258] focus:ring-1 focus:ring-[#477258]"
+                                value={editPostForm.content}
+                                onChange={(e) => setEditPostForm(prev => ({ ...prev, content: e.target.value }))}
+                                required
+                              />
+                              <div className="flex flex-wrap items-center justify-end gap-3 pt-2">
+                                <button
+                                  type="button"
+                                  onClick={handleCancelEditPost}
+                                  disabled={editPostSubmitting}
+                                  className="px-3 py-2 text-sm font-semibold text-[#536a58] transition hover:text-[#173327]"
+                                >
+                                  Mégse
+                                </button>
+                                <button
+                                  type="submit"
+                                  disabled={editPostSubmitting}
+                                  className="bg-[#193b2b] px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-[#2e5c41] disabled:opacity-50"
+                                >
+                                  {editPostSubmitting ? 'Mentés...' : 'Módosítások mentése'}
+                                </button>
+                              </div>
                             </form>
                           ) : (
-                            <p className="text-slate-700 leading-relaxed mb-4 whitespace-pre-wrap">{post.content}</p>
+                            <p className="mb-6 max-w-prose whitespace-pre-wrap text-[1.05rem] leading-8 text-[#34493b]">{post.content}</p>
                           )}
 
                           {postUpdates[post.id] && (
-                            <div className="mb-4">
-                          <button
-                            onClick={() => {
-                              setPostsLoading(true);
-                              fetchPosts().finally(() => {
-                                setPostUpdates(prev => ({ ...prev, [post.id]: false }));
-                              });
-                            }}
-                            className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-emerald-50 text-emerald-700 text-xs font-black uppercase tracking-widest hover:bg-emerald-100 transition"
-                          >
-                            Új komment érkezett – frissítés
-                          </button>
+                            <div className="mb-5">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setPostsLoading(true);
+                                  fetchPosts().finally(() => {
+                                    setPostUpdates(prev => ({ ...prev, [post.id]: false }));
+                                  });
+                                }}
+                                className="border-b border-[#8ca78b] pb-0.5 text-xs font-semibold text-[#42634b] transition hover:text-[#173327]"
+                              >
+                                Új komment érkezett – frissítés
+                              </button>
                             </div>
                           )}
 
-                          <div className="flex items-center gap-4 mb-4">
+                          <div className="mb-5 border-t border-[#d8dfd4] pt-4">
                             <button
-                          onClick={() => handleToggleLike(post.id)}
-                          className={`flex items-center gap-2 px-4 py-2 rounded-full text-xs font-black uppercase tracking-widest transition ${
-                            post.liked ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-50 text-slate-500'
-                          }`}
-                          disabled={likeLoadingId === post.id}
-                        >
-                          <ThumbsUp size={14} /> {post.like_count || 0}
+                              type="button"
+                              onClick={() => handleToggleLike(post.id)}
+                              className={`inline-flex items-center gap-2 text-xs font-semibold transition ${
+                                post.liked ? 'text-[#2e7047]' : 'text-[#758579] hover:text-[#2e7047]'
+                              }`}
+                              disabled={likeLoadingId === post.id}
+                              aria-label={`Bejegyzés kedvelése, jelenleg ${post.like_count || 0} kedvelés`}
+                            >
+                              <ThumbsUp size={15} /> {post.like_count || 0} kedvelés
                             </button>
                           </div>
 
-                          <div className="space-y-3">
+                          <div className="space-y-0">
                             {(topCommentsByPost[post.id] || []).map((comment) => (
-                          <div key={comment.id} className="bg-slate-50 rounded-2xl p-4">
-                            <div className="flex items-center justify-between text-[10px] font-bold text-slate-400 mb-2">
-                              <span className="text-emerald-700 uppercase tracking-widest">{comment.author_name}</span>
-                              <span>{new Date(comment.created_at).toLocaleDateString()}</span>
-                            </div>
-                            <p className="text-slate-700 text-sm mb-3">{comment.content}</p>
-                            <div className="flex items-center gap-3">
-                              <button
-                                onClick={() => handleToggleCommentLike(comment.id)}
-                                className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest transition ${
-                                  comment.liked ? 'bg-emerald-50 text-emerald-700' : 'bg-white text-slate-500'
-                                }`}
-                                disabled={commentLikeLoadingId === comment.id}
-                              >
-                                <ThumbsUp size={12} /> {comment.like_count || 0}
-                              </button>
-                              <button
-                                onClick={() => openCommentsModal(post.id)}
-                                className="text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-emerald-600"
-                              >
-                                Válaszok megtekintése
-                              </button>
-                            </div>
-                          </div>
+                              <div key={comment.id} className="border-t border-[#d8dfd4] py-4">
+                                <div className="mb-2 flex flex-wrap items-center justify-between gap-2 text-xs text-[#718174]">
+                                  <span className="font-semibold text-[#42634b]">{comment.author_name}</span>
+                                  <time dateTime={comment.created_at}>{formatTourDate(comment.created_at)}</time>
+                                </div>
+                                <p className="mb-3 whitespace-pre-wrap text-sm leading-6 text-[#34493b]">{comment.content}</p>
+                                <div className="flex flex-wrap items-center gap-4">
+                                  <button
+                                    type="button"
+                                    onClick={() => handleToggleCommentLike(comment.id)}
+                                    className={`inline-flex items-center gap-1.5 text-xs font-semibold transition ${
+                                      comment.liked ? 'text-[#2e7047]' : 'text-[#758579] hover:text-[#2e7047]'
+                                    }`}
+                                    disabled={commentLikeLoadingId === comment.id}
+                                  >
+                                    <ThumbsUp size={13} /> {comment.like_count || 0}
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => openCommentsModal(post.id)}
+                                    className="text-xs font-semibold text-[#64786a] transition hover:text-[#2e7047]"
+                                  >
+                                    Válaszok megtekintése
+                                  </button>
+                                </div>
+                              </div>
                             ))}
                           </div>
                         </div>
                       )}
-                    </div>
+                    </article>
                   ))}
                 </div>
               )}
-            </div>
+            </section>
           )}
 
           {activeTab === 'chat' && (
-            <div className="space-y-6">
+            <section aria-labelledby="tour-chat-title">
+              {/* Fejléc — mint a többi tab */}
+              <div className="border-b border-[#d8dfd4] pb-5 mb-8">
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#648067]">Résztvevők csatornája</p>
+                <h2 id="tour-chat-title" className="mt-2 font-serif text-3xl text-[#173327] md:text-4xl">Csevegés</h2>
+                <p className="mt-2 max-w-xl text-sm leading-6 text-[#65756a]">Élő chat a túra résztvevői között. Csak elfogadott jelentkezőknek érhető el.</p>
+              </div>
+
               {!user && (
-                <div className="bg-white rounded-3xl border border-slate-100 p-6 text-slate-500 font-semibold">
-                  A csevegéshez jelentkezz be.
+                <div className="rounded-2xl bg-[#f2f5ef] border border-[#d8dfd4] px-6 py-5 text-[#34493b] font-medium text-sm">
+                  A csevegéshez <a href="/login" className="text-[#477258] font-bold underline underline-offset-2">jelentkezz be</a>.
                 </div>
               )}
 
               {user && !isChatAllowed && (
-                <div className="bg-white rounded-3xl border border-slate-100 p-6 text-slate-500 font-semibold">
+                <div className="rounded-2xl bg-[#f2f5ef] border border-[#d8dfd4] px-6 py-5 text-[#34493b] font-medium text-sm">
                   A csevegés csak elfogadott jelentkezés után érhető el.
                 </div>
               )}
 
               {user && isChatAllowed && (
-                <div className="bg-white rounded-3xl border border-slate-100 shadow-sm flex flex-col h-[520px]">
-                  <div className="border-b border-slate-100 px-6 py-4 flex items-center justify-between relative">
-                    <div className="font-black text-emerald-950">Élő chat</div>
+                <div className="flex flex-col rounded-3xl overflow-hidden border border-[#dce5d8] shadow-md" style={{height: '560px'}}>
+                  {/* Chat fejléc */}
+                  <div className="bg-[#173327] px-6 py-4 flex items-center justify-between relative shrink-0">
+                    <div className="flex items-center gap-3">
+                      <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                      <span className="text-sm font-bold text-white tracking-wide">Élő csevegés</span>
+                    </div>
                     <button
                       onClick={() => setChatMenuOpen((prev) => !prev)}
-                      className="w-9 h-9 rounded-full bg-slate-100 text-slate-700 font-black text-lg hover:bg-emerald-50 hover:text-emerald-700 transition"
+                      className="text-xs font-semibold text-emerald-300 hover:text-white transition flex items-center gap-1.5"
                       title="Résztvevők"
                     >
-                      ...
+                      <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                      Résztvevők
                     </button>
                     {chatMenuOpen && (
-                      <div className="absolute right-6 top-14 bg-white border border-slate-100 rounded-2xl shadow-xl p-2 w-44 z-20">
+                      <div className="absolute right-4 top-14 bg-white border border-[#d8dfd4] rounded-2xl shadow-xl p-2 w-48 z-20">
                         <button
                           onClick={() => {
                             setChatMenuOpen(false);
                             setParticipantsModalOpen(true);
                             fetchParticipants();
                           }}
-                          className="w-full text-left px-4 py-2 rounded-xl text-sm font-semibold text-slate-700 hover:bg-emerald-50"
+                          className="w-full text-left px-4 py-2.5 rounded-xl text-sm font-semibold text-[#20382a] hover:bg-[#ecf0e8] transition"
                         >
-                          Résztvevők
+                          Résztvevők listája
                         </button>
                       </div>
                     )}
                   </div>
-                  <div ref={chatMessagesContainerRef} className="flex-1 overflow-y-auto p-6 space-y-4">
+
+                  {/* Üzenetek */}
+                  <div ref={chatMessagesContainerRef} className="flex-1 overflow-y-auto px-5 py-5 space-y-4 bg-[#f7f9f5]">
                     {chatLoading ? (
-                      <div className="text-slate-400 font-semibold">Betöltés...</div>
+                      <div className="flex justify-center pt-8">
+                        <span className="text-xs font-semibold uppercase tracking-widest text-[#879489]">Betöltés...</span>
+                      </div>
                     ) : chatMessages.length === 0 ? (
-                      <div className="text-slate-400 font-semibold">Még nincs üzenet.</div>
+                      <div className="flex flex-col items-center justify-center h-full gap-2 pb-8">
+                        <div className="w-12 h-12 rounded-full bg-[#dce5d8] flex items-center justify-center text-[#477258]">
+                          <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                        </div>
+                        <p className="text-sm font-semibold text-[#65756a]">Még nincs üzenet</p>
+                        <p className="text-xs text-[#879489]">Legyél az első, aki ír!</p>
+                      </div>
                     ) : (
                       chatMessages.map((msg) => {
                         const isMine = user && msg.user_id === user.id;
@@ -1522,8 +1578,9 @@ const TourDetailsScreen = () => {
 
                         return (
                           <div key={msg.id} className={`flex ${isMine ? 'justify-end' : 'justify-start'}`}>
-                            <div className={`flex items-end gap-3 max-w-[80%] ${isMine ? 'flex-row-reverse' : 'flex-row'}`}>
-                              <div className="w-10 h-10 rounded-full bg-emerald-100 text-emerald-800 font-black text-xs flex items-center justify-center overflow-hidden">
+                            <div className={`flex items-end gap-2.5 max-w-[76%] ${isMine ? 'flex-row-reverse' : 'flex-row'}`}>
+                              {/* Avatar */}
+                              <div className="w-8 h-8 shrink-0 rounded-full bg-[#c8dcc2] text-[#2a4d38] font-black text-xs flex items-center justify-center overflow-hidden shadow-sm">
                                 {isMine && user?.avatar_url ? (
                                   <img
                                     src={`${avatarBase}${user.avatar_url}`}
@@ -1534,13 +1591,20 @@ const TourDetailsScreen = () => {
                                   initials
                                 )}
                               </div>
-                              <div className={`rounded-3xl px-4 py-3 shadow-sm ${isMine ? 'bg-emerald-600 text-white' : 'bg-slate-50 text-slate-700'}`}>
-                                <div className={`text-[10px] font-black uppercase tracking-widest ${isMine ? 'text-emerald-100' : 'text-emerald-600'}`}>
-                                  {isMine ? 'Te' : msg.user_name}
-                                </div>
-                                <div className="font-medium whitespace-pre-wrap">{msg.message}</div>
-                                <div className={`text-[10px] mt-2 ${isMine ? 'text-emerald-100/80' : 'text-slate-400'}`}>
-                                  {msg.created_at ? new Date(msg.created_at).toLocaleString() : ''}
+                              {/* Buborék */}
+                              <div className={`relative px-4 py-3 shadow-sm ${
+                                isMine
+                                  ? 'bg-[#275940] text-white rounded-2xl rounded-br-sm'
+                                  : 'bg-white text-[#20382a] rounded-2xl rounded-bl-sm border border-[#dce5d8]'
+                              }`}>
+                                {!isMine && (
+                                  <div className="text-[10px] font-black uppercase tracking-widest text-[#477258] mb-1">
+                                    {msg.user_name}
+                                  </div>
+                                )}
+                                <div className="text-sm leading-relaxed whitespace-pre-wrap">{msg.message}</div>
+                                <div className={`text-[10px] mt-1.5 ${isMine ? 'text-emerald-300/80 text-right' : 'text-[#9aaa9e]'}`}>
+                                  {msg.created_at ? new Date(msg.created_at).toLocaleTimeString('hu-HU', {hour: '2-digit', minute: '2-digit'}) : ''}
                                 </div>
                               </div>
                             </div>
@@ -1549,24 +1613,27 @@ const TourDetailsScreen = () => {
                       })
                     )}
                   </div>
-                  <form onSubmit={handleSendChatMessage} className="border-t border-slate-100 p-4 flex gap-3">
+
+                  {/* Üzenetküldő */}
+                  <form onSubmit={handleSendChatMessage} className="shrink-0 border-t border-[#dce5d8] bg-white px-4 py-3 flex gap-3 items-center">
                     <input
                       type="text"
                       value={chatInput}
                       onChange={(e) => setChatInput(e.target.value)}
                       placeholder="Írj üzenetet..."
-                      className="flex-1 bg-slate-50 rounded-2xl px-4 py-3 font-semibold outline-none focus:ring-2 focus:ring-emerald-500"
+                      className="flex-1 bg-[#f2f5ef] rounded-2xl px-4 py-3 text-sm text-[#20382a] outline-none transition placeholder:text-[#9aaa9e] focus:ring-2 focus:ring-[#477258]/40"
                     />
                     <button
                       type="submit"
-                      className="px-6 py-3 rounded-2xl bg-emerald-600 text-white font-black uppercase tracking-widest text-xs hover:bg-emerald-700"
+                      className="shrink-0 w-11 h-11 rounded-full bg-[#275940] text-white flex items-center justify-center hover:bg-[#1d4330] transition shadow-md shadow-[#275940]/20"
+                      aria-label="Küldés"
                     >
-                      Küldés
+                      <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
                     </button>
                   </form>
                 </div>
               )}
-            </div>
+            </section>
           )}
         </div>
 
@@ -2438,7 +2505,9 @@ const TourDetailsScreen = () => {
                       const availableFromStock = Number(tourEditAvailability[equipmentId] ?? item.total_quantity ?? 0);
                       const isUnavailable = availableFromStock <= 0 && !wasInitiallyAssigned;
                       const currentQty = Number(tourEditForm.equipment_quantities?.[item.id] || 1);
-                      const maxAssignQty = availableFromStock + (wasInitiallyAssigned ? currentQty : 0);
+                      // Availability already excludes this tour's assignment and is
+                      // the maximum total quantity it may keep, not extra stock.
+                      const maxAssignQty = Math.max(0, availableFromStock);
                       const isPassengerTransport = Boolean(Number(item.is_passenger_transport));
                       const seatsPerUnit = isPassengerTransport ? Math.max(1, Number(item.seats_per_unit || 1)) : 1;
 
@@ -2540,13 +2609,15 @@ const TourDetailsScreen = () => {
                                     <input
                                       type="number"
                                       min={isLocked ? currentQty : 1}
-                                      max={maxAssignQty > 0 ? maxAssignQty : undefined}
+                                      max={maxAssignQty}
+                                      disabled={maxAssignQty < (isLocked ? currentQty : 1)}
                                       className="w-10 text-center font-black text-sm bg-transparent outline-none text-slate-800 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                                       value={tourEditForm.equipment_quantities?.[item.id] ?? 1}
                                       onChange={(e) => {
                                         const val = parseInt(e.target.value) || 1;
                                         const minQ = isLocked ? currentQty : 1;
-                                        const clamped = maxAssignQty > 0 ? Math.min(Math.max(minQ, val), maxAssignQty) : Math.max(minQ, val);
+                                        if (maxAssignQty < minQ) return;
+                                        const clamped = Math.min(Math.max(minQ, val), maxAssignQty);
                                         setTourEditForm((prev) => ({
                                           ...prev,
                                           equipment_quantities: {
@@ -2560,9 +2631,9 @@ const TourDetailsScreen = () => {
                                   </div>
                                   <button
                                     type="button"
-                                    disabled={maxAssignQty > 0 && currentQty >= maxAssignQty}
+                                    disabled={currentQty >= maxAssignQty}
                                     onClick={() => {
-                                      const next = maxAssignQty > 0 ? Math.min(maxAssignQty, currentQty + 1) : currentQty + 1;
+                                      const next = Math.min(maxAssignQty, currentQty + 1);
                                       setTourEditForm((prev) => ({
                                         ...prev,
                                         equipment_quantities: {
@@ -2577,11 +2648,9 @@ const TourDetailsScreen = () => {
                                     <Plus size={13} strokeWidth={2.5} />
                                   </button>
                                 </div>
-                                {maxAssignQty > 0 && (
-                                  <span className="text-[9px] text-slate-400 font-semibold mt-0.5 text-center">
-                                    max: {maxAssignQty} db
-                                  </span>
-                                )}
+                                <span className={`mt-0.5 text-center text-[9px] font-semibold ${currentQty > maxAssignQty ? 'text-rose-600' : 'text-slate-400'}`}>
+                                  {currentQty > maxAssignQty ? `Készlethiány · max: ${maxAssignQty} db` : `max: ${maxAssignQty} db`}
+                                </span>
                                 {isPassengerTransport && (
                                   <span className="text-[9px] text-sky-700 font-black mt-0.5 text-center">
                                     {currentQty * seatsPerUnit} ülőhely
@@ -2685,60 +2754,110 @@ const TourDetailsScreen = () => {
       )}
 
       {participantsModalOpen && (
-        <div className="fixed inset-0 z-[180] flex items-center justify-center p-6">
+        <div className="fixed inset-0 z-[180] flex items-center justify-center p-4 sm:p-6">
           <div
-            className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm"
+            className="absolute inset-0 bg-[#0f1f17]/70 backdrop-blur-sm"
             onClick={() => setParticipantsModalOpen(false)}
           ></div>
-          <div className="relative bg-white w-full max-w-lg rounded-[2.5rem] shadow-2xl p-8 max-h-[85vh] overflow-y-auto">
-            <div className="flex items-center justify-between mb-6">
+          <div className="relative bg-white w-full max-w-lg rounded-3xl shadow-2xl border border-[#dce5d8] overflow-hidden flex flex-col max-h-[85vh] z-10 animate-in fade-in zoom-in-95 duration-200">
+            {/* Fejléc */}
+            <div className="border-b border-[#d8dfd4] bg-[#f7f9f5] px-6 sm:px-7 py-5 flex items-start justify-between shrink-0">
               <div>
-                <div className="text-[10px] font-black uppercase tracking-widest text-slate-400">Résztvevők</div>
-                <div className="text-2xl font-black text-emerald-950">{tour?.title || 'Túra'}</div>
+                <div className="flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-[#477258]" />
+                  <span className="text-xs font-semibold uppercase tracking-[0.18em] text-[#648067]">
+                    {participants.length > 0 ? `${participants.length} résztvevő` : 'Résztvevők'}
+                  </span>
+                </div>
+                <h3 className="mt-1 font-serif text-2xl text-[#173327] line-clamp-1">
+                  {tour?.title || 'Túra résztvevői'}
+                </h3>
               </div>
               <button
                 onClick={() => setParticipantsModalOpen(false)}
-                className="p-2 rounded-xl hover:bg-slate-100 transition"
+                className="p-2 rounded-xl text-[#718174] hover:bg-[#e6ece1] hover:text-[#173327] transition border border-transparent hover:border-[#cad6c9]"
+                aria-label="Bezárás"
               >
                 <X size={18} />
               </button>
             </div>
 
-            {participantsLoading ? (
-              <div className="text-slate-400 font-semibold">Betöltés...</div>
-            ) : participants.length === 0 ? (
-              <div className="text-slate-400 font-semibold">Nincs résztvevő.</div>
-            ) : (
-              <div className="grid gap-3">
-                {participants.map((p) => {
-                  const initials = p.user_name
-                    ? p.user_name.split(' ').map((part) => part[0]).slice(0, 2).join('')
-                    : '?';
-                  return (
-                    <div key={p.user_id} className="flex items-center justify-between gap-3 bg-slate-50 rounded-2xl p-3">
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-full bg-emerald-100 text-emerald-800 font-black text-xs flex items-center justify-center overflow-hidden">
-                          {p.avatar_url ? (
-                            <img
-                              src={`${avatarBase}${p.avatar_url}`}
-                              alt={p.user_name}
-                              className="w-full h-full object-cover"
-                            />
-                          ) : (
-                            initials
-                          )}
-                        </div>
-                        <div className="font-semibold text-slate-700">{p.user_name}</div>
-                      </div>
-                      <button
-                        onClick={() => navigate(`/profile/${p.user_id}`)}
-                        className="px-3 py-2 rounded-xl bg-white text-slate-600 text-xs font-black uppercase tracking-widest hover:bg-emerald-600 hover:text-white transition"
+            {/* Tartalom */}
+            <div className="p-5 sm:p-6 overflow-y-auto space-y-3 flex-1 bg-white">
+              {participantsLoading ? (
+                <div className="flex flex-col items-center justify-center py-12 gap-3 text-[#718174]">
+                  <div className="w-8 h-8 border-2 border-[#d8dfd4] border-t-[#275940] rounded-full animate-spin" />
+                  <span className="text-xs font-semibold uppercase tracking-widest text-[#879489]">Résztvevők betöltése...</span>
+                </div>
+              ) : participants.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-12 gap-3 text-center">
+                  <div className="w-12 h-12 rounded-full bg-[#f2f5ef] border border-[#dce5d8] flex items-center justify-center text-[#648067]">
+                    <Users size={22} strokeWidth={1.8} />
+                  </div>
+                  <div>
+                    <p className="text-base font-serif text-[#173327]">Még nincsenek résztvevők</p>
+                    <p className="text-xs text-[#879489] mt-1">Az elfogadott jelentkezők itt fognak megjelenni.</p>
+                  </div>
+                </div>
+              ) : (
+                <div className="grid gap-2.5">
+                  {participants.map((p) => {
+                    const initials = p.user_name
+                      ? p.user_name.split(' ').map((part) => part[0]).slice(0, 2).join('')
+                      : '?';
+                    return (
+                      <div
+                        key={p.user_id}
+                        className="flex items-center justify-between gap-3 bg-[#f7f9f5] border border-[#dce5d8] hover:border-[#b8cdb1] rounded-2xl p-3.5 transition group"
                       >
-                        Profil megtekintése
-                      </button>
-                    </div>
-                  );
-                })}
+                        <div className="flex items-center gap-3 min-w-0">
+                          <div className="w-10 h-10 shrink-0 rounded-full bg-[#c8dcc2] text-[#2a4d38] font-black text-xs flex items-center justify-center overflow-hidden shadow-sm ring-2 ring-white">
+                            {p.avatar_url ? (
+                              <img
+                                src={`${avatarBase}${p.avatar_url}`}
+                                alt={p.user_name}
+                                className="w-full h-full object-cover"
+                              />
+                            ) : (
+                              initials
+                            )}
+                          </div>
+                          <div className="min-w-0">
+                            <div className="font-bold text-sm text-[#173327] group-hover:text-[#275940] transition truncate">
+                              {p.user_name}
+                            </div>
+                            <div className="text-[11px] text-[#718174] flex items-center gap-1.5 mt-0.5">
+                              <span className="w-1.5 h-1.5 rounded-full bg-[#477258] inline-block" />
+                              Elfogadott jelentkező
+                            </div>
+                          </div>
+                        </div>
+                        <button
+                          onClick={() => {
+                            setParticipantsModalOpen(false);
+                            navigate(`/profile/${p.user_id}`);
+                          }}
+                          className="shrink-0 px-3.5 py-2 rounded-xl bg-white border border-[#cad6c9] text-[#275940] text-xs font-bold hover:bg-[#275940] hover:text-white hover:border-[#275940] transition shadow-xs"
+                        >
+                          Profil
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
+            {/* Lábléc */}
+            {participants.length > 0 && (
+              <div className="border-t border-[#d8dfd4] bg-[#f7f9f5] px-6 sm:px-7 py-3.5 flex items-center justify-between text-xs text-[#718174] shrink-0">
+                <span>Összesen: <strong className="text-[#173327]">{participants.length} fő</strong></span>
+                <button
+                  onClick={() => setParticipantsModalOpen(false)}
+                  className="text-xs font-semibold text-[#477258] hover:text-[#173327] hover:underline transition"
+                >
+                  Bezárás
+                </button>
               </div>
             )}
           </div>
