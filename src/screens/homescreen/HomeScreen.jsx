@@ -80,7 +80,7 @@ const HomeScreen = () => {
             <p>A jó történetek ritkán kezdődnek a kanapén.</p>
           </div>
         </div>
-        <div className="home-scroll-label"><span /> Görgess tovább</div>
+        {/* <div className="home-scroll-label"><span /> Görgess tovább</div> */}
       </section>
 
       <section className="home-intro home-container">
