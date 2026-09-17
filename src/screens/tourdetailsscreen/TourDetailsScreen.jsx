@@ -1868,7 +1868,7 @@ const TourDetailsScreen = () => {
                               </div>
                             </form>
                           ) : (
-                            <p className="mb-6 max-w-prose whitespace-pre-wrap text-[1.05rem] leading-8 text-[#34493b]">{post.content}</p>
+                            <p className="mb-6 max-w-prose whitespace-pre-wrap break-words [overflow-wrap:anywhere] text-[1.05rem] leading-8 text-[#34493b]">{post.content}</p>
                           )}
 
                           {postUpdates[post.id] && (
@@ -1909,7 +1909,7 @@ const TourDetailsScreen = () => {
                                   <span className="font-semibold text-[#42634b]">{comment.author_name}</span>
                                   <time dateTime={comment.created_at}>{formatTourDate(comment.created_at)}</time>
                                 </div>
-                                <p className="mb-3 whitespace-pre-wrap text-sm leading-6 text-[#34493b]">{comment.content}</p>
+                                <p className="mb-3 whitespace-pre-wrap break-words [overflow-wrap:anywhere] text-sm leading-6 text-[#34493b]">{comment.content}</p>
                                 <div className="flex flex-wrap items-center gap-4">
                                   <button
                                     type="button"
@@ -1995,7 +1995,7 @@ const TourDetailsScreen = () => {
                   </div>
 
                   {/* Üzenetek */}
-                  <div ref={chatMessagesContainerRef} className="flex-1 overflow-y-auto px-5 py-5 space-y-4 bg-[#f7f9f5]">
+                  <div ref={chatMessagesContainerRef} className="flex-1 overflow-y-auto overflow-x-hidden min-w-0 px-5 py-5 space-y-4 bg-[#f7f9f5]">
                     {chatLoading ? (
                       <div className="flex justify-center pt-8">
                         <span className="text-xs font-semibold uppercase tracking-widest text-[#879489]">Betöltés...</span>
@@ -2016,8 +2016,8 @@ const TourDetailsScreen = () => {
                           : '?';
 
                         return (
-                          <div key={msg.id} className={`flex ${isMine ? 'justify-end' : 'justify-start'}`}>
-                            <div className={`flex items-end gap-2.5 max-w-[76%] ${isMine ? 'flex-row-reverse' : 'flex-row'}`}>
+                          <div key={msg.id} className={`flex w-full min-w-0 ${isMine ? 'justify-end' : 'justify-start'}`}>
+                            <div className={`flex items-end gap-2.5 min-w-0 max-w-[85%] sm:max-w-[76%] ${isMine ? 'flex-row-reverse' : 'flex-row'}`}>
                               {/* Avatar */}
                               <div className="w-8 h-8 shrink-0 rounded-full bg-[#c8dcc2] text-[#2a4d38] font-black text-xs flex items-center justify-center overflow-hidden shadow-sm">
                                 {isMine && user?.avatar_url ? (
@@ -2031,17 +2031,17 @@ const TourDetailsScreen = () => {
                                 )}
                               </div>
                               {/* Buborék */}
-                              <div className={`relative px-4 py-3 shadow-sm ${
+                              <div className={`relative px-4 py-3 shadow-sm min-w-0 max-w-full ${
                                 isMine
                                   ? 'bg-[#275940] text-white rounded-2xl rounded-br-sm'
                                   : 'bg-white text-[#20382a] rounded-2xl rounded-bl-sm border border-[#dce5d8]'
                               }`}>
                                 {!isMine && (
-                                  <div className="text-[10px] font-black uppercase tracking-widest text-[#477258] mb-1">
+                                  <div className="text-[10px] font-black uppercase tracking-widest text-[#477258] mb-1 truncate max-w-full">
                                     {msg.user_name}
                                   </div>
                                 )}
-                                <div className="text-sm leading-relaxed whitespace-pre-wrap">{msg.message}</div>
+                                <div className="text-sm leading-relaxed whitespace-pre-wrap break-words [overflow-wrap:anywhere] [word-break:break-word]">{msg.message}</div>
                                 <div className={`text-[10px] mt-1.5 ${isMine ? 'text-emerald-300/80 text-right' : 'text-[#9aaa9e]'}`}>
                                   {msg.created_at ? new Date(msg.created_at).toLocaleTimeString('hu-HU', {hour: '2-digit', minute: '2-digit'}) : ''}
                                 </div>
@@ -2060,7 +2060,7 @@ const TourDetailsScreen = () => {
                       value={chatInput}
                       onChange={(e) => setChatInput(e.target.value)}
                       placeholder="Írj üzenetet..."
-                      className="flex-1 bg-[#f2f5ef] rounded-2xl px-4 py-3 text-sm text-[#20382a] outline-none transition placeholder:text-[#9aaa9e] focus:ring-2 focus:ring-[#477258]/40"
+                      className="flex-1 min-w-0 bg-[#f2f5ef] rounded-2xl px-4 py-3 text-sm text-[#20382a] outline-none transition placeholder:text-[#9aaa9e] focus:ring-2 focus:ring-[#477258]/40"
                     />
                     <button
                       type="submit"
@@ -3387,7 +3387,7 @@ const TourDetailsScreen = () => {
                       {post.author_name}
                     </div>
                     {post.title && <h4 className="text-xl font-black text-slate-900 mb-2">{post.title}</h4>}
-                    <p className="text-slate-700 whitespace-pre-wrap">{post.content}</p>
+                    <p className="text-slate-700 whitespace-pre-wrap break-words [overflow-wrap:anywhere]">{post.content}</p>
                   </div>
 
                   <div className="space-y-4">
