@@ -855,15 +855,81 @@ exports.getBookingsByTourId = async (req, res) => {
     const { tourId } = req.params;
     try {
         const [rows] = await db.query(
-            `SELECT b.id, b.status, b.payment_status, b.booked_at, b.user_id,
-                    u.name AS user_name, u.email
+            `SELECT b.id, b.status, b.payment_status, b.booked_at, b.paid_at,
+                    b.extra_price, b.total_price, b.deposit_paid, b.deposit_paid_at,
+                    b.refund_amount, b.refund_status, b.user_id,
+                    u.name AS user_name, u.email, u.phone AS user_phone, u.avatar_url
              FROM bookings b
              JOIN users u ON b.user_id = u.id
              WHERE b.tour_id = ?
              ORDER BY b.booked_at DESC`,
             [tourId]
         );
-        res.json(rows);
+
+        if (rows.length === 0) {
+            return res.json([]);
+        }
+
+        const bookingIds = rows.map((r) => r.id);
+        const [equipRows] = await db.query(
+            `SELECT be.booking_id, be.equipment_id, be.quantity, be.price,
+                    e.name AS equipment_name, e.is_passenger_transport, e.seats_per_unit
+             FROM booking_equipments be
+             JOIN equipment e ON e.id = be.equipment_id
+             WHERE be.booking_id IN (?)`,
+            [bookingIds]
+        );
+
+        const equipMap = {};
+        for (const eq of equipRows) {
+            if (!equipMap[eq.booking_id]) {
+                equipMap[eq.booking_id] = [];
+            }
+            equipMap[eq.booking_id].push({
+                id: eq.equipment_id,
+                name: eq.equipment_name,
+                quantity: Number(eq.quantity || 1),
+                price: Number(eq.price || 0),
+                is_passenger_transport: !!eq.is_passenger_transport,
+                seats_per_unit: eq.seats_per_unit
+            });
+        }
+
+        let paymentMap = {};
+        try {
+            const [paymentRows] = await db.query(
+                `SELECT booking_id, amount, payment_type, status, created_at
+                 FROM booking_payments
+                 WHERE booking_id IN (?) AND status = 'paid'
+                 ORDER BY created_at ASC`,
+                [bookingIds]
+            );
+            for (const p of paymentRows) {
+                if (!paymentMap[p.booking_id]) {
+                    paymentMap[p.booking_id] = [];
+                }
+                paymentMap[p.booking_id].push({
+                    amount: Number(p.amount || 0),
+                    payment_type: p.payment_type,
+                    status: p.status,
+                    created_at: p.created_at
+                });
+            }
+        } catch (payErr) {
+            console.error('Admin bookings payments query error:', payErr.message);
+        }
+
+        const result = rows.map((r) => ({
+            ...r,
+            deposit_paid: !!r.deposit_paid,
+            total_price: Number(r.total_price || 0),
+            extra_price: Number(r.extra_price || 0),
+            refund_amount: Number(r.refund_amount || 0),
+            equipments: equipMap[r.id] || [],
+            payments: paymentMap[r.id] || []
+        }));
+
+        res.json(result);
     } catch (err) {
         res.status(500).json({ error: err.message });
     }

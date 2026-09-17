@@ -1,15 +1,26 @@
-import React, { useState, useEffect, useContext, useRef } from 'react';
+import React, { useState, useEffect, useContext, useRef, useCallback } from 'react';
 import { useParams, Link, useNavigate, useLocation } from 'react-router-dom';
 import { AuthContext } from '../../context/AuthContext';
 import { 
   Plus, Minus, AlertTriangle,
   Clock, MapPin, Calendar, Users, ArrowLeft, 
-  Zap, Info, Share2, ShieldCheck, CheckCircle2, UserMinus, ThumbsUp, X, XCircle, Edit3, Trash2, ChevronDown, ChevronUp
+  Zap, Info, Share2, ShieldCheck, CheckCircle2, UserMinus, ThumbsUp, X, XCircle, Edit3, Trash2, ChevronDown, ChevronUp,
+  Search, Phone, Mail, CreditCard, AlertCircle, RefreshCw, Check, Package
 } from 'lucide-react';
 import { toast } from 'react-toastify';
 import { io } from 'socket.io-client';
 import { formatPrice, formatPriceInput, parsePriceInput } from '../../utils/formatPrice';
 import TourShareModal from '../../components/TourShareModal';
+import DatePicker, { registerLocale } from "react-datepicker";
+import "react-datepicker/dist/react-datepicker.css";
+import { hu } from "date-fns/locale";
+
+registerLocale('hu', hu);
+
+const monthNames = [
+  'január', 'február', 'március', 'április', 'május', 'június',
+  'július', 'augusztus', 'szeptember', 'október', 'november', 'december'
+];
 
 // Ideiglenesen kikapcsolva: a meglévő kommentek olvashatók maradnak,
 // de új komment és válasz nem küldhető.
@@ -40,6 +51,19 @@ const formatTourDate = (value) => {
     month: 'long',
     day: 'numeric',
     timeZone: 'UTC'
+  }).format(date);
+};
+
+const formatFullDateTime = (value) => {
+  if (!value) return '—';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '—';
+  return new Intl.DateTimeFormat('hu-HU', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit'
   }).format(date);
 };
 
@@ -103,6 +127,8 @@ const TourDetailsScreen = () => {
   const [participantsLoading, setParticipantsLoading] = useState(false);
   const [adminBookings, setAdminBookings] = useState([]);
   const [adminBookingsLoading, setAdminBookingsLoading] = useState(false);
+  const [adminFilter, setAdminFilter] = useState('all');
+  const [adminSearch, setAdminSearch] = useState('');
   const [equipmentOptions, setEquipmentOptions] = useState([]);
   const [selectedEquipmentIds, setSelectedEquipmentIds] = useState([]);
   const [initialEquipmentIds, setInitialEquipmentIds] = useState([]);
@@ -271,30 +297,72 @@ const TourDetailsScreen = () => {
     return checkData;
   };
 
-  useEffect(() => {
+  const fetchAdminBookings = useCallback(async () => {
     if (!user || user.role !== 'admin') {
       setAdminBookings([]);
       return;
     }
-    const fetchAdminBookings = async () => {
-      setAdminBookingsLoading(true);
-      try {
-        const res = await fetch(`${import.meta.env.VITE_API_URL}/bookings/admin/tours/${id}`,
-          {
-            headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
-          }
-        );
-        const data = await res.json();
-        setAdminBookings(Array.isArray(data) ? data : []);
-      } catch (err) {
-        setAdminBookings([]);
-      } finally {
-        setAdminBookingsLoading(false);
-      }
-    };
+    setAdminBookingsLoading(true);
+    try {
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/bookings/admin/tours/${id}`, {
+        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+      });
+      const data = await res.json();
+      setAdminBookings(Array.isArray(data) ? data : []);
+    } catch (err) {
+      setAdminBookings([]);
+    } finally {
+      setAdminBookingsLoading(false);
+    }
+  }, [id, user]);
 
+  useEffect(() => {
     fetchAdminBookings();
-  }, [id, user?.id, user?.role]);
+  }, [fetchAdminBookings]);
+
+  const handleAdminApproveBooking = async (bookingId) => {
+    try {
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/bookings/${bookingId}/status`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify({ status: 'confirmed' })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        toast.success(data.message || 'Jelentkezés jóváhagyva!');
+        fetchAdminBookings();
+        fetchTourData();
+      } else {
+        toast.error(data.message || 'Hiba a jóváhagyáskor.');
+      }
+    } catch (err) {
+      toast.error('Hálózati hiba a jóváhagyáskor.');
+    }
+  };
+
+  const handleAdminPromoteBooking = async (bookingId) => {
+    try {
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/bookings/waitlist/${bookingId}/promote`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        }
+      });
+      const data = await res.json();
+      if (res.ok) {
+        toast.success(data.message || 'Résztvevő felvéve a keretbe!');
+        fetchAdminBookings();
+        fetchTourData();
+      } else {
+        toast.error(data.message || 'Hiba a felvételkor.');
+      }
+    } catch (err) {
+      toast.error('Hálózati hiba a felvételkor.');
+    }
+  };
 
   const fetchPosts = async ({ silent = false } = {}) => {
     if (!silent) {
@@ -1256,34 +1324,405 @@ const TourDetailsScreen = () => {
                 </p>
               </section>
 
-              {user?.role === 'admin' && (
-                <div className="bg-white p-8 rounded-3xl border border-slate-100 shadow-sm">
-                  <div className="flex items-center gap-2 mb-4 text-emerald-600">
-                    <ShieldCheck size={20} />
-                    <h2 className="text-lg font-black uppercase tracking-tight italic text-slate-900">Admin betekintés</h2>
-                  </div>
-                  {adminBookingsLoading ? (
-                    <div className="text-slate-400 font-bold">Betöltés...</div>
-                  ) : adminBookings.length === 0 ? (
-                    <div className="text-slate-400 font-bold">Nincs jelentkező.</div>
-                  ) : (
-                    <div className="grid gap-3">
-                      {adminBookings.map((booking) => (
-                        <div key={booking.id} className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 bg-slate-50 rounded-2xl p-4">
-                          <div>
-                            <div className="font-black text-emerald-950 text-sm">{booking.user_name}</div>
-                            <div className="text-xs text-slate-400">{booking.email}</div>
-                          </div>
-                          <div className="text-[10px] font-black uppercase tracking-widest text-slate-400">{booking.status}</div>
-                          <div className="text-xs text-slate-400 font-bold">
-                            {booking.booked_at ? new Date(booking.booked_at).toLocaleDateString() : ''}
-                          </div>
+              {user?.role === 'admin' && (() => {
+                const totalApplicants = adminBookings.length;
+                const confirmedCount = adminBookings.filter((b) => b.status === 'confirmed').length;
+                const pendingCount = adminBookings.filter((b) => b.status === 'pending' || b.status === 'waitlist').length;
+                const paidCount = adminBookings.filter((b) => b.payment_status === 'paid').length;
+                const depositCount = adminBookings.filter((b) => !b.payment_status?.includes('paid') && !!b.deposit_paid).length;
+                const unpaidCount = adminBookings.filter((b) => !b.deposit_paid && b.payment_status !== 'paid' && b.status !== 'cancelled').length;
+
+                const totalCollected = adminBookings.reduce((sum, b) => {
+                  if (b.status === 'cancelled') return sum;
+                  if (b.payment_status === 'paid') return sum + Number(b.total_price || 0);
+                  if (b.deposit_paid) return sum + Number(tour?.deposit_amount || 0);
+                  return sum;
+                }, 0);
+
+                const totalOutstanding = adminBookings.reduce((sum, b) => {
+                  if (b.status === 'cancelled' || b.payment_status === 'paid') return sum;
+                  if (b.deposit_paid) {
+                    return sum + Math.max(0, Number(b.total_price || 0) - Number(tour?.deposit_amount || 0));
+                  }
+                  return sum + Number(b.total_price || 0);
+                }, 0);
+
+                const filteredBookings = adminBookings.filter((b) => {
+                  if (adminSearch.trim()) {
+                    const q = adminSearch.toLowerCase().trim();
+                    const matchName = b.user_name?.toLowerCase().includes(q);
+                    const matchEmail = b.email?.toLowerCase().includes(q);
+                    const matchPhone = b.user_phone?.toLowerCase().includes(q);
+                    if (!matchName && !matchEmail && !matchPhone) return false;
+                  }
+
+                  if (adminFilter === 'all') return true;
+                  if (adminFilter === 'confirmed') return b.status === 'confirmed';
+                  if (adminFilter === 'pending') return b.status === 'pending' || b.status === 'waitlist';
+                  if (adminFilter === 'paid') return b.payment_status === 'paid';
+                  if (adminFilter === 'deposit') return !b.payment_status?.includes('paid') && !!b.deposit_paid;
+                  if (adminFilter === 'unpaid') return !b.deposit_paid && b.payment_status !== 'paid' && b.status !== 'cancelled';
+                  if (adminFilter === 'cancelled') return b.status === 'cancelled';
+                  return true;
+                });
+
+                return (
+                  <section aria-labelledby="admin-insight-title" className="border border-[#dce5d8] bg-[#f7f9f5] p-6 md:p-8">
+                    {/* Section Header */}
+                    <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b border-[#dce5d8] pb-6">
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <ShieldCheck size={18} className="text-[#275940]" />
+                          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#5e755f]">Adminisztráció & felügyelet</p>
                         </div>
-                      ))}
+                        <h2 id="admin-insight-title" className="mt-1 font-serif text-2xl text-[#173327] md:text-3xl">
+                          Admin betekintés
+                        </h2>
+                        <p className="mt-1 text-sm text-[#637567]">
+                          A túrára jelentkezett résztvevők, foglalási időpontok, felszerelések és fizetési státuszok részletes áttekintése.
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => fetchAdminBookings()}
+                        disabled={adminBookingsLoading}
+                        className="inline-flex items-center justify-center gap-2 self-start rounded-full border border-[#c8d6c4] bg-white px-4 py-2 text-xs font-semibold uppercase tracking-wider text-[#275940] transition hover:bg-[#eef3ec] disabled:opacity-50"
+                      >
+                        <RefreshCw size={13} className={adminBookingsLoading ? 'animate-spin' : ''} />
+                        Frissítés
+                      </button>
                     </div>
-                  )}
-                </div>
-              )}
+
+                    {/* KPI Metric Cards */}
+                    <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
+                      <div className="rounded-xl border border-[#dce5d8] bg-white p-4">
+                        <p className="text-[11px] font-semibold uppercase tracking-wider text-[#718174]">Összes jelentkező</p>
+                        <p className="mt-1.5 font-serif text-2xl font-bold text-[#173327]">{totalApplicants} <span className="text-xs font-normal text-[#718174]">fő</span></p>
+                      </div>
+                      <div className="rounded-xl border border-[#cde0ca] bg-[#eef5ed] p-4">
+                        <p className="text-[11px] font-semibold uppercase tracking-wider text-[#2d5f46]">Megerősítve</p>
+                        <p className="mt-1.5 font-serif text-2xl font-bold text-[#1e4a34]">{confirmedCount} <span className="text-xs font-normal text-[#4b6a57]">fő</span></p>
+                      </div>
+                      <div className="rounded-xl border border-[#dce5d8] bg-white p-4">
+                        <p className="text-[11px] font-semibold uppercase tracking-wider text-[#718174]">Befolyt összeg</p>
+                        <p className="mt-1.5 font-serif text-xl font-bold text-[#275940]">{formatPrice(totalCollected)}</p>
+                      </div>
+                      <div className="rounded-xl border border-[#fae2be] bg-[#fef9f1] p-4">
+                        <p className="text-[11px] font-semibold uppercase tracking-wider text-[#9a6a24]">Kintlévőség</p>
+                        <p className="mt-1.5 font-serif text-xl font-bold text-[#8d5f1d]">{formatPrice(totalOutstanding)}</p>
+                      </div>
+                    </div>
+
+                    {/* Search & Filter Toolbar */}
+                    <div className="mt-6 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                      {/* Search Bar */}
+                      <div className="relative flex-1 max-w-md">
+                        <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#7b8f7e]" />
+                        <input
+                          type="text"
+                          value={adminSearch}
+                          onChange={(e) => setAdminSearch(e.target.value)}
+                          placeholder="Keresés név, email vagy telefonszám alapján..."
+                          className="w-full rounded-xl border border-[#cfdacb] bg-white py-2.5 pl-10 pr-9 text-xs text-[#20382a] placeholder-[#8ca08f] transition focus:border-[#275940] focus:outline-none"
+                        />
+                        {adminSearch && (
+                          <button
+                            type="button"
+                            onClick={() => setAdminSearch('')}
+                            className="absolute right-3 top-1/2 -translate-y-1/2 text-[#8ca08f] hover:text-[#20382a]"
+                          >
+                            <X size={14} />
+                          </button>
+                        )}
+                      </div>
+
+                      {/* Filter Badges */}
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        {[
+                          { key: 'all', label: `Mind (${totalApplicants})` },
+                          { key: 'confirmed', label: `Megerősítve (${confirmedCount})` },
+                          { key: 'pending', label: `Függőben / Várólista (${pendingCount})` },
+                          { key: 'paid', label: `Kifizetve (${paidCount})` },
+                          { key: 'deposit', label: `Csak előleg (${depositCount})` },
+                          { key: 'unpaid', label: `Fizetésre vár (${unpaidCount})` }
+                        ].map((tab) => (
+                          <button
+                            key={tab.key}
+                            type="button"
+                            onClick={() => setAdminFilter(tab.key)}
+                            className={`rounded-full px-3 py-1.5 text-xs font-semibold transition ${
+                              adminFilter === tab.key
+                                ? 'bg-[#275940] text-white shadow-xs'
+                                : 'bg-white text-[#566c5b] border border-[#d3ded0] hover:bg-[#eef3ec]'
+                            }`}
+                          >
+                            {tab.label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Bookings List */}
+                    <div className="mt-6">
+                      {adminBookingsLoading ? (
+                        <div className="flex items-center justify-center py-12 text-sm text-[#718174]">
+                          <RefreshCw size={18} className="mr-2 animate-spin text-[#275940]" />
+                          Jelentkezők adatainak betöltése...
+                        </div>
+                      ) : filteredBookings.length === 0 ? (
+                        <div className="rounded-xl border border-dashed border-[#c7d5c3] bg-white/70 py-10 text-center">
+                          <p className="text-sm font-medium text-[#4f6453]">Nem található a szűrésnek megfelelő jelentkező.</p>
+                          {adminSearch && (
+                            <button
+                              type="button"
+                              onClick={() => { setAdminSearch(''); setAdminFilter('all'); }}
+                              className="mt-2 text-xs font-semibold text-[#275940] underline hover:no-underline"
+                            >
+                              Keresési feltételek törlése
+                            </button>
+                          )}
+                        </div>
+                      ) : (
+                        <div className="grid gap-4">
+                          {filteredBookings.map((b) => {
+                            const isFullyPaid = b.payment_status === 'paid';
+                            const isDepositPaid = !isFullyPaid && !!b.deposit_paid;
+                            const depositAmount = Number(tour?.deposit_amount || 0);
+                            const totalPrice = Number(b.total_price || 0);
+                            const remaining = Math.max(0, totalPrice - depositAmount);
+
+                            return (
+                              <div
+                                key={b.id}
+                                className="rounded-2xl border border-[#dce5d8] bg-white p-5 shadow-xs transition hover:border-[#b8cdb1] md:p-6"
+                              >
+                                {/* Top User Bar */}
+                                <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between border-b border-[#eef3ec] pb-4">
+                                  <div className="flex items-start gap-3.5">
+                                    {b.avatar_url ? (
+                                      <img
+                                        src={b.avatar_url}
+                                        alt={b.user_name}
+                                        className="h-11 w-11 rounded-full object-cover border border-[#c4dac2]"
+                                      />
+                                    ) : (
+                                      <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[#e8efe7] text-sm font-bold text-[#275940]">
+                                        {b.user_name ? b.user_name.slice(0, 2).toUpperCase() : 'U'}
+                                      </div>
+                                    )}
+                                    <div>
+                                      <h3 className="font-semibold text-base text-[#173327]">{b.user_name}</h3>
+                                      <div className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-[#5e755f]">
+                                        <a
+                                          href={`mailto:${b.email}`}
+                                          className="inline-flex items-center gap-1 hover:text-[#275940] hover:underline"
+                                        >
+                                          <Mail size={13} />
+                                          {b.email}
+                                        </a>
+                                        {b.user_phone ? (
+                                          <a
+                                            href={`tel:${b.user_phone}`}
+                                            className="inline-flex items-center gap-1 font-medium text-[#275940] hover:underline"
+                                          >
+                                            <Phone size={13} />
+                                            {b.user_phone}
+                                          </a>
+                                        ) : (
+                                          <span className="inline-flex items-center gap-1 text-[#9aa79d]">
+                                            <Phone size={13} />
+                                            Nincs telefonszám
+                                          </span>
+                                        )}
+                                      </div>
+                                    </div>
+                                  </div>
+
+                                  <div className="flex flex-wrap items-center sm:flex-col sm:items-end gap-2">
+                                    <div className="flex items-center gap-1.5">
+                                      <span
+                                        className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-semibold border ${
+                                          b.status === 'confirmed'
+                                            ? 'bg-[#e8efe7] text-[#275940] border-[#c4dac2]'
+                                            : b.status === 'waitlist'
+                                            ? 'bg-[#eef2f6] text-[#334e68] border-[#d2dce6]'
+                                            : b.status === 'cancelled'
+                                            ? 'bg-[#fbf4f4] text-[#a33833] border-[#f5d5d3]'
+                                            : 'bg-[#fef7ec] text-[#a0681c] border-[#fae2be]'
+                                        }`}
+                                      >
+                                        {b.status === 'confirmed' && <CheckCircle2 size={12} />}
+                                        {b.status === 'confirmed'
+                                          ? 'Visszaigazolva'
+                                          : b.status === 'waitlist'
+                                          ? 'Várólistán'
+                                          : b.status === 'cancelled'
+                                          ? 'Lemondva'
+                                          : 'Jóváhagyásra vár'}
+                                      </span>
+                                    </div>
+                                    <div className="flex items-center gap-1 text-xs text-[#718174]">
+                                      <Clock size={12} />
+                                      <span>Jelentkezett: </span>
+                                      <span className="font-medium text-[#20382a]">{formatFullDateTime(b.booked_at)}</span>
+                                    </div>
+                                  </div>
+                                </div>
+
+                                {/* Financial Info & Equipment Details */}
+                                <div className="mt-4 grid gap-4 md:grid-cols-2">
+                                  {/* Financial Box */}
+                                  <div className="rounded-xl border border-[#e4ebe0] bg-[#f7f9f5] p-4">
+                                    <div className="flex items-center justify-between">
+                                      <p className="text-[11px] font-semibold uppercase tracking-wider text-[#637567]">Fizetési állapot</p>
+                                      <span
+                                        className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold border ${
+                                          isFullyPaid
+                                            ? 'bg-[#e8efe7] text-[#275940] border-[#c4dac2]'
+                                            : isDepositPaid
+                                            ? 'bg-[#fef7ec] text-[#a0681c] border-[#fae2be]'
+                                            : 'bg-[#fbf4f4] text-[#a33833] border-[#f5d5d3]'
+                                        }`}
+                                      >
+                                        {isFullyPaid ? (
+                                          <>
+                                            <CheckCircle2 size={11} /> Teljes összeg fizetve
+                                          </>
+                                        ) : isDepositPaid ? (
+                                          <>
+                                            <CreditCard size={11} /> Előleg kifizetve
+                                          </>
+                                        ) : (
+                                          <>
+                                            <AlertCircle size={11} /> Fizetésre vár
+                                          </>
+                                        )}
+                                      </span>
+                                    </div>
+
+                                    <div className="mt-3 space-y-1.5 text-xs">
+                                      <div className="flex items-center justify-between text-[#5e755f]">
+                                        <span>Alap részvételi díj:</span>
+                                        <span className="font-medium text-[#20382a]">{formatPrice(tour?.price || 0)}</span>
+                                      </div>
+                                      {Number(b.extra_price || 0) > 0 && (
+                                        <div className="flex items-center justify-between text-[#5e755f]">
+                                          <span>Bérelt felszerelések:</span>
+                                          <span className="font-medium text-[#20382a]">+{formatPrice(b.extra_price)}</span>
+                                        </div>
+                                      )}
+                                      <div className="flex items-center justify-between border-t border-[#e2ebde] pt-1.5 font-semibold text-[#173327]">
+                                        <span>Teljes részvételi díj:</span>
+                                        <span>{formatPrice(b.total_price)}</span>
+                                      </div>
+
+                                      {/* Status explanations */}
+                                      {isFullyPaid && (
+                                        <div className="mt-2 rounded-lg bg-[#e8efe7]/70 p-2 text-[11px] text-[#275940]">
+                                          <span className="font-semibold">Kifizetve:</span> {formatPrice(b.total_price)}
+                                          {b.paid_at && <span className="ml-1 text-[#567657]">({formatFullDateTime(b.paid_at)})</span>}
+                                        </div>
+                                      )}
+
+                                      {isDepositPaid && (
+                                        <div className="mt-2 rounded-lg bg-[#fef7ec] p-2 text-[11px] text-[#8a5b17]">
+                                          <div>
+                                            <span className="font-semibold">Befizetett előleg:</span> {formatPrice(depositAmount)} {b.deposit_paid_at && `(${formatFullDateTime(b.deposit_paid_at)})`}
+                                          </div>
+                                          <div className="mt-0.5">
+                                            <span className="font-semibold">Hátralék:</span> {formatPrice(remaining)}
+                                          </div>
+                                        </div>
+                                      )}
+
+                                      {!isFullyPaid && !isDepositPaid && b.status !== 'cancelled' && (
+                                        <div className="mt-2 rounded-lg bg-[#fbf4f4] p-2 text-[11px] text-[#a33833]">
+                                          <span className="font-semibold">Még nem érkezett befizetés.</span> A teljes összeg ({formatPrice(b.total_price)}) kifizetésre vár.
+                                        </div>
+                                      )}
+
+                                      {Number(b.refund_amount || 0) > 0 && (
+                                        <div className="mt-2 rounded-lg bg-[#fef2f2] p-2 text-[11px] text-[#991b1b]">
+                                          <span className="font-semibold">Visszatérítés:</span> {formatPrice(b.refund_amount)} ({b.refund_status})
+                                        </div>
+                                      )}
+                                    </div>
+                                  </div>
+
+                                  {/* Equipment Box */}
+                                  <div className="rounded-xl border border-[#e4ebe0] bg-[#f7f9f5] p-4 flex flex-col justify-between">
+                                    <div>
+                                      <div className="flex items-center justify-between">
+                                        <p className="text-[11px] font-semibold uppercase tracking-wider text-[#637567]">Foglalt felszerelések & szolgáltatások</p>
+                                        <span className="text-xs font-semibold text-[#5e755f]">
+                                          {b.equipments && b.equipments.length > 0 ? `${b.equipments.length} tétel` : '0 tétel'}
+                                        </span>
+                                      </div>
+
+                                      <div className="mt-3">
+                                        {b.equipments && b.equipments.length > 0 ? (
+                                          <div className="divide-y divide-[#e5ede2]">
+                                            {b.equipments.map((eq, idx) => (
+                                              <div key={idx} className="flex items-center justify-between py-1.5 text-xs">
+                                                <div className="flex items-center gap-1.5">
+                                                  <Package size={13} className="text-[#3c6b52]" />
+                                                  <span className="font-medium text-[#20382a]">{eq.name}</span>
+                                                  {eq.is_passenger_transport && (
+                                                    <span className="rounded bg-[#e0ede0] px-1.5 py-0.5 text-[10px] font-semibold text-[#275940]">
+                                                      Transzfer ({eq.seats_per_unit || 1} hely)
+                                                    </span>
+                                                  )}
+                                                </div>
+                                                <span className="text-[#566e5a]">
+                                                  {eq.quantity} db × {formatPrice(eq.price)}
+                                                </span>
+                                              </div>
+                                            ))}
+                                          </div>
+                                        ) : (
+                                          <p className="text-xs italic text-[#7f9082]">
+                                            A jelentkező nem igényelt külön felszerelést vagy transzfert.
+                                          </p>
+                                        )}
+                                      </div>
+                                    </div>
+
+                                    {/* Action buttons if pending or waitlist */}
+                                    {(b.status === 'pending' || b.status === 'waitlist') && (
+                                      <div className="mt-4 pt-3 border-t border-[#e2ebde] flex items-center justify-end gap-2">
+                                        {b.status === 'pending' && (
+                                          <button
+                                            type="button"
+                                            onClick={() => handleAdminApproveBooking(b.id)}
+                                            className="inline-flex items-center gap-1.5 rounded-lg bg-[#275940] px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-[#1e4632]"
+                                          >
+                                            <Check size={13} />
+                                            Jelentkezés elfogadása
+                                          </button>
+                                        )}
+                                        {b.status === 'waitlist' && (
+                                          <button
+                                            type="button"
+                                            onClick={() => handleAdminPromoteBooking(b.id)}
+                                            className="inline-flex items-center gap-1.5 rounded-lg bg-[#275940] px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-[#1e4632]"
+                                          >
+                                            <Check size={13} />
+                                            Felvétel a keretbe
+                                          </button>
+                                        )}
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  </section>
+                );
+              })()}
             </>
           )}
 
@@ -1827,10 +2266,11 @@ const TourDetailsScreen = () => {
 
                 {user?.role === 'admin' ? (
                   <button
+                    type="button"
                     onClick={openTourEditModal}
-                    className="w-full py-4 rounded-2xl font-black text-sm bg-yellow-500 hover:bg-emerald-400 text-slate-900 shadow-lg shadow-emerald-500/20 transition-all flex items-center justify-center gap-2 uppercase tracking-widest"
+                    className="w-full py-3.5 rounded-2xl font-bold text-xs bg-[#275940] hover:bg-[#1d4330] text-white shadow-sm transition-all flex items-center justify-center gap-2 uppercase tracking-wider cursor-pointer"
                   >
-                    <Edit3 size={18} /> Túra módosítása
+                    <Edit3 size={16} /> Túra adatainak módosítása
                   </button>
                 ) : isBooked || bookingStatus === 'cancelled' ? (
                   bookingStatus === 'confirmed' ? (
@@ -2281,15 +2721,17 @@ const TourDetailsScreen = () => {
             className="absolute inset-0 bg-emerald-950/60 backdrop-blur-xl"
             onClick={() => !tourEditSaving && setIsTourEditModalOpen(false)}
           ></div>
-          <div className="relative bg-white w-full max-w-3xl rounded-[3rem] shadow-2xl p-8 md:p-10 overflow-y-auto max-h-[90vh] animate-in zoom-in duration-300">
+          <div className="relative max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-[1.2rem] border border-[#d9dfd5] bg-[#fffefa] p-6 shadow-[0_25px_80px_rgba(8,28,17,0.25)] md:p-10">
             <div className="flex items-center justify-between gap-4 mb-8">
-              <h2 className="text-3xl font-black text-emerald-950 italic">Túra szerkesztése</h2>
+              <h2 className="font-serif text-3xl text-[#173327]">
+                Túra szerkesztése
+              </h2>
               <button
                 type="button"
                 onClick={() => setIsTourEditModalOpen(false)}
                 disabled={tourEditSaving}
                 className="p-3 rounded-2xl bg-slate-100 text-slate-500 hover:bg-slate-200 transition disabled:opacity-50"
-                aria-label="Szerkesztő bezárása"
+                aria-label="Ablak bezárása"
               >
                 <X size={20} />
               </button>
@@ -2302,26 +2744,28 @@ const TourDetailsScreen = () => {
                   type="text"
                   required
                   value={tourEditForm.title}
+                  className="w-full p-4 bg-slate-50 border-none rounded-2xl mt-1 focus:ring-2 focus:ring-emerald-500 transition"
                   onChange={(e) => setTourEditForm((current) => ({ ...current, title: e.target.value }))}
-                  className="w-full p-4 bg-slate-50 border-none rounded-2xl mt-1 focus:ring-2 focus:ring-emerald-500"
                 />
               </div>
+
               <div>
                 <label className="text-[10px] font-black uppercase text-slate-400 ml-4">Helyszín</label>
                 <input
                   type="text"
                   required
                   value={tourEditForm.location}
-                  onChange={(e) => setTourEditForm((current) => ({ ...current, location: e.target.value }))}
                   className="w-full p-4 bg-slate-50 border-none rounded-2xl mt-1"
+                  onChange={(e) => setTourEditForm((current) => ({ ...current, location: e.target.value }))}
                 />
               </div>
+
               <div>
                 <label className="text-[10px] font-black uppercase text-slate-400 ml-4">Kategória</label>
                 <select
                   value={tourEditForm.category}
+                  className="w-full p-4 bg-slate-50 border-none rounded-2xl mt-1 focus:ring-2 focus:ring-emerald-500 transition font-bold"
                   onChange={(e) => setTourEditForm((current) => ({ ...current, category: e.target.value }))}
-                  className="w-full p-4 bg-slate-50 border-none rounded-2xl mt-1 font-bold"
                 >
                   <option>Hegyi túrák</option>
                   <option>Vízitúrák</option>
@@ -2329,27 +2773,103 @@ const TourDetailsScreen = () => {
                   <option>Motoros</option>
                 </select>
               </div>
+
               <div>
                 <label className="text-[10px] font-black uppercase text-slate-400 ml-4">Alkategória</label>
                 <input
                   type="text"
                   value={tourEditForm.subcategory}
-                  onChange={(e) => setTourEditForm((current) => ({ ...current, subcategory: e.target.value }))}
                   className="w-full p-4 bg-slate-50 border-none rounded-2xl mt-1"
+                  onChange={(e) => setTourEditForm((current) => ({ ...current, subcategory: e.target.value }))}
                 />
               </div>
+
               <div>
                 <label className="text-[10px] font-black uppercase text-slate-400 ml-4">Nehézség</label>
                 <select
                   value={tourEditForm.difficulty}
+                  className="w-full p-4 bg-slate-50 border-none rounded-2xl mt-1 focus:ring-2 focus:ring-emerald-500 transition font-bold"
                   onChange={(e) => setTourEditForm((current) => ({ ...current, difficulty: e.target.value }))}
-                  className="w-full p-4 bg-slate-50 border-none rounded-2xl mt-1 font-bold"
                 >
                   <option value="Könnyű">Könnyű</option>
                   <option value="Közepes">Közepes</option>
                   <option value="Nehéz">Nehéz</option>
                 </select>
               </div>
+
+              <div className="md:col-span-1">
+                <label className="text-[10px] font-black uppercase text-slate-400 ml-4 italic">Időtartam (Intervallum)</label>
+                <div className="relative mt-1">
+                  <DatePicker
+                    selectsRange={true}
+                    startDate={tourEditForm.start_date ? new Date(tourEditForm.start_date + 'T00:00:00') : null}
+                    endDate={tourEditForm.end_date ? new Date(tourEditForm.end_date + 'T00:00:00') : null}
+                    minDate={new Date()}
+                    onChange={(update) => {
+                      const [start, end] = update;
+                      const toLocalIso = (d) => {
+                        if (!d || Number.isNaN(d.getTime())) return '';
+                        const y = d.getFullYear();
+                        const m = String(d.getMonth() + 1).padStart(2, '0');
+                        const day = String(d.getDate()).padStart(2, '0');
+                        return `${y}-${m}-${day}`;
+                      };
+                      const sStr = toLocalIso(start);
+                      const eStr = toLocalIso(end);
+                      setTourEditForm((current) => {
+                        const deadlineIsInvalid =
+                          current.deposit_deadline &&
+                          sStr &&
+                          current.deposit_deadline >= sStr;
+
+                        return {
+                          ...current,
+                          start_date: sStr,
+                          end_date: eStr,
+                          deposit_deadline: deadlineIsInvalid ? '' : current.deposit_deadline
+                        };
+                      });
+                      if (sStr && eStr) {
+                        fetchTourEditAvailability(sStr, eStr);
+                      } else {
+                        setTourEditAvailability({});
+                        setTourEditConflicts({});
+                      }
+                    }}
+                    className="w-full p-4 bg-slate-50 border-none rounded-2xl focus:ring-2 focus:ring-emerald-500 transition font-bold text-emerald-900"
+                    dateFormat="yyyy. MM. dd."
+                    locale="hu"
+                    calendarStartDay={1}
+                    placeholderText="Válaszd ki az intervallumot..."
+                    isClearable={true}
+                    renderCustomHeader={({ date, decreaseMonth, increaseMonth, prevMonthButtonDisabled, nextMonthButtonDisabled }) => (
+                      <div className="flex items-center justify-between px-2 pb-2">
+                        <button
+                          type="button"
+                          onClick={decreaseMonth}
+                          disabled={prevMonthButtonDisabled}
+                          className="p-2 rounded-lg hover:bg-slate-100 disabled:opacity-40"
+                        >
+                          ‹
+                        </button>
+                        <div className="font-black text-slate-900">
+                          {date.getFullYear()}. {monthNames[date.getMonth()]}
+                        </div>
+                        <button
+                          type="button"
+                          onClick={increaseMonth}
+                          disabled={nextMonthButtonDisabled}
+                          className="p-2 rounded-lg hover:bg-slate-100 disabled:opacity-40"
+                        >
+                          ›
+                        </button>
+                      </div>
+                    )}
+                  />
+                  <Calendar className="absolute right-4 top-4 text-emerald-500/50 pointer-events-none" size={20} />
+                </div>
+              </div>
+
               <div>
                 <label className="text-[10px] font-black uppercase text-slate-400 ml-4">Ár (Ft)</label>
                 <input
@@ -2357,10 +2877,11 @@ const TourDetailsScreen = () => {
                   inputMode="numeric"
                   required
                   value={formatPriceInput(tourEditForm.price)}
-                  onChange={(e) => setTourEditForm((current) => ({ ...current, price: formatPriceInput(e.target.value) }))}
                   className="w-full p-4 bg-slate-50 border-none rounded-2xl mt-1"
+                  onChange={(e) => setTourEditForm((current) => ({ ...current, price: formatPriceInput(e.target.value) }))}
                 />
               </div>
+
               <div className="md:col-span-2">
                 <div className="flex items-center gap-3 mb-3 px-1">
                   <label className="flex items-center gap-2 cursor-pointer select-none">
@@ -2390,76 +2911,37 @@ const TourDetailsScreen = () => {
                       <input
                         type="text"
                         inputMode="numeric"
-                        className="w-full p-4 bg-white border-none rounded-2xl mt-1 font-bold text-slate-900"
+                        className="w-full p-4 bg-white border-none rounded-2xl mt-1"
                         value={formatPriceInput(tourEditForm.deposit_amount)}
                         onChange={(e) => setTourEditForm((prev) => ({ ...prev, deposit_amount: formatPriceInput(e.target.value) }))}
                         placeholder="Pl. 15 000"
                       />
                     </div>
-                    <div>
+                    <div className="relative">
                       <label className="text-[10px] font-black uppercase text-slate-400 ml-1">Előleg határideje</label>
-                      <input
-                        type="date"
-                        className="w-full p-4 bg-white border-none rounded-2xl mt-1 font-bold text-emerald-900"
-                        value={tourEditForm.deposit_deadline}
-                        min={getTodayDateInputValue()}
-                        max={getPreviousDateInputValue(tourEditForm.start_date)}
-                        onChange={(e) => setTourEditForm((prev) => ({ ...prev, deposit_deadline: e.target.value }))}
+                      <DatePicker
+                        selected={tourEditForm.deposit_deadline ? new Date(tourEditForm.deposit_deadline + 'T00:00:00') : null}
+                        onChange={(date) => {
+                          const dStr = date ? `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}` : '';
+                          setTourEditForm((prev) => ({ ...prev, deposit_deadline: dStr }));
+                        }}
+                        locale="hu"
+                        dateFormat="yyyy.MM.dd"
+                        placeholderText="Dátum kiválasztása"
+                        minDate={new Date()}
+                        maxDate={(() => {
+                          if (!tourEditForm.start_date) return null;
+                          const previousDay = new Date(tourEditForm.start_date + 'T00:00:00');
+                          previousDay.setDate(previousDay.getDate() - 1);
+                          return previousDay;
+                        })()}
+                        className="w-full p-4 bg-white border-none rounded-2xl mt-1"
+                        wrapperClassName="w-full"
                       />
+                      <Calendar className="absolute right-4 top-10 text-amber-400/60 pointer-events-none" size={18} />
                     </div>
                   </div>
                 )}
-              </div>
-              <div>
-                <label className="text-[10px] font-black uppercase text-slate-400 ml-4">Kezdés</label>
-                <input
-                  type="date"
-                  required
-                  value={tourEditForm.start_date}
-                  onChange={(e) => {
-                    const startDate = e.target.value;
-                    setTourEditForm((current) => ({
-                      ...current,
-                      start_date: startDate,
-                      deposit_deadline:
-                        current.deposit_deadline && startDate && current.deposit_deadline >= startDate
-                          ? ''
-                          : current.deposit_deadline
-                    }));
-                    if (startDate && tourEditForm.end_date) {
-                      fetchTourEditAvailability(startDate, tourEditForm.end_date);
-                    }
-                  }}
-                  className="w-full p-4 bg-slate-50 border-none rounded-2xl mt-1 font-bold text-emerald-900"
-                />
-              </div>
-              <div>
-                <label className="text-[10px] font-black uppercase text-slate-400 ml-4">Befejezés</label>
-                <input
-                  type="date"
-                  required
-                  min={tourEditForm.start_date || undefined}
-                  value={tourEditForm.end_date}
-                  onChange={(e) => {
-                    const endDate = e.target.value;
-                    setTourEditForm((current) => ({ ...current, end_date: endDate }));
-                    if (tourEditForm.start_date && endDate) {
-                      fetchTourEditAvailability(tourEditForm.start_date, endDate);
-                    }
-                  }}
-                  className="w-full p-4 bg-slate-50 border-none rounded-2xl mt-1 font-bold text-emerald-900"
-                />
-              </div>
-              <div>
-                <label className="text-[10px] font-black uppercase text-slate-400 ml-4">Maximális létszám</label>
-                <input
-                  type="number"
-                  min="1"
-                  required
-                  value={tourEditForm.max_participants}
-                  onChange={(e) => setTourEditForm((current) => ({ ...current, max_participants: e.target.value }))}
-                  className="w-full p-4 bg-slate-50 border-none rounded-2xl mt-1"
-                />
               </div>
 
               <div className="md:col-span-2 bg-slate-50/70 p-5 md:p-6 rounded-3xl border border-slate-200/80">
@@ -2483,18 +2965,18 @@ const TourDetailsScreen = () => {
                 {(!tourEditForm.start_date || !tourEditForm.end_date) && (
                   <div className="mb-4 p-3 bg-amber-50/80 border border-amber-200/70 rounded-2xl flex items-center gap-2.5 text-xs text-amber-900 font-medium">
                     <AlertTriangle size={15} className="text-amber-600 shrink-0" />
-                    <span>Az átfedő túrák pontos szabad készletének számításához állíts be kezdő és záró dátumot!</span>
+                    <span>Az átfedő túrák pontos szabad készletének számításához előbb válassz időtartamot a fenti naptárban!</span>
                   </div>
                 )}
 
                 <div className="grid gap-3">
                   {tourEditEquipmentLoading ? (
                     <div className="p-4 text-center text-xs text-slate-400 font-bold bg-white rounded-2xl border border-slate-200/50">
-                      Eszközök betöltése...
+                      Felszerelések betöltése...
                     </div>
                   ) : tourEditEquipment.length === 0 ? (
                     <div className="p-4 text-center text-xs text-slate-400 font-bold bg-white rounded-2xl border border-slate-200/50">
-                      Nincs elérhető eszköz.
+                      Nincs regisztrált felszerelés.
                     </div>
                   ) : (
                     tourEditEquipment.map((item) => {
@@ -2505,8 +2987,6 @@ const TourDetailsScreen = () => {
                       const availableFromStock = Number(tourEditAvailability[equipmentId] ?? item.total_quantity ?? 0);
                       const isUnavailable = availableFromStock <= 0 && !wasInitiallyAssigned;
                       const currentQty = Number(tourEditForm.equipment_quantities?.[item.id] || 1);
-                      // Availability already excludes this tour's assignment and is
-                      // the maximum total quantity it may keep, not extra stock.
                       const maxAssignQty = Math.max(0, availableFromStock);
                       const isPassengerTransport = Boolean(Number(item.is_passenger_transport));
                       const seatsPerUnit = isPassengerTransport ? Math.max(1, Number(item.seats_per_unit || 1)) : 1;
@@ -2532,11 +3012,11 @@ const TourDetailsScreen = () => {
                                 className="h-5 w-5 rounded-lg border-slate-300 text-emerald-600 focus:ring-emerald-500 focus:ring-offset-0 disabled:cursor-not-allowed disabled:opacity-50 cursor-pointer transition"
                                 onChange={(e) => {
                                   if (e.target.checked && isUnavailable) return;
-                                  setTourEditSelectedEquipmentIds((current) => e.target.checked
-                                    ? [...new Set([...current, equipmentId])]
-                                    : current.filter((selectedId) => selectedId !== equipmentId));
+                                  setTourEditSelectedEquipmentIds((prev) => e.target.checked
+                                    ? [...new Set([...prev, equipmentId])]
+                                    : prev.filter((id) => id !== equipmentId));
                                   if (e.target.checked && !tourEditForm.equipment_quantities?.[item.id]) {
-                                    setTourEditForm(prev => ({
+                                    setTourEditForm((prev) => ({
                                       ...prev,
                                       equipment_quantities: {
                                         ...(prev.equipment_quantities || {}),
@@ -2696,9 +3176,9 @@ const TourDetailsScreen = () => {
                                 <button
                                   type="button"
                                   onClick={() => {
-                                    setTourEditSelectedEquipmentIds(current => [...new Set([...current, equipmentId])]);
+                                    setTourEditSelectedEquipmentIds((prev) => [...new Set([...prev, equipmentId])]);
                                     if (!tourEditForm.equipment_quantities?.[item.id]) {
-                                      setTourEditForm(prev => ({
+                                      setTourEditForm((prev) => ({
                                         ...prev,
                                         equipment_quantities: {
                                           ...(prev.equipment_quantities || {}),
@@ -2721,32 +3201,46 @@ const TourDetailsScreen = () => {
                 </div>
               </div>
 
+              <div>
+                <label className="text-[10px] font-black uppercase text-slate-400 ml-4">Maximális létszám</label>
+                <input
+                  type="number"
+                  required
+                  value={tourEditForm.max_participants}
+                  className="w-full p-4 bg-slate-50 border-none rounded-2xl mt-1"
+                  onChange={(e) => setTourEditForm((current) => ({ ...current, max_participants: e.target.value }))}
+                />
+              </div>
+
               <div className="md:col-span-2">
                 <label className="text-[10px] font-black uppercase text-slate-400 ml-4">Kép URL</label>
                 <input
                   type="text"
                   required
                   value={tourEditForm.image_url}
-                  onChange={(e) => setTourEditForm((current) => ({ ...current, image_url: e.target.value }))}
                   className="w-full p-4 bg-slate-50 border-none rounded-2xl mt-1"
+                  onChange={(e) => setTourEditForm((current) => ({ ...current, image_url: e.target.value }))}
                 />
               </div>
+
               <div className="md:col-span-2">
                 <label className="text-[10px] font-black uppercase text-slate-400 ml-4">Leírás</label>
                 <textarea
                   rows="4"
                   required
                   value={tourEditForm.description}
-                  onChange={(e) => setTourEditForm((current) => ({ ...current, description: e.target.value }))}
                   className="w-full p-4 bg-slate-50 border-none rounded-2xl mt-1 font-medium"
+                  onChange={(e) => setTourEditForm((current) => ({ ...current, description: e.target.value }))}
                 ></textarea>
               </div>
+
               <button
                 type="submit"
                 disabled={tourEditSaving || tourEditEquipmentLoading}
-                className="md:col-span-2 w-full py-5 rounded-[2rem] font-black text-xl bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-xl hover:-translate-y-1 transition-all disabled:opacity-60 disabled:hover:translate-y-0"
+                className="group relative flex w-full items-center justify-center gap-3 overflow-hidden rounded-xl bg-[#275940] py-4 text-base font-bold text-white transition-colors hover:bg-[#173d2a] md:col-span-2 disabled:opacity-60 cursor-pointer"
               >
-                {tourEditSaving ? 'Mentés...' : 'Módosítások mentése'}
+                <span className="relative z-10">{tourEditSaving ? 'MENTÉS FOLYAMATBAN...' : 'MÓDOSÍTÁSOK MENTÉSE'}</span>
+                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000"></div>
               </button>
             </form>
           </div>

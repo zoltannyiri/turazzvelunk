@@ -29,22 +29,6 @@ export const BlogShareModal = ({ isOpen, onClose, post }) => {
     }
   };
 
-  const handleNativeShare = async () => {
-    if (typeof navigator !== 'undefined' && navigator.share) {
-      try {
-        await navigator.share({
-          title: shareTitle,
-          url: shareUrl,
-        });
-        onClose();
-      } catch (err) {
-        if (err?.name !== 'AbortError') {
-          console.warn('[Native Share Error]', err);
-        }
-      }
-    }
-  };
-
   const openPopup = (url) => {
     window.open(url, '_blank', 'width=620,height=580,menubar=no,toolbar=no,resizable=yes');
   };
@@ -76,43 +60,41 @@ export const BlogShareModal = ({ isOpen, onClose, post }) => {
     {
       name: 'X (Twitter)',
       icon: Twitter,
-      bg: 'bg-slate-900',
-      hover: 'hover:bg-black',
+      bg: 'bg-[#173327]',
+      hover: 'hover:bg-[#0f1f17]',
       action: () => openPopup(`https://twitter.com/intent/tweet?text=${encodeURIComponent(shareTitle)}&url=${encodeURIComponent(shareUrl)}`),
     },
     {
       name: 'E-mail',
       icon: Mail,
-      bg: 'bg-emerald-600',
-      hover: 'hover:bg-emerald-700',
+      bg: 'bg-[#275940]',
+      hover: 'hover:bg-[#1d4330]',
       action: () => {
         window.location.href = `mailto:?subject=${encodeURIComponent(shareTitle)}&body=${encodeURIComponent(`Szia!\n\nNézd meg ezt a bejegyzést a Túrázz Velünk oldalon:\n\n${shareTitle}\n${shareUrl}`)}`;
       },
     },
   ];
 
-  const hasNativeShare = typeof navigator !== 'undefined' && !!navigator.share;
-
   return (
-    <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-sm animate-in fade-in duration-200" onClick={onClose}>
+    <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-[#0f1f17]/70 backdrop-blur-sm animate-in fade-in duration-200" onClick={onClose}>
       <div 
-        className="relative w-full max-w-md overflow-hidden rounded-3xl border border-slate-100 bg-white p-6 shadow-2xl transition-all"
+        className="relative w-full max-w-md overflow-hidden rounded-3xl border border-[#dce5d8] bg-white p-6 shadow-2xl transition-all"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Fejléc */}
-        <div className="flex items-start justify-between">
+        <div className="flex items-start justify-between border-b border-[#ecefe6] pb-4">
           <div>
-            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-emerald-600">
-              Túrázz Velünk
+            <span className="text-xs font-semibold uppercase tracking-[0.18em] text-[#648067]">
+              Megosztás
             </span>
-            <h3 className="mt-1 text-xl font-black text-slate-900">
-              Bejegyzés megosztása
+            <h3 className="mt-1 font-serif text-2xl text-[#173327] font-normal">
+              Bejegyzés ajánlása
             </h3>
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="rounded-full p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-700 transition"
+            className="rounded-xl p-2 text-[#718174] hover:bg-[#ecefe6] hover:text-[#173327] transition border border-transparent hover:border-[#cad6c9]"
             aria-label="Bezárás"
           >
             <X size={18} />
@@ -120,7 +102,7 @@ export const BlogShareModal = ({ isOpen, onClose, post }) => {
         </div>
 
         {/* Cikk előnézet */}
-        <div className="mt-4 flex items-center gap-3 rounded-2xl bg-slate-50 p-3 border border-slate-100">
+        <div className="mt-4 flex items-center gap-3 rounded-2xl bg-[#f7f9f5] p-3 border border-[#dce5d8]">
           {post.cover_image ? (
             <img
               src={`${assetBase}${post.cover_image}`}
@@ -128,15 +110,15 @@ export const BlogShareModal = ({ isOpen, onClose, post }) => {
               className="h-12 w-12 rounded-xl object-cover shrink-0"
             />
           ) : (
-            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-emerald-600 text-white shrink-0 font-black">
+            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-[#275940] text-white shrink-0 font-serif font-bold text-lg">
               {post.title?.charAt(0) || 'T'}
             </div>
           )}
           <div className="min-w-0 flex-1">
-            <h4 className="truncate text-sm font-black text-slate-900">
+            <h4 className="truncate font-serif text-sm text-[#173327] font-normal">
               {post.title}
             </h4>
-            <p className="truncate text-xs text-slate-500">
+            <p className="truncate text-xs text-[#718174] mt-0.5">
               {shareUrl}
             </p>
           </div>
@@ -144,7 +126,7 @@ export const BlogShareModal = ({ isOpen, onClose, post }) => {
 
         {/* Megosztó ikonok */}
         <div className="mt-6">
-          <div className="text-[10px] font-black uppercase tracking-wider text-slate-400 mb-3">
+          <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[#718174] mb-3">
             Megosztás közvetlenül
           </div>
           <div className="grid grid-cols-3 gap-2.5">
@@ -155,12 +137,12 @@ export const BlogShareModal = ({ isOpen, onClose, post }) => {
                   key={item.name}
                   type="button"
                   onClick={item.action}
-                  className="flex flex-col items-center justify-center gap-2 rounded-2xl border border-slate-100 p-3.5 transition hover:-translate-y-0.5 hover:shadow-md hover:border-slate-200 bg-white"
+                  className="flex flex-col items-center justify-center gap-2 rounded-2xl border border-[#dce5d8] p-3.5 transition hover:-translate-y-0.5 hover:shadow-md hover:border-[#b4c7b0] bg-[#f7f9f5] cursor-pointer"
                 >
-                  <div className={`flex h-10 w-10 items-center justify-center rounded-xl text-white shadow-sm transition ${item.bg} ${item.hover}`}>
+                  <div className={`flex h-10 w-10 items-center justify-center rounded-xl text-white shadow-xs transition ${item.bg} ${item.hover}`}>
                     <Icon size={18} />
                   </div>
-                  <span className="text-[11px] font-bold text-slate-700">
+                  <span className="text-[11px] font-semibold text-[#173327]">
                     {item.name}
                   </span>
                 </button>
@@ -171,23 +153,23 @@ export const BlogShareModal = ({ isOpen, onClose, post }) => {
 
         {/* Link másolása */}
         <div className="mt-6">
-          <div className="text-[10px] font-black uppercase tracking-wider text-slate-400 mb-2">
+          <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[#718174] mb-2">
             Hivatkozás másolása
           </div>
-          <div className="flex items-center gap-2 rounded-2xl border border-slate-200 bg-slate-50/70 p-1.5 focus-within:border-emerald-500 focus-within:bg-white transition">
+          <div className="flex items-center gap-2 rounded-2xl border border-[#dce5d8] bg-[#f7f9f5] p-1.5 focus-within:border-[#477258] focus-within:bg-white transition">
             <input
               type="text"
               readOnly
               value={shareUrl}
-              className="flex-1 bg-transparent px-3 text-xs text-slate-700 focus:outline-none truncate font-medium"
+              className="flex-1 bg-transparent px-3 text-xs text-[#173327] focus:outline-none truncate font-medium"
             />
             <button
               type="button"
               onClick={handleCopyLink}
-              className={`flex items-center gap-1.5 rounded-xl px-4 py-2.5 text-xs font-black transition ${
+              className={`flex items-center gap-1.5 rounded-xl px-4 py-2.5 text-xs font-bold uppercase tracking-wider transition ${
                 copied
-                  ? 'bg-emerald-600 text-white'
-                  : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100'
+                  ? 'bg-[#275940] text-white'
+                  : 'bg-white border border-[#cad6c9] text-[#275940] hover:bg-[#275940] hover:text-white'
               }`}
             >
               {copied ? <Check size={14} /> : <Copy size={14} />}
@@ -195,20 +177,6 @@ export const BlogShareModal = ({ isOpen, onClose, post }) => {
             </button>
           </div>
         </div>
-
-        {/* Rendszer megosztó */}
-        {/* {hasNativeShare && (
-          <div className="mt-4 pt-4 border-t border-slate-100">
-            <button
-              type="button"
-              onClick={handleNativeShare}
-              className="flex w-full items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-xs font-black text-slate-600 hover:bg-slate-50 hover:text-emerald-600 transition"
-            >
-              <Share2 size={15} />
-              <span>Megnyitás a rendszer megosztóval</span>
-            </button>
-          </div>
-        )} */}
       </div>
     </div>
   );
