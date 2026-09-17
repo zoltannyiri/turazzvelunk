@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { UserPlus, Mail, Lock, User, Eye, EyeOff } from 'lucide-react';
+import { ArrowRight, Eye, EyeOff, Lock, Mail, Phone, User } from 'lucide-react';
 import { toast } from 'react-toastify';
+import AuthLayout from '../../components/AuthLayout';
 
 const RegisterScreen = () => {
-  const [formData, setFormData] = useState({ name: '', email: '', password: '' });
+  const [formData, setFormData] = useState({ name: '', email: '', phone: '', password: '' });
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -16,10 +17,18 @@ const RegisterScreen = () => {
     const payload = {
       ...formData,
       name: formData.name.trim(),
-      email: formData.email.trim()
+      email: formData.email.trim(),
+      phone: formData.phone.trim()
     };
     if (!payload.name) {
       const message = 'A név megadása kötelező.';
+      setFormError(message);
+      toast.error(message);
+      return;
+    }
+    const phoneDigits = payload.phone.replace(/\D/g, '');
+    if (!/^\+?[\d\s()-]+$/.test(payload.phone) || phoneDigits.length < 7 || phoneDigits.length > 15) {
+      const message = 'Adj meg egy érvényes telefonszámot!';
       setFormError(message);
       toast.error(message);
       return;
@@ -55,61 +64,92 @@ const RegisterScreen = () => {
   };
 
   return (
-    <div className="min-h-[80vh] flex items-center justify-center px-6 py-12">
-      <div className="bg-white p-10 rounded-[2.5rem] shadow-2xl border border-emerald-50 w-full max-w-md">
-        <div className="flex justify-center mb-6">
-          <div className="p-4 bg-orange-100 rounded-2xl text-orange-600">
-            <UserPlus size={32} />
-          </div>
-        </div>
-        <h2 className="text-3xl font-black text-center text-emerald-950 mb-2">Csatlakozz hozzánk!</h2>
-        <p className="text-center text-gray-500 mb-8">Készítsd el a profilodat pár másodperc alatt.</p>
-
-        <form onSubmit={handleSubmit} className="space-y-4">
+    <AuthLayout eyebrow="Az első lépés" title="Induljunk együtt." description="Hozd létre a fiókodat, és találd meg a következő közös élményt.">
+      <form onSubmit={handleSubmit} className="mt-8 space-y-4">
+        <div>
+          <label htmlFor="register-name" className="mb-2 block text-xs font-semibold text-[#173327]">Teljes név</label>
           <div className="relative">
-            <User className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
-            <input 
-              type="text" 
-              placeholder="Teljes neved" 
-              className="w-full pl-12 pr-4 py-4 bg-gray-50 border-none rounded-2xl focus:ring-2 focus:ring-emerald-500 outline-none transition"
+            <User className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-[#78877c]" size={18} />
+            <input
+              id="register-name"
+              type="text"
+              autoComplete="name"
+              placeholder="Ahogy szólíthatunk"
+              className="w-full rounded-lg border border-[#d9dfd5] bg-white py-3 pl-11 pr-4 text-sm text-[#173327] outline-none transition-colors placeholder:text-[#9ba89c] focus:border-[#477258] focus:ring-2 focus:ring-[#cbdcc8]"
+              value={formData.name}
               onChange={(e) => setFormData({...formData, name: e.target.value})}
               required
             />
           </div>
+        </div>
+        <div>
+          <label htmlFor="register-email" className="mb-2 block text-xs font-semibold text-[#173327]">Email-cím</label>
           <div className="relative">
-            <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
-            <input 
-              type="email" 
-              placeholder="Email címed" 
-              className="w-full pl-12 pr-4 py-4 bg-gray-50 border-none rounded-2xl focus:ring-2 focus:ring-emerald-500 outline-none transition"
+            <Mail className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-[#78877c]" size={18} />
+            <input
+              id="register-email"
+              type="email"
+              autoComplete="email"
+              placeholder="neved@email.hu"
+              className="w-full rounded-lg border border-[#d9dfd5] bg-white py-3 pl-11 pr-4 text-sm text-[#173327] outline-none transition-colors placeholder:text-[#9ba89c] focus:border-[#477258] focus:ring-2 focus:ring-[#cbdcc8]"
+              value={formData.email}
               onChange={(e) => setFormData({...formData, email: e.target.value})}
               required
             />
           </div>
+        </div>
+        <div>
+          <label htmlFor="register-phone" className="mb-2 block text-xs font-semibold text-[#173327]">Telefonszám</label>
           <div className="relative">
-            <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
-            <input 
+            <Phone className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-[#78877c]" size={18} />
+            <input
+              id="register-phone"
+              type="tel"
+              inputMode="tel"
+              autoComplete="tel"
+              placeholder="+36 20 123 4567"
+              className="w-full rounded-lg border border-[#d9dfd5] bg-white py-3 pl-11 pr-4 text-sm text-[#173327] outline-none transition-colors placeholder:text-[#9ba89c] focus:border-[#477258] focus:ring-2 focus:ring-[#cbdcc8]"
+              value={formData.phone}
+              onChange={(e) => setFormData({...formData, phone: e.target.value})}
+              required
+            />
+          </div>
+        </div>
+        <div>
+          <label htmlFor="register-password" className="mb-2 block text-xs font-semibold text-[#173327]">Jelszó</label>
+          <div className="relative">
+            <Lock className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-[#78877c]" size={18} />
+            <input
+              id="register-password"
               type={showPassword ? 'text' : 'password'}
-              placeholder="Jelszó" 
-              className="w-full pl-12 pr-12 py-4 bg-gray-50 border-none rounded-2xl focus:ring-2 focus:ring-emerald-500 outline-none transition"
+              autoComplete="new-password"
+              placeholder="Válassz egy jelszót"
+              className="w-full rounded-lg border border-[#d9dfd5] bg-white py-3 pl-11 pr-12 text-sm text-[#173327] outline-none transition-colors placeholder:text-[#9ba89c] focus:border-[#477258] focus:ring-2 focus:ring-[#cbdcc8]"
+              value={formData.password}
               onChange={(e) => setFormData({...formData, password: e.target.value})}
               required
             />
             <button
               type="button"
               onClick={() => setShowPassword((prev) => !prev)}
-              className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-emerald-600 transition"
+              className="absolute right-3 top-1/2 -translate-y-1/2 rounded-md p-1.5 text-[#78877c] transition-colors hover:bg-[#edf2e9] hover:text-[#275940]"
               aria-label={showPassword ? 'Jelszó elrejtése' : 'Jelszó megjelenítése'}
+              aria-pressed={showPassword}
             >
               {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
             </button>
           </div>
+        </div>
+        <div>
+          <label htmlFor="register-confirm-password" className="mb-2 block text-xs font-semibold text-[#173327]">Jelszó megerősítése</label>
           <div className="relative">
-            <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
-            <input 
+            <Lock className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-[#78877c]" size={18} />
+            <input
+              id="register-confirm-password"
               type={showConfirmPassword ? 'text' : 'password'}
-              placeholder="Jelszó megerősítése" 
-              className="w-full pl-12 pr-12 py-4 bg-gray-50 border-none rounded-2xl focus:ring-2 focus:ring-emerald-500 outline-none transition"
+              autoComplete="new-password"
+              placeholder="Írd be újra a jelszót"
+              className="w-full rounded-lg border border-[#d9dfd5] bg-white py-3 pl-11 pr-12 text-sm text-[#173327] outline-none transition-colors placeholder:text-[#9ba89c] focus:border-[#477258] focus:ring-2 focus:ring-[#cbdcc8]"
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
               required
@@ -117,27 +157,27 @@ const RegisterScreen = () => {
             <button
               type="button"
               onClick={() => setShowConfirmPassword((prev) => !prev)}
-              className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-emerald-600 transition"
+              className="absolute right-3 top-1/2 -translate-y-1/2 rounded-md p-1.5 text-[#78877c] transition-colors hover:bg-[#edf2e9] hover:text-[#275940]"
               aria-label={showConfirmPassword ? 'Jelszó elrejtése' : 'Jelszó megjelenítése'}
+              aria-pressed={showConfirmPassword}
             >
               {showConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}
             </button>
           </div>
-          <button className="w-full bg-orange-500 text-white py-4 rounded-2xl font-black text-lg hover:bg-orange-600 transition shadow-lg shadow-orange-500/20">
-            Fiók létrehozása
-          </button>
-          {formError && (
-            <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-bold text-red-600">
-              {formError}
-            </div>
-          )}
-        </form>
-
-        <p className="text-center mt-8 text-gray-600">
-          Már van fiókod? <Link to="/login" className="text-emerald-700 font-bold hover:underline">Jelentkezz be!</Link>
-        </p>
-      </div>
-    </div>
+        </div>
+        {formError && (
+          <div role="alert" className="rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-medium text-rose-700">
+            {formError}
+          </div>
+        )}
+        <button type="submit" className="flex w-full items-center justify-center gap-2 rounded-lg bg-[#275940] px-5 py-3.5 text-sm font-semibold text-white transition-colors hover:bg-[#173d2a]">
+          Fiók létrehozása <ArrowRight size={17} />
+        </button>
+      </form>
+      <p className="mt-7 border-t border-[#e3e8df] pt-5 text-center text-sm text-[#607267]">
+        Már van fiókod? <Link to="/login" className="font-semibold text-[#275940] underline-offset-4 hover:underline">Jelentkezz be</Link>
+      </p>
+    </AuthLayout>
   );
 };
 

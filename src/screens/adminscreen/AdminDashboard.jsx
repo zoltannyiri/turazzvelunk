@@ -15,7 +15,6 @@ import { formatPrice, formatPriceInput, parsePriceInput } from '../../utils/form
 
 registerLocale('hu', hu);
 import "../../App.css";
-import "./AdminDashboard.css";
 
 ChartJS.register(ArcElement, Tooltip, Legend);
 
@@ -23,6 +22,9 @@ const ADMIN_CHART_COLORS = [
   '#23583e', '#769577', '#c89553', '#8bafaa', '#8a6b56',
   '#acc0a4', '#d7a17d', '#607a88', '#af9f76', '#557f68'
 ];
+
+const adminEyebrow = 'block text-[11px] font-extrabold uppercase tracking-[0.17em] leading-relaxed text-[#658269]';
+const adminPanel = 'overflow-hidden rounded-2xl border border-[#d9dfd5] bg-[#fffefa] shadow-[0_6px_24px_rgba(29,49,32,0.04)]';
 
 const getBookingRevenue = (booking) => {
   const storedTotal = Number(booking?.total_price);
@@ -1207,16 +1209,16 @@ const AdminDashboard = () => {
   };
 
   return (
-    <div className="admin-dashboard min-h-screen">
+    <div className="min-h-screen bg-[#f5f5f0] text-[#173327]">
       <div className="mx-auto max-w-[1500px] px-4 py-6 md:px-8 md:py-10">
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-[245px_minmax(0,1fr)] lg:gap-10">
-          <aside className="admin-rail self-start lg:sticky lg:top-6">
-            <div className="admin-rail-brand">
-              <div className="admin-eyebrow">Túrázz Velünk / Admin</div>
-              <div className="admin-rail-title">Vezérlőpult<span>.</span></div>
-              <p>Túrák, közösség és foglalások egy helyen.</p>
+          <aside className="self-start overflow-hidden rounded-[1.25rem] border border-[#214934] bg-[#173327] text-[#f9faf4] shadow-[0_16px_36px_rgba(25,47,34,0.1)] lg:sticky lg:top-6">
+            <div className="border-b border-white/15 px-5 pt-7 pb-6">
+              <div className={`${adminEyebrow} text-[#a9c4a7]`}>Túrázz Velünk / Admin</div>
+              <div className="mt-2 font-serif text-[1.8rem] leading-tight tracking-tight">Vezérlőpult<span className="text-[#c9a66b]">.</span></div>
+              <p className="mt-3 text-xs leading-relaxed text-[#b7c9b9] max-lg:hidden">Túrák, közösség és foglalások egy helyen.</p>
             </div>
-            <nav className="admin-nav" aria-label="Adminisztráció">
+            <nav className="grid gap-1 p-3 max-lg:flex max-lg:overflow-x-auto" aria-label="Adminisztráció">
               {tabs.map((tab) => {
                 const Icon = tab.icon;
                 const isActive = activeTab === tab.id;
@@ -1226,32 +1228,32 @@ const AdminDashboard = () => {
                     type="button"
                     onClick={() => setActiveTab(tab.id)}
                     aria-current={isActive ? 'page' : undefined}
-                    className={`admin-nav-item ${isActive ? 'is-active' : ''}`}
+                    className={`flex min-h-11 w-full items-center gap-3 rounded-lg border px-3 py-2 text-left text-sm font-semibold transition-colors max-lg:w-auto max-lg:shrink-0 max-lg:whitespace-nowrap ${isActive ? 'border-[#cae0c1]/20 bg-[#eef3e9] text-[#173327]' : 'border-transparent text-[#c8d9c9] hover:bg-white/10 hover:text-white'}`}
                   >
                     <Icon size={17} strokeWidth={1.8} />
                     <span>{tab.label}</span>
-                    {tab.id === 'bookings' && pendingBookingCount > 0 && <span className="admin-nav-count">{pendingBookingCount}</span>}
-                    {tab.id === 'waitlists' && totalWaitlistCount > 0 && <span className="admin-nav-count">{totalWaitlistCount}</span>}
-                    {tab.id === 'cancellations' && pendingCancelCount > 0 && <span className="admin-nav-count">{pendingCancelCount}</span>}
+                    {tab.id === 'bookings' && pendingBookingCount > 0 && <span className="ml-auto rounded-full bg-[#bd8a5a] px-1.5 py-0.5 text-[10px] font-extrabold text-white">{pendingBookingCount}</span>}
+                    {tab.id === 'waitlists' && totalWaitlistCount > 0 && <span className="ml-auto rounded-full bg-[#bd8a5a] px-1.5 py-0.5 text-[10px] font-extrabold text-white">{totalWaitlistCount}</span>}
+                    {tab.id === 'cancellations' && pendingCancelCount > 0 && <span className="ml-auto rounded-full bg-[#bd8a5a] px-1.5 py-0.5 text-[10px] font-extrabold text-white">{pendingCancelCount}</span>}
                   </button>
                 );
               })}
             </nav>
-            <div className="admin-rail-status">
-              <span className="admin-status-dot" />
+            <div className="mx-3 mb-3 flex items-start gap-3 border-t border-white/15 px-2 pt-4 pb-1 max-lg:hidden">
+              <span className="mt-1 h-2 w-2 shrink-0 rounded-full bg-[#c5a56f] shadow-[0_0_0_4px_rgba(197,165,111,0.17)]" />
               <div>
-                <span className="admin-eyebrow">Mai figyelő</span>
-                <strong>{pendingBookingCount} nyitott kérelem</strong>
+                <span className={`${adminEyebrow} text-[#a5baa8]`}>Mai figyelő</span>
+                <strong className="mt-1 block text-xs font-semibold text-white">{pendingBookingCount} nyitott kérelem</strong>
               </div>
             </div>
           </aside>
 
-          <main className="admin-main min-w-0 space-y-8">
-            <header className="admin-page-header flex flex-col items-start justify-between gap-6 md:flex-row md:items-end">
+          <main className="min-w-0 space-y-8">
+            <header className="flex flex-col items-start justify-between gap-6 border-b border-[#d9dfd5] pt-2 pb-6 md:flex-row md:items-end">
               <div>
-                <p className="admin-eyebrow">Adminisztráció / {tabs.find((tab) => tab.id === activeTab)?.label}</p>
-                <h1 className="admin-page-title">{tabs.find((tab) => tab.id === activeTab)?.label}</h1>
-                <p className="admin-page-description">
+                <p className={adminEyebrow}>Adminisztráció / {tabs.find((tab) => tab.id === activeTab)?.label}</p>
+                <h1 className="mt-2 font-serif text-[clamp(2.6rem,5vw,4.35rem)] font-normal leading-tight tracking-[-0.05em]">{tabs.find((tab) => tab.id === activeTab)?.label}</h1>
+                <p className="mt-3 text-sm text-[#66766b]">
                   {activeTab === 'overview'
                     ? 'A túrák és a közösség pillanatképe.'
                     : 'A részletek és műveletek ezen a felületen kezelhetők.'}
@@ -1259,7 +1261,7 @@ const AdminDashboard = () => {
               </div>
               {activeTab === 'tours' && (
                 <button 
-                  className="admin-primary-action"
+                  className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-[#275940] px-5 py-3 text-xs font-bold text-white transition-colors hover:bg-[#173d2a]"
                   onClick={() => {
                     setEditingTourId(null);
                     setSelectedEquipmentIds([]);
@@ -1283,12 +1285,12 @@ const AdminDashboard = () => {
 
             {activeTab === 'overview' && (
               <div className="grid gap-7">
-                <div className="admin-overview-intro">
+                <div className="flex items-end justify-between gap-4 max-sm:flex-col max-sm:items-start">
                   <div>
-                    <span className="admin-eyebrow">Áttekintés</span>
-                    <h2>A lényeg egy pillantásra</h2>
+                    <span className={adminEyebrow}>Áttekintés</span>
+                    <h2 className="mt-1 font-serif text-[1.65rem] font-normal tracking-tight">A lényeg egy pillantásra</h2>
                   </div>
-                  <span>{new Date().toLocaleDateString('hu-HU', { year: 'numeric', month: 'long', day: 'numeric' })}</span>
+                  <span className="whitespace-nowrap text-xs text-[#66766b]">{new Date().toLocaleDateString('hu-HU', { year: 'numeric', month: 'long', day: 'numeric' })}</span>
                 </div>
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
                   {[
@@ -1297,22 +1299,22 @@ const AdminDashboard = () => {
                     { label: 'Felhasználók', value: totalUsers, icon: Users, detail: 'Regisztrált tagok' },
                     { label: 'Bevétel', value: `${formatPrice(totalRevenue)} Ft`, icon: DollarSign, detail: 'Túrák és eszközök' }
                   ].map(({ label, value, icon, detail }) => (
-                    <article key={label} className="admin-stat-card">
-                      <div className="admin-stat-top"><span>{label}</span>{React.createElement(icon, { size: 19, strokeWidth: 1.8 })}</div>
-                      <strong>{value}</strong>
-                      <span className="admin-stat-detail">{detail}</span>
+                    <article key={label} className="flex min-h-40 flex-col rounded-2xl border border-[#d9dfd5] bg-[#fffefa] p-5 shadow-[0_6px_24px_rgba(29,49,32,0.04)]">
+                      <div className="flex items-center justify-between text-xs font-extrabold uppercase tracking-widest text-[#5e7262]"><span>{label}</span>{React.createElement(icon, { size: 19, strokeWidth: 1.8 })}</div>
+                      <strong className="mt-auto font-serif text-[clamp(1.75rem,2.5vw,2.2rem)] font-normal leading-tight tracking-tight text-[#173327]">{value}</strong>
+                      <span className="mt-2 text-xs text-[#7b897d]">{detail}</span>
                     </article>
                   ))}
                 </div>
 
                 <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
-                  <div className="admin-chart-card">
+                  <div className="min-w-0 rounded-2xl border border-[#d9dfd5] bg-[#fffefa] p-6 shadow-[0_6px_24px_rgba(29,49,32,0.04)] max-sm:p-4">
                     <div className="flex items-center justify-between mb-6">
                       <div>
-                        <div className="admin-eyebrow">Összes bevétel</div>
-                        <h3>Bevétel kategóriánként</h3>
+                        <div className={adminEyebrow}>Összes bevétel</div>
+                        <h3 className="mt-1 font-serif text-[1.65rem] font-normal tracking-tight">Bevétel kategóriánként</h3>
                       </div>
-                      <div className="admin-chart-total">{formatPrice(totalRevenue)} Ft</div>
+                      <div className="whitespace-nowrap text-xs font-extrabold text-[#38634a]">{formatPrice(totalRevenue)} Ft</div>
                     </div>
                     {Object.keys(categoryRevenue).length === 0 ? (
                       <div className="text-center text-slate-400 font-bold py-10">Nincs adat.</div>
@@ -1337,13 +1339,13 @@ const AdminDashboard = () => {
                     )}
                   </div>
 
-                  <div className="admin-chart-card">
+                  <div className="min-w-0 rounded-2xl border border-[#d9dfd5] bg-[#fffefa] p-6 shadow-[0_6px_24px_rgba(29,49,32,0.04)] max-sm:p-4">
                     <div className="flex items-center justify-between mb-6">
                       <div>
-                        <div className="admin-eyebrow">Túrák megoszlása</div>
-                        <h3>Túrák kategóriánként</h3>
+                        <div className={adminEyebrow}>Túrák megoszlása</div>
+                        <h3 className="mt-1 font-serif text-[1.65rem] font-normal tracking-tight">Túrák kategóriánként</h3>
                       </div>
-                      <div className="admin-chart-total">{totalTours} db</div>
+                      <div className="whitespace-nowrap text-xs font-extrabold text-[#38634a]">{totalTours} db</div>
                     </div>
                     {Object.keys(toursByCategory).length === 0 ? (
                       <div className="text-center text-slate-400 font-bold py-10">Nincs adat.</div>
@@ -1375,11 +1377,11 @@ const AdminDashboard = () => {
                     const isCategoryExpanded = expandedCategories[category] ?? false;
 
                     return (
-                      <div key={category} className="admin-tour-group space-y-4">
+                      <div key={category} className="space-y-4 rounded-2xl border border-[#d9dfd5] bg-[#fffefa] p-3 shadow-[0_6px_24px_rgba(29,49,32,0.04)]">
                         <button
                           type="button"
                           onClick={() => setExpandedCategories((prev) => ({ ...prev, [category]: !prev[category] }))}
-                          className="admin-tour-group-toggle w-full flex items-center justify-between gap-4 text-left transition"
+                          className="w-full flex items-center justify-between gap-4 rounded-lg px-4 py-3 text-left transition-colors hover:bg-[#f3f5ef]"
                         >
                           <div className="flex items-center gap-3">
                             <div className="font-serif text-xl text-[#173327]">{category}</div>
@@ -1404,7 +1406,7 @@ const AdminDashboard = () => {
                               return (
                                 <div
                                   key={tour.id}
-                                  className={`admin-tour-card cursor-pointer overflow-hidden transition-all ${expired ? 'is-expired' : ''}`}
+                                  className={`cursor-pointer overflow-hidden rounded-xl border transition-all hover:border-[#98ad98] hover:shadow-[0_8px_24px_rgba(29,49,32,0.09)] ${expired ? 'border-[#e6d7d0] bg-[#fffaf7]' : 'border-[#dbe2d8] bg-white'}`}
                                   onClick={() => navigate(`/tours/${tour.id}`)}
                                 >
                                   <div className="flex flex-col items-start justify-between gap-6 p-5 md:flex-row md:items-center md:p-7">
@@ -1564,7 +1566,7 @@ const AdminDashboard = () => {
             )}
 
             {activeTab === 'bookings' && (
-              <div className="admin-panel">
+              <div className={adminPanel}>
                 <div className="p-8 md:p-10 flex items-center justify-between bg-gradient-to-r from-white to-slate-50">
                   <div>
                     <h2 className="text-2xl font-black text-emerald-950">Összes jelentkezés</h2>
@@ -1666,8 +1668,8 @@ const AdminDashboard = () => {
             )}
 
             {activeTab === 'waitlists' && (
-              <div className="admin-waitlists space-y-6">
-                <div className="admin-panel p-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <div className="space-y-6">
+                <div className={`${adminPanel} flex flex-col justify-between gap-4 p-6 md:flex-row md:items-center`}>
                   <div>
                     <h2 className="text-xl font-black text-gray-900 tracking-tight flex items-center gap-2">
                       <Clock className="text-amber-500" size={24} /> Várólisták kezelése
@@ -1845,7 +1847,7 @@ const AdminDashboard = () => {
             )}
 
             {activeTab === 'cancellations' && (
-              <div className="admin-panel">
+              <div className={adminPanel}>
                 <div className="p-8 md:p-10 flex items-center justify-between bg-gradient-to-r from-white to-slate-50">
                   <div>
                     <h2 className="text-2xl font-black text-emerald-950">Lejelentkezési kérelmek</h2>
@@ -1941,7 +1943,7 @@ const AdminDashboard = () => {
             )}
 
             {activeTab === 'users' && (
-              <div className="admin-panel">
+              <div className={adminPanel}>
                 <div className="p-8 md:p-10 flex items-center justify-between bg-gradient-to-r from-white to-slate-50">
                   <div>
                     <h2 className="text-2xl font-black text-emerald-950">Felhasználók</h2>
@@ -2047,7 +2049,7 @@ const AdminDashboard = () => {
             )}
 
             {activeTab === 'activity' && (
-              <div className="admin-panel">
+              <div className={adminPanel}>
                 <div className="p-8 md:p-10 flex items-center justify-between bg-gradient-to-r from-white to-slate-50">
                   <div>
                     <h2 className="text-2xl font-black text-emerald-950">Tevékenységnapló</h2>
@@ -2121,7 +2123,7 @@ const AdminDashboard = () => {
             )}
 
             {activeTab === 'errors' && (
-              <div className="admin-panel">
+              <div className={adminPanel}>
                 <div className="p-8 md:p-10 flex items-center justify-between bg-gradient-to-r from-white to-slate-50">
                   <div>
                     <h2 className="text-2xl font-black text-emerald-950">Hibanapló</h2>
@@ -2193,7 +2195,7 @@ const AdminDashboard = () => {
             )}
 
             {activeTab === 'email' && (
-              <div className="admin-panel">
+              <div className={adminPanel}>
                 <div className="p-8 md:p-10 flex items-center justify-between bg-gradient-to-r from-white to-slate-50">
                   <div>
                     <h2 className="text-2xl font-black text-emerald-950">Email küldés</h2>
@@ -2478,7 +2480,7 @@ const AdminDashboard = () => {
             )}
 
             {activeTab === 'equipment' && (
-              <div className="admin-panel">
+              <div className={adminPanel}>
                 <div className="p-8 md:p-10 flex items-center justify-between bg-gradient-to-r from-white to-slate-50">
                   <div>
                     <h2 className="text-2xl font-black text-emerald-950">Eszközök</h2>
@@ -2635,7 +2637,7 @@ const AdminDashboard = () => {
     setIsDepositEnabled(false);
     setNewTour(initialTourState);
   }}></div>
-          <div className="admin-tour-modal relative w-full max-w-3xl overflow-y-auto p-6 md:p-10 max-h-[90vh]">
+          <div className="relative max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-[1.2rem] border border-[#d9dfd5] bg-[#fffefa] p-6 shadow-[0_25px_80px_rgba(8,28,17,0.25)] md:p-10">
             <div className="flex items-center justify-between gap-4 mb-8">
               <h2 className="font-serif text-3xl text-[#173327]">
                 {editingTourId ? 'Túra szerkesztése' : 'Új túra meghirdetése'}
@@ -3099,7 +3101,7 @@ const AdminDashboard = () => {
                 <textarea rows="4" required value={newTour.description} className="w-full p-4 bg-slate-50 border-none rounded-2xl mt-1 font-medium" 
                   onChange={e => setNewTour({...newTour, description: e.target.value})}></textarea>
               </div>
-              <button type="submit" className="admin-tour-save md:col-span-2 relative group overflow-hidden w-full py-4 font-bold text-base text-white transition-all flex items-center justify-center gap-3">
+              <button type="submit" className="group relative flex w-full items-center justify-center gap-3 overflow-hidden rounded-xl bg-[#275940] py-4 text-base font-bold text-white transition-colors hover:bg-[#173d2a] md:col-span-2">
                 <span className="relative z-10">{editingTourId ? 'MÓDOSÍTÁSOK MENTÉSE' : 'TÚRA KÖZZÉTÉTELE'}</span>
                 <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000"></div>
               </button>

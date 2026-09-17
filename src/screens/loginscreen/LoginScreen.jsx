@@ -1,8 +1,9 @@
 import React, { useState, useContext } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { AuthContext } from '../../context/AuthContext';
-import { LogIn, Mail, Lock, Eye, EyeOff } from 'lucide-react';
+import { ArrowRight, Eye, EyeOff, Lock, Mail } from 'lucide-react';
 import { toast } from 'react-toastify';
+import AuthLayout from '../../components/AuthLayout';
 
 const LoginScreen = () => {
   const [email, setEmail] = useState('');
@@ -39,34 +40,37 @@ const LoginScreen = () => {
     };
 
   return (
-    <div className="min-h-[80vh] flex items-center justify-center px-6">
-      <div className="bg-white p-10 rounded-[2.5rem] shadow-2xl border border-emerald-50 w-full max-w-md">
-        <div className="flex justify-center mb-6">
-          <div className="p-4 bg-emerald-100 rounded-2xl text-emerald-700">
-            <LogIn size={32} />
-          </div>
-        </div>
-        <h2 className="text-3xl font-black text-center text-emerald-950 mb-2">Üdv újra!</h2>
-        <p className="text-center text-gray-500 mb-8">Jelentkezz be a túrákhoz.</p>
-
-        <form onSubmit={handleSubmit} className="space-y-4">
+    <AuthLayout eyebrow="Visszatérés" title="Jó újra látni." description="Lépj be, és folytasd ott, ahol az utolsó kalandod véget ért.">
+      <form onSubmit={handleSubmit} className="mt-9 space-y-5">
+        <div>
+          <label htmlFor="login-email" className="mb-2 block text-xs font-semibold text-[#173327]">Email-cím</label>
           <div className="relative">
-            <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
-            <input 
-              type="email" 
-              placeholder="Email címed" 
-              className="w-full pl-12 pr-4 py-4 bg-gray-50 border-none rounded-2xl focus:ring-2 focus:ring-emerald-500 outline-none transition"
+            <Mail className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-[#78877c]" size={18} />
+            <input
+              id="login-email"
+              type="email"
+              autoComplete="email"
+              placeholder="neved@email.hu"
+              className="w-full rounded-lg border border-[#d9dfd5] bg-white py-3.5 pl-11 pr-4 text-sm text-[#173327] outline-none transition-colors placeholder:text-[#9ba89c] focus:border-[#477258] focus:ring-2 focus:ring-[#cbdcc8]"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
             />
           </div>
+        </div>
+        <div>
+          <div className="mb-2 flex items-center justify-between gap-3">
+            <label htmlFor="login-password" className="text-xs font-semibold text-[#173327]">Jelszó</label>
+            <Link to="/forgot-password" className="text-xs font-semibold text-[#477258] transition-colors hover:text-[#173327] hover:underline">Elfelejtetted?</Link>
+          </div>
           <div className="relative">
-            <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
-            <input 
+            <Lock className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-[#78877c]" size={18} />
+            <input
+              id="login-password"
               type={showPassword ? 'text' : 'password'}
-              placeholder="Jelszavad" 
-              className="w-full pl-12 pr-12 py-4 bg-gray-50 border-none rounded-2xl focus:ring-2 focus:ring-emerald-500 outline-none transition"
+              autoComplete="current-password"
+              placeholder="Add meg a jelszavad"
+              className="w-full rounded-lg border border-[#d9dfd5] bg-white py-3.5 pl-11 pr-12 text-sm text-[#173327] outline-none transition-colors placeholder:text-[#9ba89c] focus:border-[#477258] focus:ring-2 focus:ring-[#cbdcc8]"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
@@ -74,31 +78,27 @@ const LoginScreen = () => {
             <button
               type="button"
               onClick={() => setShowPassword((prev) => !prev)}
-              className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-emerald-600 transition"
+              className="absolute right-3 top-1/2 -translate-y-1/2 rounded-md p-1.5 text-[#78877c] transition-colors hover:bg-[#edf2e9] hover:text-[#275940]"
               aria-label={showPassword ? 'Jelszó elrejtése' : 'Jelszó megjelenítése'}
+              aria-pressed={showPassword}
             >
               {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
             </button>
           </div>
-          <button className="w-full bg-emerald-900 text-white py-4 rounded-2xl font-black text-lg hover:bg-emerald-800 transition shadow-lg shadow-emerald-900/20">
-            Bejelentkezés
-          </button>
-          {formError && (
-            <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-bold text-red-600">
-              {formError}
-            </div>
-          )}
-        </form>
-
-        <p className="text-center mt-4">
-            <Link to="/forgot-password" className="text-sm text-gray-400 hover:text-emerald-700 transition font-medium">Elfelejtett jelszó?</Link>
-          </p>
-
-        <p className="text-center mt-6 text-gray-600">
-          Még nincs fiókod? <Link to="/register" className="text-emerald-700 font-bold hover:underline">Regisztrálj!</Link>
-        </p>
-      </div>
-    </div>
+        </div>
+        {formError && (
+          <div role="alert" className="rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-medium text-rose-700">
+            {formError}
+          </div>
+        )}
+        <button type="submit" className="flex w-full items-center justify-center gap-2 rounded-lg bg-[#275940] px-5 py-3.5 text-sm font-semibold text-white transition-colors hover:bg-[#173d2a]">
+          Bejelentkezés <ArrowRight size={17} />
+        </button>
+      </form>
+      <p className="mt-8 border-t border-[#e3e8df] pt-6 text-center text-sm text-[#607267]">
+        Még nincs fiókod? <Link to="/register" className="font-semibold text-[#275940] underline-offset-4 hover:underline">Regisztrálj</Link>
+      </p>
+    </AuthLayout>
   );
 };
 

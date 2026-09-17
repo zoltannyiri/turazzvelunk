@@ -334,7 +334,7 @@ exports.getAllBookings = async (req, res) => {
                 t.title, t.location, t.price, t.description, t.image_url, 
                 t.duration, t.difficulty, t.category, t.subcategory, t.start_date, t.end_date,
                 t.max_participants, t.deposit_amount, t.deposit_deadline,
-                u.name AS user_name, u.email 
+                u.name AS user_name, u.email, u.phone AS user_phone 
             FROM bookings b
             JOIN tours t ON b.tour_id = t.id
             JOIN users u ON b.user_id = u.id

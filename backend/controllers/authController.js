@@ -6,17 +6,25 @@ const { sendRegistrationEmail, sendAccountDeletedEmail, sendPasswordResetEmail }
 const { logActivity } = require('../services/activityService');
 
 exports.register = async (req, res) => {
-    const { name, email, password } = req.body;
+    const { name, email, password, phone } = req.body;
     if (!name || !name.trim()) {
         return res.status(400).json({ message: "A név megadása kötelező!" });
+    }
+    const normalizedPhone = typeof phone === 'string' ? phone.trim() : '';
+    const phoneDigits = normalizedPhone.replace(/\D/g, '');
+    if (!normalizedPhone) {
+        return res.status(400).json({ message: "A telefonszám megadása kötelező!" });
+    }
+    if (!/^\+?[\d\s()-]+$/.test(normalizedPhone) || phoneDigits.length < 7 || phoneDigits.length > 15) {
+        return res.status(400).json({ message: "Adj meg egy érvényes telefonszámot!" });
     }
     try {
         const [existingUser] = await db.query('SELECT * FROM users WHERE email = ?', [email]);
         if (existingUser.length > 0) return res.status(400).json({ message: "Ez az email már foglalt!" });
         const salt = await bcrypt.genSalt(10);
         const hashedPassword = await bcrypt.hash(password, salt);
-        const [result] = await db.query('INSERT INTO users (name, email, password) VALUES (?, ?, ?)', 
-            [name, email, hashedPassword]);
+        const [result] = await db.query('INSERT INTO users (name, email, password, phone) VALUES (?, ?, ?, ?)',
+            [name, email, hashedPassword, normalizedPhone]);
         const userId = result.insertId;
 
         try {
@@ -61,7 +69,7 @@ exports.login = async (req, res) => {
         );
         res.json({
             token,
-            user: { id: user.id, name: user.name, email: user.email, role: user.role, created_at: user.created_at, avatar_url: user.avatar_url }
+            user: { id: user.id, name: user.name, email: user.email, phone: user.phone, role: user.role, created_at: user.created_at, avatar_url: user.avatar_url }
         });
     } catch (err) {
         console.error("Login hiba:", err);
@@ -70,7 +78,7 @@ exports.login = async (req, res) => {
 };
 
 exports.updateProfile = async (req, res) => {
-    const { email, currentPassword, newPassword } = req.body;
+    const { email, currentPassword, newPassword, phone } = req.body;
     try {
         const [rows] = await db.query('SELECT * FROM users WHERE id = ?', [req.user.id]);
         if (rows.length === 0) {
@@ -104,6 +112,18 @@ exports.updateProfile = async (req, res) => {
             values.push(hashedPassword);
         }
 
+
+        if (phone !== undefined) {
+            const trimmedPhone = typeof phone === 'string' ? phone.trim() : '';
+            if (trimmedPhone) {
+                const phoneDigits = trimmedPhone.replace(/\D/g, '');
+                if (!/^\+?[\d\s()-]+$/.test(trimmedPhone) || phoneDigits.length < 7 || phoneDigits.length > 15) {
+                    return res.status(400).json({ message: "Adj meg egy érvényes telefonszámot!" });
+                }
+            }
+            updates.push('phone = ?');
+            values.push(trimmedPhone || null);
+        }
         if (req.file) {
             updates.push('avatar_url = ?');
             values.push(`/uploads/avatars/${req.file.filename}`);
@@ -116,7 +136,7 @@ exports.updateProfile = async (req, res) => {
         values.push(req.user.id);
         await db.query(`UPDATE users SET ${updates.join(', ')} WHERE id = ?`, values);
 
-        const [updatedRows] = await db.query('SELECT id, name, email, role, created_at, avatar_url FROM users WHERE id = ?', [req.user.id]);
+        const [updatedRows] = await db.query('SELECT id, name, email, phone, role, created_at, avatar_url FROM users WHERE id = ?', [req.user.id]);
         res.json({ message: "Profil frissítve.", user: updatedRows[0] });
     } catch (err) {
         res.status(500).json({ message: "Szerver hiba történt a profil frissítésekor.", error: err.message });
@@ -126,7 +146,7 @@ exports.updateProfile = async (req, res) => {
 exports.getAllUsers = async (req, res) => {
     try {
         const [rows] = await db.query(
-            'SELECT id, name, email, role, created_at, avatar_url FROM users ORDER BY created_at DESC'
+            'SELECT id, name, email, phone, role, created_at, avatar_url FROM users ORDER BY created_at DESC'
         );
         res.json(rows);
     } catch (err) {
@@ -159,7 +179,7 @@ exports.getUserById = async (req, res) => {
     const { id } = req.params;
     try {
         const [rows] = await db.query(
-            'SELECT id, name, email, role, created_at, avatar_url FROM users WHERE id = ?',
+            'SELECT id, name, email, phone, role, created_at, avatar_url FROM users WHERE id = ?',
             [id]
         );
         if (rows.length === 0) {
@@ -190,7 +210,7 @@ exports.getPublicUserById = async (req, res) => {
 exports.getMe = async (req, res) => {
     try {
         const [rows] = await db.query(
-            'SELECT id, name, email, role, created_at, avatar_url FROM users WHERE id = ?',
+            'SELECT id, name, email, phone, role, created_at, avatar_url FROM users WHERE id = ?',
             [req.user.id]
         );
         if (rows.length === 0) {
