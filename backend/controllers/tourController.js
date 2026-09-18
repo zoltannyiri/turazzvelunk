@@ -8,10 +8,12 @@ const normalizeEquipmentPrices = (equipmentPrices) => {
         const equipmentId = Number(item?.equipment_id);
         if (Number.isInteger(equipmentId) && equipmentId > 0) {
             const qty = Number(item?.quantity);
+            const isFullRental = item?.is_full_rental === true || Number(item?.is_full_rental) === 1;
             uniqueItems.set(equipmentId, {
                 equipment_id: equipmentId,
                 price: Number(item?.price || 0),
-                quantity: Number.isInteger(qty) && qty > 0 ? qty : 1
+                quantity: Number.isInteger(qty) && qty > 0 ? qty : 1,
+                is_full_rental: isFullRental ? 1 : 0
             });
         }
     });
@@ -188,6 +190,7 @@ exports.getTourEquipmentOptions = async (req, res) => {
                     e.is_passenger_transport, e.seats_per_unit,
                     COALESCE(tp.price, tour_booked.booked_price, 0) AS price,
                     COALESCE(tp.quantity, e.total_quantity) AS assigned_quantity,
+                    COALESCE(tp.is_full_rental, 0) AS is_full_rental,
                     COALESCE(tour_booked.qty, 0) AS booked_quantity
              FROM equipment e
              LEFT JOIN tour_equipment_prices tp
@@ -208,11 +211,14 @@ exports.getTourEquipmentOptions = async (req, res) => {
             const assigned = Number(row.assigned_quantity || 0);
             const booked = Number(row.booked_quantity || 0);
             const isPassengerTransport = Boolean(Number(row.is_passenger_transport));
+            const isFullRental = Boolean(Number(row.is_full_rental));
             const seatsPerUnit = isPassengerTransport ? Math.max(1, Number(row.seats_per_unit || 1)) : 1;
-            const assignedCapacity = isPassengerTransport ? assigned * seatsPerUnit : assigned;
+            // Full rental: each physical unit = 1 bookable slot; seat-based: each unit = seats_per_unit slots
+            const assignedCapacity = isPassengerTransport && !isFullRental ? assigned * seatsPerUnit : assigned;
             return {
                 ...row,
                 is_passenger_transport: isPassengerTransport,
+                is_full_rental: isFullRental,
                 seats_per_unit: isPassengerTransport ? seatsPerUnit : null,
                 assigned_quantity: assigned,
                 assigned_capacity: assignedCapacity,
@@ -271,8 +277,8 @@ exports.createTour = async (req, res) => {
             await Promise.all(
                 normalizedEquipmentPrices.map((item) => {
                     return db.query(
-                        'INSERT INTO tour_equipment_prices (tour_id, equipment_id, price, quantity) VALUES (?, ?, ?, ?)',
-                        [tourId, item.equipment_id, Number(item.price || 0), Number(item.quantity || 1)]
+                        'INSERT INTO tour_equipment_prices (tour_id, equipment_id, price, quantity, is_full_rental) VALUES (?, ?, ?, ?, ?)',
+                        [tourId, item.equipment_id, Number(item.price || 0), Number(item.quantity || 1), item.is_full_rental ? 1 : 0]
                     );
                 })
             );
@@ -366,6 +372,7 @@ exports.updateTour = async (req, res) => {
             );
             const [bookedEquipment] = await db.query(
                 `SELECT be.equipment_id, e.name, e.is_passenger_transport, e.seats_per_unit,
+                        COALESCE(tp.is_full_rental, 0) AS is_full_rental,
                         SUM(be.quantity) AS booked_quantity,
                         COALESCE(MAX(tp.price), MAX(be.price), 0) AS protected_price
                  FROM booking_equipments be
@@ -399,7 +406,8 @@ exports.updateTour = async (req, res) => {
             const blockedQuantityReductions = bookedEquipment.filter((item) => {
                 const submitted = submittedEquipment.get(Number(item.equipment_id));
                 if (!submitted) return false;
-                const capacityPerUnit = Number(item.is_passenger_transport)
+                const isFullRental = Number(item.is_full_rental) === 1;
+                const capacityPerUnit = (Number(item.is_passenger_transport) && !isFullRental)
                     ? Math.max(1, Number(item.seats_per_unit || 1))
                     : 1;
                 return Number(submitted.quantity || 1) * capacityPerUnit < Number(item.booked_quantity || 0);
@@ -440,8 +448,8 @@ exports.updateTour = async (req, res) => {
                 equipmentPrices.map((item) => {
                     if (!item?.equipment_id) return Promise.resolve();
                     return db.query(
-                        'INSERT INTO tour_equipment_prices (tour_id, equipment_id, price, quantity) VALUES (?, ?, ?, ?)',
-                        [id, item.equipment_id, Number(item.price || 0), Number(item.quantity || 1)]
+                        'INSERT INTO tour_equipment_prices (tour_id, equipment_id, price, quantity, is_full_rental) VALUES (?, ?, ?, ?, ?)',
+                        [id, item.equipment_id, Number(item.price || 0), Number(item.quantity || 1), item.is_full_rental ? 1 : 0]
                     );
                 })
             );
@@ -482,6 +490,7 @@ exports.getEquipmentAvailabilityByRange = async (req, res) => {
                     e.is_passenger_transport, e.seats_per_unit,
                     COALESCE(other_tours.assigned_qty, 0) AS other_assigned_quantity,
                     COALESCE(this_tour.assigned_qty, 0) AS current_assigned_quantity,
+                    COALESCE(this_tour.is_full_rental, 0) AS current_is_full_rental,
                     COALESCE(this_tour_booked.qty, 0) AS current_booked_quantity,
                     other_tours.conflicting_tours
              FROM equipment e
@@ -496,7 +505,8 @@ exports.getEquipmentAvailabilityByRange = async (req, res) => {
                GROUP BY tep.equipment_id
              ) other_tours ON other_tours.equipment_id = e.id
              LEFT JOIN (
-               SELECT tep.equipment_id, COALESCE(tep.quantity, 1) AS assigned_qty
+               SELECT tep.equipment_id, COALESCE(tep.quantity, 1) AS assigned_qty,
+                      COALESCE(tep.is_full_rental, 0) AS is_full_rental
                FROM tour_equipment_prices tep
                WHERE tep.tour_id = ?
              ) this_tour ON this_tour.equipment_id = e.id
@@ -518,8 +528,11 @@ exports.getEquipmentAvailabilityByRange = async (req, res) => {
             const currentAssigned = Number(row.current_assigned_quantity || 0);
             const booked = Number(row.current_booked_quantity || 0);
             const isPassengerTransport = Boolean(Number(row.is_passenger_transport));
+            const isFullRental = Boolean(Number(row.current_is_full_rental));
             const seatsPerUnit = isPassengerTransport ? Math.max(1, Number(row.seats_per_unit || 1)) : 1;
-            const minAllowed = Math.max(1, Math.ceil(booked / seatsPerUnit));
+            // For full rental, 1 unit = 1 bookable slot; for seat-based, capacity = quantity * seatsPerUnit
+            const effectiveCapacityPerUnit = isPassengerTransport && !isFullRental ? seatsPerUnit : 1;
+            const minAllowed = Math.max(1, Math.ceil(booked / effectiveCapacityPerUnit));
 
             return {
                 id: row.id,
@@ -528,6 +541,7 @@ exports.getEquipmentAvailabilityByRange = async (req, res) => {
                 total_quantity: total,
                 is_passenger_transport: isPassengerTransport,
                 seats_per_unit: isPassengerTransport ? seatsPerUnit : null,
+                is_full_rental: isFullRental,
                 other_assigned_quantity: otherAssigned,
                 current_assigned_quantity: currentAssigned,
                 current_booked_quantity: booked,

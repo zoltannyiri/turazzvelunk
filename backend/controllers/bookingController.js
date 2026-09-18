@@ -29,6 +29,7 @@ const getBookableEquipmentRows = async (tourId, equipmentIds, excludeBookingId =
                 e.is_passenger_transport, e.seats_per_unit,
                 COALESCE(tp.price, 0) AS price,
                 tp.quantity AS assigned_quantity,
+                COALESCE(tp.is_full_rental, 0) AS is_full_rental,
                 COALESCE(tour_booked.qty, 0) AS booked_quantity
          FROM equipment e
          JOIN tour_equipment_prices tp
@@ -49,15 +50,25 @@ const getBookableEquipmentRows = async (tourId, equipmentIds, excludeBookingId =
 
 const getAvailableBookingUnits = (row) => {
     const assignedUnits = Number(row.assigned_quantity || 0);
-    const seatsPerUnit = Number(row.is_passenger_transport)
+    const isFullRental = Number(row.is_full_rental) === 1;
+    // Full rental: each physical unit is 1 bookable slot (entire vehicle)
+    // Seat-based: each unit provides seats_per_unit bookable slots
+    const capacityPerUnit = (Number(row.is_passenger_transport) && !isFullRental)
         ? Math.max(1, Number(row.seats_per_unit || 1))
         : 1;
-    return Math.max(0, assignedUnits * seatsPerUnit - Number(row.booked_quantity || 0));
+    return Math.max(0, assignedUnits * capacityPerUnit - Number(row.booked_quantity || 0));
 };
 
-const getEquipmentSoldOutMessage = (row) => Number(row.is_passenger_transport)
-    ? `A(z) "${row.name}" járművön sajnos elfogytak az ülőhelyek erre a túrára.`
-    : `A(z) "${row.name}" eszköz sajnos elfogyott erre a túrára.`;
+const getEquipmentSoldOutMessage = (row) => {
+    if (Number(row.is_full_rental)) {
+        return `A(z) "${row.name}" busz erre a túrára már teljesen le van foglalva.`;
+    }
+    return Number(row.is_passenger_transport)
+        ? `A(z) "${row.name}" járművön sajnos elfogytak az ülőhelyek erre a túrára.`
+        : `A(z) "${row.name}" eszköz sajnos elfogyott erre a túrára.`;
+};
+
+
 
 exports.createBooking = async (req, res) => {
     const { tour_id, equipment_ids } = req.body;
