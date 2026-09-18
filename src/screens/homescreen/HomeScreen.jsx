@@ -9,20 +9,30 @@ const journeys = [
   {
     number: '01',
     title: 'Hegyi túrák',
+    category: 'Hegyi túrák',
     description: 'Gerincek, csúcsok és hosszú panorámák tapasztalt túravezetőkkel.',
     image: 'https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?auto=format&fit=crop&q=85&w=1200'
   },
   {
     number: '02',
     title: 'Vízi túrák',
+    category: 'Vízitúrák',
     description: 'Folyók és tavak más nézőpontból, közös ritmusban a vízen.',
-    image: 'https://images.unsplash.com/photo-1530789253388-582c481c54b0?auto=format&fit=crop&q=85&w=1200'
+    image: 'https://images.unsplash.com/photo-1544551763-46a013bb70d5?auto=format&fit=crop&q=85&w=1200'
   },
   {
     number: '03',
     title: 'Motoros túrák',
+    category: 'Motoros',
     description: 'Kanyargós utak és gondosan felépített útvonalak két keréken.',
     image: 'https://images.unsplash.com/photo-1558981806-ec527fa84c39?auto=format&fit=crop&q=85&w=1200'
+  },
+  {
+    number: '04',
+    title: 'Jóga túrák',
+    category: 'Jóga',
+    description: 'Feltöltődés a természetben, testi-lelki egyensúly és vezetett gyakorlás.',
+    image: 'https://images.unsplash.com/photo-1545205597-3d9d02c29597?auto=format&fit=crop&q=85&w=1200'
   }
 ];
 
@@ -110,15 +120,19 @@ const HomeScreen = () => (
         </div>
         <Link to="/tours" className="inline-flex items-center gap-2 text-xs font-extrabold text-[#275940]">Minden túra <ArrowRight size={16} /></Link>
       </div>
-      <div className="mt-4 grid grid-cols-3 gap-4 max-[900px]:grid-cols-1">
+      <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {journeys.map((journey) => (
-          <Link to="/tours" className="group relative isolate min-h-[32rem] overflow-hidden rounded-xl text-white max-[900px]:min-h-[25rem]" key={journey.title}>
+          <Link
+            to={`/tour-search?category=${encodeURIComponent(journey.category)}`}
+            className="group relative isolate min-h-[30rem] overflow-hidden rounded-xl text-white max-[900px]:min-h-[22rem]"
+            key={journey.title}
+          >
             <img src={journey.image} alt="" className="absolute inset-0 -z-20 h-full w-full object-cover transition-transform duration-700 group-hover:scale-105" />
             <span className="absolute inset-0 -z-10 bg-gradient-to-t from-[#0b1f14]/90 to-transparent" />
             <span className="absolute top-5 left-5 text-[10px] font-extrabold tracking-[0.14em]">{journey.number}</span>
             <span className="absolute right-6 bottom-6 left-6 flex flex-col">
-              <strong className="font-serif text-[clamp(1.7rem,2.7vw,2.6rem)] font-normal">{journey.title}</strong>
-              <span className="mt-3 max-w-sm text-xs leading-relaxed text-[#dce6dd]">{journey.description}</span>
+              <strong className="font-serif text-[clamp(1.5rem,2vw,2.2rem)] font-normal">{journey.title}</strong>
+              <span className="mt-2.5 max-w-sm text-xs leading-relaxed text-[#dce6dd]">{journey.description}</span>
             </span>
             <span className="absolute top-5 right-5 inline-flex h-10 w-10 items-center justify-center rounded-full border border-white/45 transition-colors group-hover:bg-white group-hover:text-[#173327]"><ArrowRight size={19} /></span>
           </Link>

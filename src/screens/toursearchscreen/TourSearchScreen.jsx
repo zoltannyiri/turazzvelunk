@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { createPortal } from 'react-dom';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { 
   Search, MapPin, Calendar, DollarSign, 
   Zap, Clock, ArrowRight, SlidersHorizontal, X,
@@ -25,13 +25,29 @@ const getLocalDateKey = (value) => {
 
 const getTodayKey = () => getLocalDateKey(new Date());
 
+const defaultCategories = ['Hegyi túrák', 'Vízitúrák', 'Motoros', 'Jóga'];
+
+const findMatchingCategory = (param, list) => {
+  if (!param) return "Mind";
+  const pNorm = param.toLowerCase().replace(/[\s\-_]/g, '');
+  const found = list.find((cat) => {
+    const cNorm = cat.toLowerCase().replace(/[\s\-_]/g, '');
+    return cNorm === pNorm || cNorm.includes(pNorm) || pNorm.includes(cNorm);
+  });
+  return found || param;
+};
+
 const TourSearchScreen = () => {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [tours, setTours] = useState([]);
   const [loading, setLoading] = useState(true);
 
   // Kategória alapú menüpontok állapota
-  const [selectedCategory, setSelectedCategory] = useState("Mind");
+  const categoryParam = searchParams.get('category');
+  const [selectedCategory, setSelectedCategory] = useState(() =>
+    findMatchingCategory(categoryParam, defaultCategories)
+  );
   const [selectedSubcategory, setSelectedSubcategory] = useState("Mind");
   
   // Részletes keresőhöz tartozó állapotok (opcionálisan fenntartva)
@@ -58,6 +74,10 @@ const TourSearchScreen = () => {
       .catch(() => setLoading(false));
   }, []);
 
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, []);
+
   const formatCompactDate = (dateString) => {
     if (!dateString) return "";
     const d = new Date(dateString);
@@ -74,15 +94,23 @@ const TourSearchScreen = () => {
     });
   }, [tours, todayKey]);
 
-  // Alapértelmezett és dinamikusan fellelhető kategóriák listája
-  const defaultCategories = ['Hegyi túrák', 'Vízitúrák', 'Motoros', 'Jóga'];
-
   const categoryList = useMemo(() => {
     const dynamicCategories = Array.from(
       new Set(activeTours.map((tour) => tour.category).filter(Boolean))
     );
     return Array.from(new Set([...defaultCategories, ...dynamicCategories]));
   }, [activeTours]);
+
+  useEffect(() => {
+    const fromUrl = searchParams.get('category');
+    if (fromUrl) {
+      setSelectedCategory(findMatchingCategory(fromUrl, categoryList));
+      setSelectedSubcategory("Mind");
+    } else {
+      setSelectedCategory("Mind");
+      setSelectedSubcategory("Mind");
+    }
+  }, [searchParams, categoryList]);
 
   // Kategóriákhoz tartozó túraszámok kalkulálása
   const getCategoryTourCount = (catName) => {
@@ -113,7 +141,8 @@ const TourSearchScreen = () => {
   const getCategoryLabel = (catName) => ({
     'Hegyi túrák': 'Hegyi-túrák',
     'Vízitúrák': 'Vízi-túrák',
-    'Motoros': 'Motoros-túrák'
+    'Motoros': 'Motoros-túrák',
+    'Jóga': 'Jóga-túrák'
   })[catName] || catName;
 
   // Alkategóriák a kiválasztott kategória alapján
@@ -194,6 +223,7 @@ const TourSearchScreen = () => {
               onClick={() => {
                 setSelectedCategory("Mind");
                 setSelectedSubcategory("Mind");
+                setSearchParams({});
               }}
               className={`flex-1 min-w-fit lg:min-w-0 flex items-center justify-center gap-2.5 px-4 py-3 rounded-2xl font-bold text-xs uppercase tracking-wider transition-all duration-200 whitespace-nowrap cursor-pointer ${
                 selectedCategory === "Mind"
@@ -220,6 +250,7 @@ const TourSearchScreen = () => {
                   onClick={() => {
                     setSelectedCategory(cat);
                     setSelectedSubcategory("Mind");
+                    setSearchParams({ category: cat });
                   }}
                   className={`flex-1 min-w-fit lg:min-w-0 flex items-center justify-center gap-2.5 px-4 py-3 rounded-2xl font-bold text-xs uppercase tracking-wider transition-all duration-200 whitespace-nowrap cursor-pointer ${
                     isSelected
@@ -414,6 +445,7 @@ const TourSearchScreen = () => {
               onClick={() => {
                 setSelectedCategory("Mind");
                 setSelectedSubcategory("Mind");
+                setSearchParams({});
               }}
               className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[#275940] text-white text-xs font-bold uppercase tracking-wider hover:bg-[#1d4330] transition shadow-xs cursor-pointer"
             >
