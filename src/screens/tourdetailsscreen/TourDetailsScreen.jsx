@@ -2385,7 +2385,7 @@ const TourDetailsScreen = () => {
                                   <div className="min-w-0 pl-[26px] text-left">
                                     <div className="text-emerald-300 font-black whitespace-nowrap">
                                       {formatPrice(item.price)} Ft
-                                      {Number(item.is_passenger_transport) && (
+                                      {Boolean(Number(item.is_passenger_transport)) && (
                                         <span className="ml-1 text-[9px] font-black text-emerald-400/70 normal-case tracking-normal">
                                           / {isFullRental ? 'egész busz' : 'ülőhely'}
                                         </span>
@@ -2575,7 +2575,7 @@ const TourDetailsScreen = () => {
                                   <div className="min-w-0 pl-[26px] text-left">
                                     <div className="text-emerald-300 font-black whitespace-nowrap">
                                       {formatPrice(item.price)} Ft
-                                      {Number(item.is_passenger_transport) && (
+                                      {Boolean(Number(item.is_passenger_transport)) && (
                                         <span className="ml-1 text-[9px] font-black text-emerald-400/70 normal-case tracking-normal">
                                           / {isFullRental ? 'egész busz' : 'ülőhely'}
                                         </span>
@@ -2678,7 +2678,7 @@ const TourDetailsScreen = () => {
                               <div className="min-w-0 pl-[26px] text-left">
                                 <div className="text-emerald-300 font-black whitespace-nowrap">
                                       {formatPrice(item.price)} Ft
-                                      {Number(item.is_passenger_transport) && (
+                                      {Boolean(Number(item.is_passenger_transport)) && (
                                         <span className="ml-1 text-[9px] font-black text-emerald-400/70 normal-case tracking-normal">
                                           / {isFullRental ? 'egész busz' : 'ülőhely'}
                                         </span>

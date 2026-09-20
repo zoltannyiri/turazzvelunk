@@ -57,6 +57,7 @@ const finalizePaidBooking = async ({ payment, booking }) => {
             });
         }
         await sendAdminPaymentNotification({
+            tourId: payment.tour_id,
             userName,
             tourTitle: title,
             amount: paidAmount,
@@ -387,6 +388,7 @@ exports.confirmCheckoutSession = async (req, res) => {
                             });
                         }
                         await sendAdminPaymentNotification({
+                            tourId: bookingRows[0]?.tour_id,
                             userName,
                             tourTitle: title,
                             amount: confirmedAmount,

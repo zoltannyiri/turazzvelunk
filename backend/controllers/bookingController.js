@@ -211,6 +211,7 @@ exports.createBooking = async (req, res) => {
                         endDate: tour.end_date
                     });
                     await sendAdminWaitlistNotification({
+                        tourId: tour_id,
                         userName: userRows[0].name,
                         userEmail: userRows[0].email,
                         tourTitle: tour.title,
@@ -228,6 +229,10 @@ exports.createBooking = async (req, res) => {
                         totalPrice
                     });
                     await sendAdminNotification({
+                        tourId: tour_id,
+                        tourTitle: tour.title,
+                        userName: userRows[0].name,
+                        userEmail: userRows[0].email,
                         subject: `Új túra jelentkezés jóváhagyásra vár: ${tour.title}`,
                         message: `${userRows[0].name} (${userRows[0].email}) jelentkezett a(z) ${tour.title} túrára. Kérlek lépj be az admin felületre a jóváhagyáshoz.`
                     });
@@ -315,8 +320,17 @@ exports.deleteBooking = async (req, res) => {
                 });
             }
             await sendAdminNotification({
+                tourId: booking[0].tour_id,
+                tourTitle: title,
+                userName,
                 subject: `Lejelentkezés: ${title}`,
-                message: `${userName} (${userRows[0]?.email || 'n/a'}) lejelentkezett a túráról.`
+                message: `${userName} (${userRows[0]?.email || 'n/a'}) lejelentkezett a túráról.`,
+                notification: {
+                    type: 'tour',
+                    title: `Lejelentkezés: ${title}`,
+                    message: `${userName} lejelentkezett a túráról.`,
+                    link: `/tours/${booking[0].tour_id}`
+                }
             });
         } catch (logErr) {
             console.error('Tevékenységnapló hiba:', logErr.message);
@@ -505,8 +519,17 @@ exports.removeBookingByTourId = async (req, res) => {
                 });
             }
             await sendAdminNotification({
+                tourId: Number(req.params.tourId),
+                tourTitle: title,
+                userName,
                 subject: `Lejelentkezés: ${title}`,
-                message: `${userName} (${userRows[0]?.email || 'n/a'}) lejelentkezett a túráról.`
+                message: `${userName} (${userRows[0]?.email || 'n/a'}) lejelentkezett a túráról.`,
+                notification: {
+                    type: 'tour',
+                    title: `Lejelentkezés: ${title}`,
+                    message: `${userName} lejelentkezett a túráról.`,
+                    link: `/tours/${req.params.tourId}`
+                }
             });
         } catch (logErr) {
             console.error('Tevékenységnapló hiba:', logErr.message);
@@ -659,6 +682,7 @@ exports.createCancellationRequest = async (req, res) => {
                 });
             }
             await sendAdminCancellationRequestNotification({
+                tourId: booking[0].tour_id,
                 userName,
                 userEmail,
                 tourTitle: title,
@@ -752,6 +776,7 @@ exports.updateCancellationRequestStatus = async (req, res) => {
                     });
                 }
                 await sendAdminCancellationApprovedNotification({
+                    tourId: bookingRows[0].tour_id,
                     userName,
                     userEmail: userRows[0]?.email || '',
                     tourTitle: title,
@@ -839,6 +864,7 @@ exports.adminDeleteBooking = async (req, res) => {
             });
         }
         await sendAdminRemovedBookingNotification({
+            tourId: booking.tour_id,
             adminName,
             userName: booking.user_name,
             userEmail: booking.user_email || '',

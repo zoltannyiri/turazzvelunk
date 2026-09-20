@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { Pie } from 'react-chartjs-2';
 import { Chart as ChartJS, ArcElement, Tooltip, Legend } from 'chart.js';
 import { 
@@ -47,13 +47,29 @@ const formatHungarianDate = (dateString) => {
 
 const AdminDashboard = () => {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const validTabs = useMemo(() => ['overview', 'tours', 'bookings', 'waitlists', 'cancellations', 'activity', 'errors', 'users', 'email', 'equipment'], []);
+  const tabParam = searchParams.get('tab');
+
   const [bookings, setBookings] = useState([]);
   const [expandedTour, setExpandedTour] = useState(null);
   const [expandedCategories, setExpandedCategories] = useState({});
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingTourId, setEditingTourId] = useState(null);
   const [cancelRequests, setCancelRequests] = useState([]);
-  const [activeTab, setActiveTab] = useState('overview');
+  const [activeTab, setActiveTab] = useState(() => (tabParam && validTabs.includes(tabParam) ? tabParam : 'overview'));
+
+  useEffect(() => {
+    const tab = searchParams.get('tab');
+    if (tab && validTabs.includes(tab)) {
+      setActiveTab(tab);
+    }
+  }, [searchParams, validTabs]);
+
+  const handleTabChange = (tabId) => {
+    setActiveTab(tabId);
+    setSearchParams(tabId === 'overview' ? {} : { tab: tabId });
+  };
   const [users, setUsers] = useState([]);
   const [usersLoading, setUsersLoading] = useState(true);
   const [expandedUserId, setExpandedUserId] = useState(null);
@@ -1097,7 +1113,7 @@ const AdminDashboard = () => {
     loadTourEquipmentPrices(tour.id).then((equipmentIds) => {
       fetchEquipmentAvailability(startDate, endDate, tour.id, equipmentIds);
     });
-    setActiveTab('tours');
+    handleTabChange('tours');
     setIsModalOpen(true);
   };
 
@@ -1234,7 +1250,7 @@ const AdminDashboard = () => {
                   <button
                     key={tab.id}
                     type="button"
-                    onClick={() => setActiveTab(tab.id)}
+                    onClick={() => handleTabChange(tab.id)}
                     aria-current={isActive ? 'page' : undefined}
                     className={`flex min-h-11 w-full items-center gap-3 rounded-lg border px-3 py-2 text-left text-sm font-semibold transition-colors max-lg:w-auto max-lg:shrink-0 max-lg:whitespace-nowrap ${isActive ? 'border-[#cae0c1]/20 bg-[#eef3e9] text-[#173327]' : 'border-transparent text-[#c8d9c9] hover:bg-white/10 hover:text-white'}`}
                   >

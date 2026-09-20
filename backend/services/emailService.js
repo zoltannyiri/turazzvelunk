@@ -1,4 +1,5 @@
 const db = require('../config/db');
+const { createNotifications } = require('./notificationService');
 const { sendMail } = require('../emailSender/mailer');
 const {
     buildRegistrationEmail,
@@ -21,12 +22,23 @@ const {
     buildPasswordResetEmail
 } = require('./emailTemplates');
 
-const getAdminRecipients = async () => {
-    const [rows] = await db.query(
-        'SELECT email FROM users WHERE role = ? AND email IS NOT NULL AND email <> ?',
-        ['admin', '']
-    );
-    return rows.map((row) => row.email).filter(Boolean);
+const getAdminUsers = async (tourId = null) => {
+    let sql = 'SELECT id, email FROM users WHERE role = ? AND email IS NOT NULL AND email <> ?';
+    let params = ['admin', ''];
+    if (tourId) {
+        sql = `SELECT DISTINCT u.id, u.email 
+               FROM users u 
+               LEFT JOIN tours t ON t.created_by = u.id AND t.id = ?
+               WHERE (u.role = ? OR t.id = ?) AND u.email IS NOT NULL AND u.email <> ''`;
+        params = [tourId, 'admin', tourId, ''];
+    }
+    const [rows] = await db.query(sql, params);
+    return rows;
+};
+
+const getAdminRecipients = async (tourId = null) => {
+    const users = await getAdminUsers(tourId);
+    return users.map((row) => row.email).filter(Boolean);
 };
 
 const formatAmount = (amount) => `${new Intl.NumberFormat('hu-HU').format(Number(amount || 0))} Ft`;
@@ -247,20 +259,77 @@ const sendAccountDeletedEmail = async ({ to, name }) => {
     return sendMail({ to, subject, text, html });
 };
 
-const sendAdminNotification = async ({ subject, message }) => {
-    const recipients = await getAdminRecipients();
-    if (!recipients.length) return;
+const sendAdminNotification = async ({ subject, message, tourId = null, tourTitle = null, userName = null, notification = null }) => {
+    const adminUsers = await getAdminUsers(tourId);
+    if (!adminUsers.length) return;
+
+    const notifObj = notification || {
+        type: 'tour',
+        title: tourTitle ? `Új jelentkezés: ${tourTitle}` : (subject || 'Értesítés adminisztrátornak'),
+        message: userName ? `${userName} jelentkezett a túrára. Jóváhagyásra vár.` : (message || null),
+        link: tourId ? `/tours/${tourId}` : '/admin'
+    };
+
+    try {
+        await createNotifications({
+            userIds: adminUsers.map((u) => u.id),
+            type: notifObj.type,
+            title: notifObj.title,
+            message: notifObj.message,
+            link: notifObj.link
+        });
+    } catch (notifErr) {
+        console.error('Admin in-app értesítés mentési hiba:', notifErr.message);
+    }
+
     await Promise.all(
-        recipients.map((email) => sendAdminEmail({ to: email, subject, message }))
+        adminUsers.map((user) => sendAdminEmail({
+            to: user.email,
+            subject,
+            message
+        }))
     );
 };
 
-const sendAdminPaymentNotification = async ({ userName, tourTitle, amount, startDate, endDate, paymentType, totalAmount }) => {
-    const recipients = await getAdminRecipients();
-    if (!recipients.length) return;
+const sendAdminPaymentNotification = async ({ userName, tourTitle, tourId = null, amount, startDate, endDate, paymentType, totalAmount }) => {
+    const adminUsers = await getAdminUsers(tourId);
+    if (!adminUsers.length) return;
+
+    let notifTitle = `Fizetés rögzítve: ${tourTitle || 'Túra'}`;
+    let notifMsg = `${userName || 'Résztvevő'} befizetett ${formatAmount(amount)}.`;
+    if (paymentType === 'deposit') {
+        notifTitle = `Előleg befizetve: ${tourTitle || 'Túra'}`;
+        notifMsg = `${userName || 'Résztvevő'} befizette az előleget (${formatAmount(amount)}).`;
+    } else if (paymentType === 'remainder') {
+        notifTitle = `Hátralék befizetve: ${tourTitle || 'Túra'}`;
+        notifMsg = `${userName || 'Résztvevő'} befizette a hátralékot (${formatAmount(amount)}). A túra teljesen kifizetve.`;
+    } else if (paymentType === 'full') {
+        notifTitle = `Teljes díj befizetve: ${tourTitle || 'Túra'}`;
+        notifMsg = `${userName || 'Résztvevő'} kifizette a teljes részvételi díjat (${formatAmount(amount)}).`;
+    }
+
+    const notifObj = {
+        type: 'tour',
+        title: notifTitle,
+        message: notifMsg,
+        link: tourId ? `/tours/${tourId}` : '/admin'
+    };
+
+    try {
+        await createNotifications({
+            userIds: adminUsers.map((u) => u.id),
+            type: notifObj.type,
+            title: notifObj.title,
+            message: notifObj.message,
+            link: notifObj.link
+        });
+    } catch (notifErr) {
+        console.error('Admin payment in-app értesítés hiba:', notifErr.message);
+    }
+
     await Promise.all(
-        recipients.map((email) => sendAdminPaymentEmail({
-            to: email,
+        adminUsers.map((user) => sendAdminPaymentEmail({
+            to: user.email,
             userName,
             tourTitle,
             amount,
@@ -272,12 +341,32 @@ const sendAdminPaymentNotification = async ({ userName, tourTitle, amount, start
     );
 };
 
-const sendAdminCancellationRequestNotification = async ({ userName, userEmail, tourTitle, reason, startDate, endDate }) => {
-    const recipients = await getAdminRecipients();
-    if (!recipients.length) return;
+const sendAdminCancellationRequestNotification = async ({ userName, userEmail, tourTitle, tourId = null, reason, startDate, endDate }) => {
+    const adminUsers = await getAdminUsers(tourId);
+    if (!adminUsers.length) return;
+
+    const notifObj = {
+        type: 'tour',
+        title: `Lejelentkezési kérelem: ${tourTitle || 'Túra'}`,
+        message: `${userName || 'Egy résztvevő'} lejelentkezési kérelmet küldött${reason ? `: "${reason}"` : '.'}`,
+        link: '/admin?tab=cancellations'
+    };
+
+    try {
+        await createNotifications({
+            userIds: adminUsers.map((u) => u.id),
+            type: notifObj.type,
+            title: notifObj.title,
+            message: notifObj.message,
+            link: notifObj.link
+        });
+    } catch (notifErr) {
+        console.error('Admin lejelentkezési kérelem in-app értesítés hiba:', notifErr.message);
+    }
+
     await Promise.all(
-        recipients.map((email) => sendAdminCancellationRequestEmail({
-            to: email,
+        adminUsers.map((user) => sendAdminCancellationRequestEmail({
+            to: user.email,
             userName,
             userEmail,
             tourTitle,
@@ -288,12 +377,32 @@ const sendAdminCancellationRequestNotification = async ({ userName, userEmail, t
     );
 };
 
-const sendAdminCancellationApprovedNotification = async ({ userName, userEmail, tourTitle, startDate, endDate }) => {
-    const recipients = await getAdminRecipients();
-    if (!recipients.length) return;
+const sendAdminCancellationApprovedNotification = async ({ userName, userEmail, tourTitle, tourId = null, startDate, endDate }) => {
+    const adminUsers = await getAdminUsers(tourId);
+    if (!adminUsers.length) return;
+
+    const notifObj = {
+        type: 'tour',
+        title: `Lejelentkezés elfogadva: ${tourTitle || 'Túra'}`,
+        message: `${userName || 'Egy résztvevő'} lejelentkezése jóváhagyva a(z) ${tourTitle || 'túrán'}.`,
+        link: tourId ? `/tours/${tourId}` : '/admin?tab=cancellations'
+    };
+
+    try {
+        await createNotifications({
+            userIds: adminUsers.map((u) => u.id),
+            type: notifObj.type,
+            title: notifObj.title,
+            message: notifObj.message,
+            link: notifObj.link
+        });
+    } catch (notifErr) {
+        console.error('Admin cancellation approved in-app értesítés hiba:', notifErr.message);
+    }
+
     await Promise.all(
-        recipients.map((email) => sendAdminCancellationApprovedEmail({
-            to: email,
+        adminUsers.map((user) => sendAdminCancellationApprovedEmail({
+            to: user.email,
             userName,
             userEmail,
             tourTitle,
@@ -303,12 +412,32 @@ const sendAdminCancellationApprovedNotification = async ({ userName, userEmail, 
     );
 };
 
-const sendAdminRemovedBookingNotification = async ({ adminName, userName, userEmail, tourTitle, startDate, endDate }) => {
-    const recipients = await getAdminRecipients();
-    if (!recipients.length) return;
+const sendAdminRemovedBookingNotification = async ({ adminName, userName, userEmail, tourTitle, tourId = null, startDate, endDate }) => {
+    const adminUsers = await getAdminUsers(tourId);
+    if (!adminUsers.length) return;
+
+    const notifObj = {
+        type: 'tour',
+        title: `Jelentkezés törölve: ${tourTitle || 'Túra'}`,
+        message: `${adminName || 'Adminisztrátor'} törölte ${userName || 'egy résztvevő'} jelentkezését.`,
+        link: tourId ? `/tours/${tourId}` : '/admin'
+    };
+
+    try {
+        await createNotifications({
+            userIds: adminUsers.map((u) => u.id),
+            type: notifObj.type,
+            title: notifObj.title,
+            message: notifObj.message,
+            link: notifObj.link
+        });
+    } catch (notifErr) {
+        console.error('Admin removed booking in-app értesítés hiba:', notifErr.message);
+    }
+
     await Promise.all(
-        recipients.map((email) => sendAdminRemovedBookingNotificationEmail({
-            to: email,
+        adminUsers.map((user) => sendAdminRemovedBookingNotificationEmail({
+            to: user.email,
             adminName,
             userName,
             userEmail,
@@ -347,12 +476,32 @@ const sendAdminWaitlistEmail = async ({ to, userName, userEmail, tourTitle, star
     return sendMail({ to, subject, text, html });
 };
 
-const sendAdminWaitlistNotification = async ({ userName, userEmail, tourTitle, startDate, endDate }) => {
-    const recipients = await getAdminRecipients();
-    if (!recipients.length) return;
+const sendAdminWaitlistNotification = async ({ userName, userEmail, tourTitle, tourId = null, startDate, endDate }) => {
+    const adminUsers = await getAdminUsers(tourId);
+    if (!adminUsers.length) return;
+
+    const notifObj = {
+        type: 'tour',
+        title: `Új várólistás: ${tourTitle || 'Túra'}`,
+        message: `${userName || 'Egy résztvevő'} feliratkozott a(z) ${tourTitle || 'túra'} várólistájára.`,
+        link: tourId ? `/tours/${tourId}` : '/admin'
+    };
+
+    try {
+        await createNotifications({
+            userIds: adminUsers.map((u) => u.id),
+            type: notifObj.type,
+            title: notifObj.title,
+            message: notifObj.message,
+            link: notifObj.link
+        });
+    } catch (notifErr) {
+        console.error('Admin waitlist in-app értesítés hiba:', notifErr.message);
+    }
+
     await Promise.all(
-        recipients.map((email) => sendAdminWaitlistEmail({
-            to: email,
+        adminUsers.map((user) => sendAdminWaitlistEmail({
+            to: user.email,
             userName,
             userEmail,
             tourTitle,
