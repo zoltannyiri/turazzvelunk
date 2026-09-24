@@ -2387,7 +2387,7 @@ const TourDetailsScreen = () => {
                                       {formatPrice(item.price)} Ft
                                       {Boolean(Number(item.is_passenger_transport)) && (
                                         <span className="ml-1 text-[9px] font-black text-emerald-400/70 normal-case tracking-normal">
-                                          / {isFullRental ? 'egész busz' : 'ülőhely'}
+                                          / {isFullRental ? 'egész jármű' : 'ülőhely'}
                                         </span>
                                       )}
                                     </div>
@@ -2577,7 +2577,7 @@ const TourDetailsScreen = () => {
                                       {formatPrice(item.price)} Ft
                                       {Boolean(Number(item.is_passenger_transport)) && (
                                         <span className="ml-1 text-[9px] font-black text-emerald-400/70 normal-case tracking-normal">
-                                          / {isFullRental ? 'egész busz' : 'ülőhely'}
+                                          / {isFullRental ? 'egész jármű' : 'ülőhely'}
                                         </span>
                                       )}
                                     </div>
@@ -2680,7 +2680,7 @@ const TourDetailsScreen = () => {
                                       {formatPrice(item.price)} Ft
                                       {Boolean(Number(item.is_passenger_transport)) && (
                                         <span className="ml-1 text-[9px] font-black text-emerald-400/70 normal-case tracking-normal">
-                                          / {isFullRental ? 'egész busz' : 'ülőhely'}
+                                          / {isFullRental ? 'egész jarmű' : 'ülőhely'}
                                         </span>
                                       )}
                                     </div>
@@ -3083,7 +3083,7 @@ const TourDetailsScreen = () => {
                                         ? 'text-amber-700 bg-amber-100 border-amber-200'
                                         : 'text-sky-700 bg-sky-100 border-sky-200'
                                     }`}>
-                                      {isFullRentalEdit ? 'Teljes busz bérlés' : `${seatsPerUnit} férőhely / jármű`}
+                                      {isFullRentalEdit ? 'Teljes jármű bérlés' : `${seatsPerUnit} férőhely / jármű`}
                                     </span>
                                     {isLocked && (
                                       <span className="text-[10px] font-black uppercase tracking-wider text-amber-700 bg-amber-100/80 px-2 py-0.5 rounded-md border border-amber-200 shrink-0">
@@ -3205,7 +3205,7 @@ const TourDetailsScreen = () => {
                                   </span>
                                   <span className="text-[9px] font-black mt-0.5 text-center" style={{color: isFullRentalEdit ? '#d97706' : '#0369a1'}}>
                                     {isFullRentalEdit
-                                      ? `${currentQty} busz (teljes bérlés)`
+                                      ? `${currentQty} jármű (teljes bérlés)`
                                       : `${currentQty * seatsPerUnit} ülőhely`}
                                   </span>
                                 </div>
@@ -3240,13 +3240,13 @@ const TourDetailsScreen = () => {
                                         }));
                                       }}
                                       className={`flex-1 h-full text-[10px] font-black uppercase tracking-wider transition rounded-lg ${isFullRentalEdit ? 'bg-amber-500 text-white shadow-xs' : 'text-slate-500 hover:bg-slate-100 disabled:opacity-40'}`}
-                                      title="Az egész busz egyszerre foglalható le"
+                                      title="Az egész jármű egyszerre foglalható le"
                                     >
-                                      Teljes busz
+                                      Teljes jármű
                                     </button>
                                   </div>
                                   <span className="text-[9px] text-slate-400 font-semibold mt-0.5 text-center">
-                                    {isFullRentalEdit ? '1 fő = egész busz' : '1 fő = 1 ülőhely'}
+                                    {isFullRentalEdit ? '1 fő = egész jármű' : '1 fő = 1 ülőhely'}
                                   </span>
                                 </div>
 
@@ -3254,7 +3254,7 @@ const TourDetailsScreen = () => {
                                 <div className="flex flex-col min-w-0">
                                   <span className="text-[9px] font-black uppercase tracking-wider text-slate-400 mb-1">
                                     {isPassengerTransport
-                                      ? (isFullRentalEdit ? 'Díj / egész busz' : 'Díj / ülőhely')
+                                      ? (isFullRentalEdit ? 'Díj / egész jármű' : 'Díj / ülőhely')
                                       : 'Bérleti díj / db'}
                                   </span>
                                   <div className="relative h-10 w-full">

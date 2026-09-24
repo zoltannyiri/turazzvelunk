@@ -2947,7 +2947,7 @@ const AdminDashboard = () => {
                                         ? 'text-amber-700 bg-amber-100 border-amber-200'
                                         : 'text-sky-700 bg-sky-100 border-sky-200'
                                     }`}>
-                                      {newTour.equipment_full_rental?.[item.id] ? 'Teljes busz bérlés' : `${seatsPerUnit} férőhely / jármű`}
+                                      {newTour.equipment_full_rental?.[item.id] ? 'Teljes jármű bérlés' : `${seatsPerUnit} férőhely / jármű`}
                                     </span>
                                     {isLocked && (
                                       <span className="text-[10px] font-black uppercase tracking-wider text-amber-700 bg-amber-100/80 px-2 py-0.5 rounded-md border border-amber-200 shrink-0">
@@ -3069,7 +3069,7 @@ const AdminDashboard = () => {
                                   </span>
                                   <span className="text-[9px] font-black mt-0.5 text-center" style={{color: newTour.equipment_full_rental?.[item.id] ? '#d97706' : '#0369a1'}}>
                                     {newTour.equipment_full_rental?.[item.id]
-                                      ? `${currentQty} busz (teljes bérlés)`
+                                      ? `${currentQty} jármű (teljes bérlés)`
                                       : `${currentQty * seatsPerUnit} ülőhely`}
                                   </span>
                                 </div>
@@ -3104,20 +3104,20 @@ const AdminDashboard = () => {
                                         }));
                                       }}
                                       className={`flex-1 h-full text-[10px] font-black uppercase tracking-wider transition rounded-lg ${newTour.equipment_full_rental?.[item.id] ? 'bg-amber-500 text-white shadow-xs' : 'text-slate-500 hover:bg-slate-100 disabled:opacity-40'}`}
-                                      title="Az egész busz egyszerre foglalható le"
+                                      title="Az egész jármű egyszerre foglalható le"
                                     >
-                                      Teljes busz
+                                      Teljes jármű
                                     </button>
                                   </div>
                                   <span className="text-[9px] text-slate-400 font-semibold mt-0.5 text-center">
-                                    {newTour.equipment_full_rental?.[item.id] ? '1 fő = egész busz' : '1 fő = 1 ülőhely'}
+                                    {newTour.equipment_full_rental?.[item.id] ? '1 fő = egész jármű' : '1 fő = 1 ülőhely'}
                                   </span>
                                 </div>
 
                                 {/* 3. Díj */}
                                 <div className="flex flex-col min-w-0">
                                   <span className="text-[9px] font-black uppercase tracking-wider text-slate-400 mb-1">
-                                    {newTour.equipment_full_rental?.[item.id] ? 'Díj / egész busz' : 'Díj / ülőhely'}
+                                    {newTour.equipment_full_rental?.[item.id] ? 'Díj / egész jármű' : 'Díj / ülőhely'}
                                   </span>
                                   <div className="relative h-10 w-full">
                                     <input
