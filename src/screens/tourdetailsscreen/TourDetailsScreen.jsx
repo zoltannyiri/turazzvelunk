@@ -2394,7 +2394,7 @@ const TourDetailsScreen = () => {
                                     {isBookedByMe ? (
                                       <div className="text-[10px] font-bold text-emerald-400 break-words">
                                         {Number(item.is_passenger_transport)
-                                          ? (isFullRental ? 'Busz lefoglalva nálad' : 'Ülőhely lefoglalva nálad')
+                                          ? (isFullRental ? 'Jármű lefoglalva nálad' : 'Ülőhely lefoglalva nálad')
                                           : 'Lefoglalva nálad'} {availableCount > 0 ? `(szabad: ${availableCount} ${availabilityUnit})` : ''}
                                       </div>
                                     ) : isAvailable ? (
@@ -2537,7 +2537,7 @@ const TourDetailsScreen = () => {
                               const isAvailable = isBookedByMe || availableCount > 0;
                               const isFullRental = Boolean(Number(item.is_full_rental));
                               const availabilityUnit = Number(item.is_passenger_transport)
-                                ? (isFullRental ? 'busz' : 'ülőhely')
+                                ? (isFullRental ? 'jármű' : 'ülőhely')
                                 : 'db';
 
                               return (
