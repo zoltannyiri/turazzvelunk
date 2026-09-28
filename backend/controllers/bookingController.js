@@ -61,7 +61,7 @@ const getAvailableBookingUnits = (row) => {
 
 const getEquipmentSoldOutMessage = (row) => {
     if (Number(row.is_full_rental)) {
-        return `A(z) "${row.name}" busz erre a túrára már teljesen le van foglalva.`;
+        return `A(z) "${row.name}" jármű erre a túrára már teljesen le van foglalva.`;
     }
     return Number(row.is_passenger_transport)
         ? `A(z) "${row.name}" járművön sajnos elfogytak az ülőhelyek erre a túrára.`
