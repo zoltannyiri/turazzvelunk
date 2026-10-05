@@ -6,8 +6,8 @@ import {
 import busImage from '../../assets/buszok.jpg';
 
 const BusRentalScreen = () => {
-  const [days, setDays] = useState(1);
-  const [extraKm, setExtraKm] = useState(0);
+  const [days, setDays] = useState('');
+  const [extraKm, setExtraKm] = useState('');
   const [cleaning, setCleaning] = useState(false);
 
   const dailyRate = 26000;
@@ -15,8 +15,11 @@ const BusRentalScreen = () => {
   const cleaningFee = 20000;
   const includedKmPerDay = 300;
 
-  const totalDailyFee = days * dailyRate;
-  const totalExtraKmFee = extraKm * extraKmRate;
+  const parsedDays = Number(days) || 0;
+  const parsedExtraKm = Number(extraKm) || 0;
+
+  const totalDailyFee = parsedDays * dailyRate;
+  const totalExtraKmFee = parsedExtraKm * extraKmRate;
   const totalCleaning = cleaning ? cleaningFee : 0;
   const grandTotal = totalDailyFee + totalExtraKmFee + totalCleaning;
 
@@ -169,7 +172,13 @@ const BusRentalScreen = () => {
                   type="number"
                   min={1}
                   value={days}
-                  onChange={(e) => setDays(Math.max(1, Number(e.target.value)))}
+                  onChange={(e) => {
+                    if (e.target.value === '') {
+                      setDays('');
+                    } else {
+                      setDays(Math.max(1, Number(e.target.value)));
+                    }
+                  }}
                   className="w-full rounded-xl border border-[#d2ddd0] bg-[#f8faf7] px-4 py-3 text-sm font-semibold text-[#173327] outline-none focus:border-[#477258] focus:ring-2 focus:ring-[#477258]/15 transition"
                 />
                 <p className="mt-1 text-[10px] text-[#78877c]">Minden megkezdett nap számít.</p>
@@ -184,7 +193,13 @@ const BusRentalScreen = () => {
                   type="number"
                   min={0}
                   value={extraKm}
-                  onChange={(e) => setExtraKm(Math.max(0, Number(e.target.value)))}
+                  onChange={(e) => {
+                    if (e.target.value === '') {
+                      setExtraKm('');
+                    } else {
+                      setExtraKm(Math.max(0, Number(e.target.value)));
+                    }
+                  }}
                   className="w-full rounded-xl border border-[#d2ddd0] bg-[#f8faf7] px-4 py-3 text-sm font-semibold text-[#173327] outline-none focus:border-[#477258] focus:ring-2 focus:ring-[#477258]/15 transition"
                 />
                 <p className="mt-1 text-[10px] text-[#78877c]">Összes extra km a teljes bérlés idejére (a napi {formatPrice(includedKmPerDay)} km keretben nem szereplő km-ek).</p>
