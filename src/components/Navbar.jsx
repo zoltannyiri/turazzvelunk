@@ -1,7 +1,7 @@
 import React, { useContext, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import {
-  BookOpen, Calendar, Compass, Info, LogOut,
+  BookOpen, Bus, Calendar, Compass, Info, LogOut,
   Mail, Menu, Search, ShieldCheck, X
 } from 'lucide-react';
 import { AuthContext } from '../context/AuthContext';
@@ -10,6 +10,7 @@ import NotificationsBell from './NotificationsBell';
 const primaryLinks = [
   { to: '/tours', label: 'Túrák', icon: Compass },
   { to: '/tour-search', label: 'Túrakeresés', icon: Search },
+  { to: '/bus-rental', label: 'Buszbérlés', icon: Bus },
   { to: '/calendar', label: 'Naptár', icon: Calendar },
   { to: '/blog', label: 'Blog', icon: BookOpen },
   { to: '/about-us', label: 'Rólunk', icon: Info },
