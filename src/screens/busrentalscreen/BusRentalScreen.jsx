@@ -262,7 +262,7 @@ const BusRentalScreen = () => {
             <div className="lg:col-span-7">
               <div className="grid sm:grid-cols-2 gap-4">
                 <a
-                  href="mailto:turazzvelunk.eu@gmail.com"
+                  href="mailto:msz.tala@gmail.com"
                   className="flex items-center gap-4 p-5 rounded-2xl bg-[#f7f9f5] border border-[#dce5d8] hover:border-[#98ad98] hover:shadow-md transition group"
                 >
                   <div className="w-12 h-12 rounded-xl bg-[#ecefe6] text-[#275940] flex items-center justify-center shrink-0 group-hover:bg-[#275940] group-hover:text-white transition-colors">
@@ -270,12 +270,12 @@ const BusRentalScreen = () => {
                   </div>
                   <div>
                     <div className="text-xs font-bold uppercase tracking-widest text-[#648067] mb-0.5">E-mail</div>
-                    <div className="text-sm font-semibold text-[#173327]">turazzvelunk.eu@gmail.com</div>
+                    <div className="text-sm font-semibold text-[#173327]">msz.tala@gmail.com</div>
                   </div>
                 </a>
 
                 <a
-                  href="tel:+36000000000"
+                  href="tel:+36309793572"
                   className="flex items-center gap-4 p-5 rounded-2xl bg-[#f7f9f5] border border-[#dce5d8] hover:border-[#98ad98] hover:shadow-md transition group"
                 >
                   <div className="w-12 h-12 rounded-xl bg-[#ecefe6] text-[#275940] flex items-center justify-center shrink-0 group-hover:bg-[#275940] group-hover:text-white transition-colors">
@@ -283,7 +283,7 @@ const BusRentalScreen = () => {
                   </div>
                   <div>
                     <div className="text-xs font-bold uppercase tracking-widest text-[#648067] mb-0.5">Telefon</div>
-                    <div className="text-sm font-semibold text-[#173327]">+36 00 000 0000</div>
+                    <div className="text-sm font-semibold text-[#173327]">+36 30 979 3572</div>
                   </div>
                 </a>
               </div>
