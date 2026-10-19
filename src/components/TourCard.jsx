@@ -2,7 +2,7 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Clock, MapPin, ArrowRight, Calendar, Zap } from 'lucide-react';
 import { formatPrice } from '../utils/formatPrice';
-import { parseTourDate } from '../utils/formatDate';
+import { formatTourRange } from '../utils/formatDate';
 
 const TourCard = ({ tour }) => {
   const navigate = useNavigate();
@@ -12,18 +12,6 @@ const TourCard = ({ tour }) => {
     ? Math.round((bookedCount / maxParticipants) * 100)
     : 0;
   const remainingSpots = Math.max(0, maxParticipants - bookedCount);
-
-  const formatTourRange = (start, end) => {
-    if (!start || !end) return "Időpont hamarosan";
-    const s = parseTourDate(start);
-    const e = parseTourDate(end);
-    if (!s || !e) return "Időpont hamarosan";
-    const monthOptions = { month: 'short' };
-    if (s.getMonth() === e.getMonth() && s.getFullYear() === e.getFullYear()) {
-      return `${s.getFullYear()}. ${s.toLocaleDateString('hu-HU', monthOptions)} ${s.getDate()} – ${e.getDate()}.`;
-    }
-    return `${s.toLocaleDateString('hu-HU', { month: 'short', day: 'numeric' })} – ${e.toLocaleDateString('hu-HU', { month: 'short', day: 'numeric' })}`;
-  };
 
   return (
     <div 

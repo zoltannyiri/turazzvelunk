@@ -53,3 +53,38 @@ export const toDateInputValue = (value) => {
 export const getLocalDateKey = (value) => {
   return toDateInputValue(value) || null;
 };
+
+export const formatTourRange = (start, end) => {
+  if (!start && !end) return "Időpont hamarosan";
+  const s = parseTourDate(start);
+  const e = parseTourDate(end);
+  if (!s && !e) return "Időpont hamarosan";
+  if (!e) return formatTourDate(s);
+  if (!s) return formatTourDate(e);
+
+  const monthOptions = { month: 'short' };
+  const sYear = s.getFullYear();
+  const eYear = e.getFullYear();
+  const sMonth = s.getMonth();
+  const eMonth = e.getMonth();
+  const sDay = s.getDate();
+  const eDay = e.getDate();
+
+  if (sYear === eYear && sMonth === eMonth) {
+    const monthShort = s.toLocaleDateString('hu-HU', monthOptions);
+    if (sDay === eDay) {
+      return `${sYear}. ${monthShort} ${sDay}.`;
+    }
+    return `${sYear}. ${monthShort} ${sDay}. – ${eDay}.`;
+  }
+
+  if (sYear === eYear) {
+    const sMonthShort = s.toLocaleDateString('hu-HU', monthOptions);
+    const eMonthShort = e.toLocaleDateString('hu-HU', monthOptions);
+    return `${sYear}. ${sMonthShort} ${sDay}. – ${eMonthShort} ${eDay}.`;
+  }
+
+  const sMonthShort = s.toLocaleDateString('hu-HU', monthOptions);
+  const eMonthShort = e.toLocaleDateString('hu-HU', monthOptions);
+  return `${sYear}. ${sMonthShort} ${sDay}. – ${eYear}. ${eMonthShort} ${eDay}.`;
+};
