@@ -12,6 +12,7 @@ import DatePicker, { registerLocale } from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 import { hu } from "date-fns/locale";
 import { formatPrice, formatPriceInput, parsePriceInput } from '../../utils/formatPrice';
+import { formatHungarianDate, parseTourDate } from '../../utils/formatDate';
 
 registerLocale('hu', hu);
 import "../../App.css";
@@ -35,14 +36,6 @@ const getBookingRevenue = (booking) => {
   const basePrice = Number(booking?.price || 0);
   const extraPrice = Number(booking?.extra_price || 0);
   return (Number.isFinite(basePrice) ? basePrice : 0) + (Number.isFinite(extraPrice) ? extraPrice : 0);
-};
-
-const formatHungarianDate = (dateString) => {
-  if (!dateString) return "";
-  const date = new Date(dateString);
-  if (isNaN(date.getTime())) return "";
-  const months = ["Január", "Február", "Március", "Április", "Május", "Június", "Július", "Augusztus", "Szeptember", "Október", "November", "December"];
-  return `${date.getFullYear()}. ${months[date.getMonth()]} ${String(date.getDate()).padStart(2, '0')}.`;
 };
 
 const AdminDashboard = () => {
@@ -1103,13 +1096,13 @@ const AdminDashboard = () => {
       equipment_prices: {},
       equipment_quantities: {},
       equipment_full_rental: {},
-      start_date: tour.start_date ? new Date(tour.start_date) : null,
-      end_date: tour.end_date ? new Date(tour.end_date) : null,
+      start_date: parseTourDate(tour.start_date),
+      end_date: parseTourDate(tour.end_date),
       deposit_amount: tour.deposit_amount != null ? String(tour.deposit_amount) : '',
-      deposit_deadline: tour.deposit_deadline ? new Date(tour.deposit_deadline) : null,
+      deposit_deadline: parseTourDate(tour.deposit_deadline),
     });
-    const startDate = tour.start_date ? new Date(tour.start_date) : null;
-    const endDate = tour.end_date ? new Date(tour.end_date) : null;
+    const startDate = parseTourDate(tour.start_date);
+    const endDate = parseTourDate(tour.end_date);
     loadTourEquipmentPrices(tour.id).then((equipmentIds) => {
       fetchEquipmentAvailability(startDate, endDate, tour.id, equipmentIds);
     });
@@ -1453,7 +1446,7 @@ const AdminDashboard = () => {
                                           <span className="flex items-center gap-1"><DollarSign size={14} /> {formatPrice(tour.price)} Ft</span>
                                           {tour.subcategory && <span>{tour.subcategory}</span>}
                                           {tour.start_date && tour.end_date && (
-                                            <span>{new Date(tour.start_date).toLocaleDateString()} - {new Date(tour.end_date).toLocaleDateString()}</span>
+                                            <span>{formatHungarianDate(tour.start_date)} - {formatHungarianDate(tour.end_date)}</span>
                                           )}
                                           <span>{tour.location}</span>
                                           <span>{tour.duration} nap</span>

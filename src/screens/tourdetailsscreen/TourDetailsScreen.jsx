@@ -10,6 +10,7 @@ import {
 import { toast } from 'react-toastify';
 import { io } from 'socket.io-client';
 import { formatPrice, formatPriceInput, parsePriceInput } from '../../utils/formatPrice';
+import { formatTourDate, formatHungarianDate, toDateInputValue, parseTourDate } from '../../utils/formatDate';
 import TourShareModal from '../../components/TourShareModal';
 import DatePicker, { registerLocale } from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
@@ -40,18 +41,6 @@ const getTodayDateInputValue = () => {
   const month = String(today.getMonth() + 1).padStart(2, '0');
   const day = String(today.getDate()).padStart(2, '0');
   return `${year}-${month}-${day}`;
-};
-
-const formatTourDate = (value) => {
-  if (!value) return 'Időpont egyeztetés alatt';
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return 'Időpont egyeztetés alatt';
-  return new Intl.DateTimeFormat('hu-HU', {
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric',
-    timeZone: 'UTC'
-  }).format(date);
 };
 
 const formatFullDateTime = (value) => {
@@ -169,13 +158,6 @@ const TourDetailsScreen = () => {
       setActiveTab('posts');
     }
   }, [location.search]);
-
-  const formatHungarianDate = (dateString) => {
-    if (!dateString) return "";
-    const date = new Date(dateString);
-    const months = ["Január", "Február", "Március", "Április", "Május", "Június", "Július", "Augusztus", "Szeptember", "Október", "November", "December"];
-    return `${date.getFullYear()}. ${months[date.getMonth()]} ${String(date.getDate()).padStart(2, '0')}.`;
-  };
 
   const fetchTourData = async () => {
     try {
@@ -630,16 +612,6 @@ const TourDetailsScreen = () => {
     } catch (err) {
       toast.error('Hiba történt.');
     }
-  };
-
-  const toDateInputValue = (value) => {
-    if (!value) return '';
-    const date = new Date(value);
-    if (Number.isNaN(date.getTime())) return '';
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
-    return `${year}-${month}-${day}`;
   };
 
   const fetchTourEditAvailability = async (startDate, endDate, preservedIds = tourEditInitialEquipmentIds) => {

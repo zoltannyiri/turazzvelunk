@@ -1,18 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import TourCard from '../../components/TourCard';
 import { Archive, CalendarDays, Search, X, Compass } from 'lucide-react';
-
-const getLocalDateKey = (value) => {
-  if (!value) return null;
-
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return null;
-
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const day = String(date.getDate()).padStart(2, '0');
-  return `${year}-${month}-${day}`;
-};
+import { getLocalDateKey } from '../../utils/formatDate';
 
 const getTodayKey = () => getLocalDateKey(new Date());
 

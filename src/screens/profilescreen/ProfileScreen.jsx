@@ -6,14 +6,8 @@ import {
   Settings, LogOut, Mountain, Clock, CheckCircle2, AlertCircle, Camera, XCircle
 } from 'lucide-react';
 import { formatPrice } from '../../utils/formatPrice';
+import { formatHungarianDate } from '../../utils/formatDate';
 
-	const formatHungarianDate = (dateString) => {
-  if (!dateString) return "";
-  const date = new Date(dateString);
-  if (isNaN(date.getTime())) return "";
-  const months = ["Január", "Február", "Március", "Április", "Május", "Június", "Július", "Augusztus", "Szeptember", "Október", "November", "December"];
-  return `${date.getFullYear()}. ${months[date.getMonth()]} ${String(date.getDate()).padStart(2, '0')}.`;
-};
 
 const ProfileScreen = () => {
     const { user, logout, updateUser, loading: authLoading } = useContext(AuthContext);

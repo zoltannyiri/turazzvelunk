@@ -10,18 +10,9 @@ import DatePicker, { registerLocale } from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 import { hu } from "date-fns/locale";
 import { formatPrice } from '../../utils/formatPrice';
+import { parseTourDate, getLocalDateKey } from '../../utils/formatDate';
 
 registerLocale('hu', hu);
-
-const getLocalDateKey = (value) => {
-  if (!value) return null;
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return null;
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const day = String(date.getDate()).padStart(2, '0');
-  return `${year}-${month}-${day}`;
-};
 
 const getTodayKey = () => getLocalDateKey(new Date());
 
@@ -79,8 +70,8 @@ const TourSearchScreen = () => {
   }, []);
 
   const formatCompactDate = (dateString) => {
-    if (!dateString) return "";
-    const d = new Date(dateString);
+    const d = parseTourDate(dateString);
+    if (!d) return "";
     return `${d.getMonth() + 1}.${d.getDate()}`;
   };
 

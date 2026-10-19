@@ -14,6 +14,7 @@ import { AuthContext } from "../../context/AuthContext";
 import { toast } from 'react-toastify';
 import './CalendarScreen.css';
 import { formatPrice, formatPriceInput, parsePriceInput } from '../../utils/formatPrice';
+import { toDateInputValue } from '../../utils/formatDate';
 
 const CalendarScreen = () => {
     const navigate = useNavigate();
@@ -100,13 +101,17 @@ const CalendarScreen = () => {
             const activeTours = Array.isArray(data)
                 ? data.filter((tour) => !tour.end_date || moment(tour.end_date).isSameOrAfter(today, 'day'))
                 : [];
-            setTours(activeTours.map(t => ({
-                id: t.id,
-                title: t.title,
-                start: t.start_date,
-                end: moment(t.end_date).add(1, 'days').format('YYYY-MM-DD'), 
-                extendedProps: { ...t }
-            })));
+            setTours(activeTours.map(t => {
+                const s = toDateInputValue(t.start_date);
+                const e = toDateInputValue(t.end_date);
+                return {
+                    id: t.id,
+                    title: t.title,
+                    start: s || t.start_date,
+                    end: e ? moment(e).add(1, 'days').format('YYYY-MM-DD') : moment(t.end_date).add(1, 'days').format('YYYY-MM-DD'), 
+                    extendedProps: { ...t }
+                };
+            }));
         } catch { toast.error("Hiba a túrák betöltésekor!"); }
     }, []);
 
