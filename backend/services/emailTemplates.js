@@ -46,31 +46,31 @@ const buildRegistrationEmail = ({ name }) => {
     const subject = 'Sikeres regisztráció a Túrázz Velünk oldalra';
     const text = `Szia ${safeName}!\n\nKöszönjük a regisztrációt. Várunk szeretettel a Túrázz Velünk oldalon!\n`;
     const html = `
-        <div style="background: #f4f7fb; padding: 32px 16px; font-family: 'Trebuchet MS', 'Segoe UI', Arial, sans-serif; color: #1f2933;">
+        <div style="background: #f5f5f0; padding: 32px 16px; font-family: 'Trebuchet MS', 'Segoe UI', Arial, sans-serif; color: #173327;">
             <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width: 640px; margin: 0 auto; border-collapse: collapse;">
                 <tr>
-                    <td style="background: #0f172a; padding: 24px 28px; border-radius: 16px 16px 0 0;">
-                        <div style="color: #f8fafc; font-size: 20px; font-weight: 700; letter-spacing: 0.4px;">Túrázz Velünk</div>
-                        <div style="color: #94a3b8; font-size: 13px; margin-top: 6px;">Kaland. Természet. Közös élmények.</div>
+                    <td style="background: #173327; padding: 24px 28px; border-radius: 16px 16px 0 0;">
+                        <div style="color: #f7f9f4; font-size: 20px; font-weight: 700; letter-spacing: 0.4px;">Túrázz Velünk</div>
+                        <div style="color: #a8bea9; font-size: 13px; margin-top: 6px;">Kaland. Természet. Közös élmények.</div>
                     </td>
                 </tr>
                 <tr>
-                    <td style="background: #ffffff; padding: 28px; border-left: 1px solid #e2e8f0; border-right: 1px solid #e2e8f0;">
-                        <h2 style="margin: 0 0 12px; font-size: 22px; color: #0f172a;">Szia ${safeName}!</h2>
-                        <p style="margin: 0 0 16px; color: #334155;">Köszönjük a regisztrációt. Várunk szeretettel a Túrázz Velünk oldalon!</p>
-                        <div style="background: #f8fafc; border: 1px solid #e2e8f0; padding: 16px; border-radius: 12px;">
-                            <div style="font-size: 14px; color: #475569;">Indulhat a tervezés?</div>
-                            <div style="font-size: 13px; color: #64748b; margin-top: 6px;">Nézz körül a friss túrák között, és foglalj időben!</div>
+                    <td style="background: #fffefa; padding: 28px; border-left: 1px solid #d9dfd5; border-right: 1px solid #d9dfd5;">
+                        <h2 style="margin: 0 0 12px; font-size: 22px; color: #173327;">Szia ${safeName}!</h2>
+                        <p style="margin: 0 0 16px; color: #415b4d;">Köszönjük a regisztrációt. Várunk szeretettel a Túrázz Velünk oldalon!</p>
+                        <div style="background: #f7f9f4; border: 1px solid #d9dfd5; padding: 16px; border-radius: 12px;">
+                            <div style="font-size: 14px; color: #607267;">Indulhat a tervezés?</div>
+                            <div style="font-size: 13px; color: #607267; margin-top: 6px;">Nézz körül a friss túrák között, és foglalj időben!</div>
                         </div>
                     </td>
                 </tr>
                 <tr>
-                    <td style="background: #ffffff; padding: 0 28px 28px; border-left: 1px solid #e2e8f0; border-right: 1px solid #e2e8f0;">
-                        <p style="margin: 20px 0 0; font-size: 14px; color: #475569;">Üdvözlettel,<br><strong>Túrázz Velünk</strong></p>
+                    <td style="background: #fffefa; padding: 0 28px 28px; border-left: 1px solid #d9dfd5; border-right: 1px solid #d9dfd5;">
+                        <p style="margin: 20px 0 0; font-size: 14px; color: #607267;">Üdvözlettel,<br><strong>Túrázz Velünk</strong></p>
                     </td>
                 </tr>
                 <tr>
-                    <td style="background: #e2e8f0; padding: 16px 28px; border-radius: 0 0 16px 16px; font-size: 12px; color: #64748b;">
+                    <td style="background: #e8eee4; padding: 16px 28px; border-radius: 0 0 16px 16px; font-size: 12px; color: #607267;">
                         Ha nem te regisztráltál, ezt az emailt nyugodtan figyelmen kívül hagyhatod.
                     </td>
                 </tr>
@@ -86,25 +86,25 @@ const buildAccountDeletedEmail = ({ name }) => {
     const subject = 'Fiók törlése a Túrázz Velünk oldalról';
     const text = `Szia ${safeName}!\n\nA fiókodat töröltük a Túrázz Velünk oldalon.\nA törlés végleges, a fiók nem állítható vissza.\n`;
     const html = `
-        <div style="background: #f4f7fb; padding: 32px 16px; font-family: 'Trebuchet MS', 'Segoe UI', Arial, sans-serif; color: #1f2933;">
+        <div style="background: #f5f5f0; padding: 32px 16px; font-family: 'Trebuchet MS', 'Segoe UI', Arial, sans-serif; color: #173327;">
             <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width: 640px; margin: 0 auto; border-collapse: collapse;">
                 <tr>
-                    <td style="background: #0f172a; padding: 24px 28px; border-radius: 16px 16px 0 0;">
-                        <div style="color: #f8fafc; font-size: 20px; font-weight: 700; letter-spacing: 0.4px;">Túrázz Velünk</div>
-                        <div style="color: #94a3b8; font-size: 13px; margin-top: 6px;">Fiók törlése</div>
+                    <td style="background: #173327; padding: 24px 28px; border-radius: 16px 16px 0 0;">
+                        <div style="color: #f7f9f4; font-size: 20px; font-weight: 700; letter-spacing: 0.4px;">Túrázz Velünk</div>
+                        <div style="color: #a8bea9; font-size: 13px; margin-top: 6px;">Fiók törlése</div>
                     </td>
                 </tr>
                 <tr>
-                    <td style="background: #ffffff; padding: 28px; border-left: 1px solid #e2e8f0; border-right: 1px solid #e2e8f0;">
-                        <h2 style="margin: 0 0 12px; font-size: 22px; color: #0f172a;">Szia ${safeName}!</h2>
-                        <p style="margin: 0 0 16px; color: #334155;">A fiókodat töröltük a Túrázz Velünk oldalon.</p>
-                        <div style="background: #f8fafc; border: 1px solid #e2e8f0; padding: 16px; border-radius: 12px;">
-                            <div style="font-size: 13px; color: #64748b;">A törlés végleges, a fiók nem állítható vissza.</div>
+                    <td style="background: #fffefa; padding: 28px; border-left: 1px solid #d9dfd5; border-right: 1px solid #d9dfd5;">
+                        <h2 style="margin: 0 0 12px; font-size: 22px; color: #173327;">Szia ${safeName}!</h2>
+                        <p style="margin: 0 0 16px; color: #415b4d;">A fiókodat töröltük a Túrázz Velünk oldalon.</p>
+                        <div style="background: #f7f9f4; border: 1px solid #d9dfd5; padding: 16px; border-radius: 12px;">
+                            <div style="font-size: 13px; color: #607267;">A törlés végleges, a fiók nem állítható vissza.</div>
                         </div>
                     </td>
                 </tr>
                 <tr>
-                    <td style="background: #e2e8f0; padding: 16px 28px; border-radius: 0 0 16px 16px; font-size: 12px; color: #64748b;">
+                    <td style="background: #e8eee4; padding: 16px 28px; border-radius: 0 0 16px 16px; font-size: 12px; color: #607267;">
                         Köszönjük, hogy velünk túráztál.
                     </td>
                 </tr>
@@ -118,40 +118,40 @@ const buildBookingEmail = ({ name, tourTitle, startDate, endDate, totalPrice }) 
     const safeName = escapeHtml(name || '');
     const safeTitle = escapeHtml(tourTitle || '');
     const subject = `Jelentkezés rögzítve: ${safeTitle}`;
-    const text = `Szia ${safeName}!\n\nA jelentkezésedet rögzítettük a(z) ${safeTitle} túrára.\nIdőpont: ${formatDate(startDate)} - ${formatDate(endDate)}\n\nA jelentkezés jelenleg adminisztrátori jóváhagyásra vár. Amint az adminisztrátor elfogadja a foglalást, azonnal értesítünk emailben, és megnyílik a fizetési lehetőség a fiókodban.\n`;
+    const text = `Szia ${safeName}!\n\nA jelentkezésedet rögzítettük a(z) ${safeTitle} túrára.\nIdőpont: ${formatDate(startDate)} - ${formatDate(endDate)}\n\nA jelentkezés jelenleg a túravezető jóváhagyására vár. Amint a túravezető elfogadja a foglalást, azonnal értesítünk emailben, és megnyílik a fizetési lehetőség a fiókodban.\n`;
     const html = `
-        <div style="background: #f4f7fb; padding: 32px 16px; font-family: 'Trebuchet MS', 'Segoe UI', Arial, sans-serif; color: #1f2933;">
+        <div style="background: #f5f5f0; padding: 32px 16px; font-family: 'Trebuchet MS', 'Segoe UI', Arial, sans-serif; color: #173327;">
             <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width: 640px; margin: 0 auto; border-collapse: collapse;">
                 <tr>
-                    <td style="background: #0f172a; padding: 24px 28px; border-radius: 16px 16px 0 0;">
-                        <div style="color: #f8fafc; font-size: 20px; font-weight: 700; letter-spacing: 0.4px;">Túrázz Velünk</div>
-                        <div style="color: #94a3b8; font-size: 13px; margin-top: 6px;">Jelentkezés rögzítve</div>
+                    <td style="background: #173327; padding: 24px 28px; border-radius: 16px 16px 0 0;">
+                        <div style="color: #f7f9f4; font-size: 20px; font-weight: 700; letter-spacing: 0.4px;">Túrázz Velünk</div>
+                        <div style="color: #a8bea9; font-size: 13px; margin-top: 6px;">Jelentkezés rögzítve</div>
                     </td>
                 </tr>
                 <tr>
-                    <td style="background: #ffffff; padding: 28px; border-left: 1px solid #e2e8f0; border-right: 1px solid #e2e8f0;">
-                        <h2 style="margin: 0 0 12px; font-size: 22px; color: #0f172a;">Szia ${safeName}!</h2>
-                        <p style="margin: 0 0 16px; color: #334155;">Köszönjük a jelentkezésedet! A foglalásodat rögzítettük a rendszerben.</p>
+                    <td style="background: #fffefa; padding: 28px; border-left: 1px solid #d9dfd5; border-right: 1px solid #d9dfd5;">
+                        <h2 style="margin: 0 0 12px; font-size: 22px; color: #173327;">Szia ${safeName}!</h2>
+                        <p style="margin: 0 0 16px; color: #415b4d;">Köszönjük a jelentkezésedet! A foglalásodat rögzítettük a rendszerben.</p>
                         
                         <div style="margin-bottom: 20px; background: #fef3c7; border: 1px solid #fcd34d; color: #92400e; padding: 14px 18px; border-radius: 12px; font-size: 13px; font-weight: 600;">
                             ⏳ <strong>Állapot: Jóváhagyásra vár</strong><br>
                             <span style="font-weight: 400; font-size: 12px; color: #78350f; display: inline-block; margin-top: 4px;">
-                                A jelentkezésed jelenleg adminisztrátori ellenőrzésre vár. Amint az adminisztrátor elfogadja a foglalást, újabb emailt kapsz, és megnyílik a fizetési lehetőség a profilodban.
+                                A jelentkezésed jelenleg a túravezető jóváhagyására vár. Amint elfogadja a foglalást, újabb emailt kapsz, és megnyílik a fizetési lehetőség a profilodban.
                             </span>
                         </div>
 
-                        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="border-collapse: collapse; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px;">
+                        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="border-collapse: collapse; background: #f7f9f4; border: 1px solid #d9dfd5; border-radius: 12px;">
                             <tr>
-                                <td style="padding: 12px 16px; font-size: 13px; color: #64748b;">Túra</td>
-                                <td style="padding: 12px 16px; font-size: 14px; color: #0f172a; font-weight: 600;">${safeTitle}</td>
+                                <td style="padding: 12px 16px; font-size: 13px; color: #607267;">Túra</td>
+                                <td style="padding: 12px 16px; font-size: 14px; color: #173327; font-weight: 600;">${safeTitle}</td>
                             </tr>
                             <tr>
-                                <td style="padding: 12px 16px; font-size: 13px; color: #64748b;">Időpont</td>
-                                <td style="padding: 12px 16px; font-size: 14px; color: #0f172a;">${formatDate(startDate)} - ${formatDate(endDate)}</td>
+                                <td style="padding: 12px 16px; font-size: 13px; color: #607267;">Időpont</td>
+                                <td style="padding: 12px 16px; font-size: 14px; color: #173327;">${formatDate(startDate)} - ${formatDate(endDate)}</td>
                             </tr>
                             ${totalPrice ? `
                             <tr>
-                                <td style="padding: 12px 16px; font-size: 13px; color: #64748b;">Részvételi díj</td>
+                                <td style="padding: 12px 16px; font-size: 13px; color: #607267;">Részvételi díj</td>
                                 <td style="padding: 12px 16px; font-size: 14px; color: #059669; font-weight: 700;">${formatPrice(totalPrice)}</td>
                             </tr>` : ''}
                         </table>
@@ -161,12 +161,12 @@ const buildBookingEmail = ({ name, tourTitle, startDate, endDate, totalPrice }) 
                     </td>
                 </tr>
                 <tr>
-                    <td style="background: #ffffff; padding: 0 28px 28px; border-left: 1px solid #e2e8f0; border-right: 1px solid #e2e8f0;">
-                        <p style="margin: 20px 0 0; font-size: 14px; color: #475569;">Üdvözlettel,<br><strong>Túrázz Velünk</strong></p>
+                    <td style="background: #fffefa; padding: 0 28px 28px; border-left: 1px solid #d9dfd5; border-right: 1px solid #d9dfd5;">
+                        <p style="margin: 20px 0 0; font-size: 14px; color: #607267;">Üdvözlettel,<br><strong>Túrázz Velünk</strong></p>
                     </td>
                 </tr>
                 <tr>
-                    <td style="background: #e2e8f0; padding: 16px 28px; border-radius: 0 0 16px 16px; font-size: 12px; color: #64748b;">
+                    <td style="background: #e8eee4; padding: 16px 28px; border-radius: 0 0 16px 16px; font-size: 12px; color: #607267;">
                         Jelentkezési státuszodat a profilodban is bármikor megtekintheted.
                     </td>
                 </tr>
@@ -180,56 +180,56 @@ const buildBookingEmail = ({ name, tourTitle, startDate, endDate, totalPrice }) 
 const buildBookingApprovedEmail = ({ name, tourTitle, startDate, endDate, totalPrice }) => {
     const safeName = escapeHtml(name || '');
     const safeTitle = escapeHtml(tourTitle || '');
-    const subject = `🎉 Jelentkezésed jóváhagyva: ${safeTitle} - Fizetési információk`;
-    const text = `Szia ${safeName}!\n\nÖrömmel értesítünk, hogy az adminisztrátor elfogadta a jelentkezésedet a(z) ${safeTitle} túrára!\nIdőpont: ${formatDate(startDate)} - ${formatDate(endDate)}\nFizetendő összeg: ${formatPrice(totalPrice)}\n\nMost már kényelmesen kifizetheted a részvételi díjat. A fizetéshez lépj be a Túrázz Velünk weboldalra, és a Profilodban vagy a túra adatlapján kattints a "Fizetés" gombra!\n`;
+    const subject = `Jelentkezésed jóváhagyva: ${safeTitle} - Fizetési információk`;
+    const text = `Szia ${safeName}!\n\nÖrömmel értesítünk, hogy a túravezető elfogadta a jelentkezésedet a(z) ${safeTitle} túrára!\nIdőpont: ${formatDate(startDate)} - ${formatDate(endDate)}\nFizetendő összeg: ${formatPrice(totalPrice)}\n\nMost már kényelmesen kifizetheted a részvételi díjat a profilodban vagy a túra adatlapján.\n`;
     const html = `
-        <div style="background: #f4f7fb; padding: 32px 16px; font-family: 'Trebuchet MS', 'Segoe UI', Arial, sans-serif; color: #1f2933;">
+        <div style="background: #f5f5f0; padding: 32px 16px; font-family: 'Trebuchet MS', 'Segoe UI', Arial, sans-serif; color: #173327;">
             <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width: 640px; margin: 0 auto; border-collapse: collapse;">
                 <tr>
-                    <td style="background: #0f172a; padding: 24px 28px; border-radius: 16px 16px 0 0;">
-                        <div style="color: #f8fafc; font-size: 20px; font-weight: 700; letter-spacing: 0.4px;">Túrázz Velünk</div>
+                    <td style="background: #173327; padding: 24px 28px; border-radius: 16px 16px 0 0;">
+                        <div style="color: #f7f9f4; font-size: 20px; font-weight: 700; letter-spacing: 0.4px;">Túrázz Velünk</div>
                         <div style="color: #34d399; font-size: 13px; margin-top: 6px; font-weight: 600;">Jelentkezés elfogadva ✓</div>
                     </td>
                 </tr>
                 <tr>
-                    <td style="background: #ffffff; padding: 28px; border-left: 1px solid #e2e8f0; border-right: 1px solid #e2e8f0;">
-                        <h2 style="margin: 0 0 12px; font-size: 22px; color: #0f172a;">Szia ${safeName}!</h2>
-                        <p style="margin: 0 0 16px; color: #334155;">Nagyszerű hírünk van! Az adminisztrátor <strong>jóváhagyta a jelentkezésedet</strong> az alábbi túrára:</p>
+                    <td style="background: #fffefa; padding: 28px; border-left: 1px solid #d9dfd5; border-right: 1px solid #d9dfd5;">
+                        <h2 style="margin: 0 0 12px; font-size: 22px; color: #173327;">Szia ${safeName}!</h2>
+                        <p style="margin: 0 0 16px; color: #415b4d;">Nagyszerű hírünk van! A túravezető <strong>jóváhagyta a jelentkezésedet</strong> az alábbi túrára:</p>
                         
                         <div style="margin-bottom: 20px; background: #ecfdf5; border: 1px solid #a7f3d0; color: #065f46; padding: 16px 18px; border-radius: 12px; font-size: 13px;">
                             <div style="font-weight: 700; font-size: 15px; margin-bottom: 4px;">✅ A foglalásod aktív és készen áll a fizetésre!</div>
                             <div>A helyed véglegesítéséhez kérlek fizesd be a részvételi díjat a profilodban vagy a túra adatlapján.</div>
                         </div>
 
-                        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="border-collapse: collapse; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px;">
+                        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="border-collapse: collapse; background: #f7f9f4; border: 1px solid #d9dfd5; border-radius: 12px;">
                             <tr>
-                                <td style="padding: 12px 16px; font-size: 13px; color: #64748b;">Túra</td>
-                                <td style="padding: 12px 16px; font-size: 14px; color: #0f172a; font-weight: 600;">${safeTitle}</td>
+                                <td style="padding: 12px 16px; font-size: 13px; color: #607267;">Túra</td>
+                                <td style="padding: 12px 16px; font-size: 14px; color: #173327; font-weight: 600;">${safeTitle}</td>
                             </tr>
                             <tr>
-                                <td style="padding: 12px 16px; font-size: 13px; color: #64748b;">Időpont</td>
-                                <td style="padding: 12px 16px; font-size: 14px; color: #0f172a;">${formatDate(startDate)} - ${formatDate(endDate)}</td>
+                                <td style="padding: 12px 16px; font-size: 13px; color: #607267;">Időpont</td>
+                                <td style="padding: 12px 16px; font-size: 14px; color: #173327;">${formatDate(startDate)} - ${formatDate(endDate)}</td>
                             </tr>
                             <tr>
-                                <td style="padding: 12px 16px; font-size: 13px; color: #64748b;">Fizetendő összeg</td>
+                                <td style="padding: 12px 16px; font-size: 13px; color: #607267;">Fizetendő összeg</td>
                                 <td style="padding: 12px 16px; font-size: 16px; color: #059669; font-weight: 800;">${formatPrice(totalPrice)}</td>
                             </tr>
                         </table>
 
                         <div style="text-align: center; margin-top: 24px; margin-bottom: 16px;">
-                            <a href="${process.env.FRONTEND_URL || 'http://localhost:5173'}/profile" style="background: #10b981; color: #ffffff; padding: 14px 28px; text-decoration: none; border-radius: 12px; font-weight: 700; font-size: 14px; display: inline-block; box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);">
+                            <a href="${process.env.FRONTEND_URL || 'http://localhost:5173'}/profile" style="background: #10b981; color: #fffefa; padding: 14px 28px; text-decoration: none; border-radius: 12px; font-weight: 700; font-size: 14px; display: inline-block; box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);">
                                 Irány a Profil és Fizetés →
                             </a>
                         </div>
                     </td>
                 </tr>
                 <tr>
-                    <td style="background: #ffffff; padding: 0 28px 28px; border-left: 1px solid #e2e8f0; border-right: 1px solid #e2e8f0;">
-                        <p style="margin: 20px 0 0; font-size: 14px; color: #475569;">Üdvözlettel,<br><strong>Túrázz Velünk Csapata</strong></p>
+                    <td style="background: #fffefa; padding: 0 28px 28px; border-left: 1px solid #d9dfd5; border-right: 1px solid #d9dfd5;">
+                        <p style="margin: 20px 0 0; font-size: 14px; color: #607267;">Üdvözlettel,<br><strong>Túrázz Velünk Csapata</strong></p>
                     </td>
                 </tr>
                 <tr>
-                    <td style="background: #e2e8f0; padding: 16px 28px; border-radius: 0 0 16px 16px; font-size: 12px; color: #64748b;">
+                    <td style="background: #e8eee4; padding: 16px 28px; border-radius: 0 0 16px 16px; font-size: 12px; color: #607267;">
                         Köszönjük, hogy velünk tartasz! Ha bármilyen kérdésed van, írj bátran.
                     </td>
                 </tr>
@@ -247,28 +247,28 @@ const buildBookingCancelledEmail = ({ name, tourTitle, startDate, endDate }) => 
     const subject = `Lejelentkezés visszaigazolás: ${safeTitle}`;
     const text = `Szia ${safeName}!\n\nA jelentkezésed törölve lett.\nTúra: ${safeTitle}\nIdőpont: ${dateRange}\n`;
     const html = `
-        <div style="background: #f4f7fb; padding: 32px 16px; font-family: 'Trebuchet MS', 'Segoe UI', Arial, sans-serif; color: #1f2933;">
+        <div style="background: #f5f5f0; padding: 32px 16px; font-family: 'Trebuchet MS', 'Segoe UI', Arial, sans-serif; color: #173327;">
             <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width: 640px; margin: 0 auto; border-collapse: collapse;">
                 <tr>
-                    <td style="background: #0f172a; padding: 24px 28px; border-radius: 16px 16px 0 0;">
-                        <div style="color: #f8fafc; font-size: 20px; font-weight: 700; letter-spacing: 0.4px;">Túrázz Velünk</div>
-                        <div style="color: #94a3b8; font-size: 13px; margin-top: 6px;">Lejelentkezés visszaigazolás</div>
+                    <td style="background: #173327; padding: 24px 28px; border-radius: 16px 16px 0 0;">
+                        <div style="color: #f7f9f4; font-size: 20px; font-weight: 700; letter-spacing: 0.4px;">Túrázz Velünk</div>
+                        <div style="color: #a8bea9; font-size: 13px; margin-top: 6px;">Lejelentkezés visszaigazolás</div>
                     </td>
                 </tr>
                 <tr>
-                    <td style="background: #ffffff; padding: 28px; border-left: 1px solid #e2e8f0; border-right: 1px solid #e2e8f0;">
-                        <h2 style="margin: 0 0 12px; font-size: 22px; color: #0f172a;">Szia ${safeName}!</h2>
-                        <p style="margin: 0 0 16px; color: #334155;">A jelentkezésed törölve lett</p>
-                        <div style="background: #f8fafc; border: 1px solid #e2e8f0; padding: 16px; border-radius: 12px;">
-                            <div style="font-size: 13px; color: #64748b;">Túra</div>
-                            <div style="font-size: 15px; font-weight: 700; color: #0f172a;">${safeTitle}</div>
-                            <div style="font-size: 13px; color: #64748b; margin-top: 8px;">Időpont</div>
-                            <div style="font-size: 14px; color: #0f172a;">${dateRange}</div>
+                    <td style="background: #fffefa; padding: 28px; border-left: 1px solid #d9dfd5; border-right: 1px solid #d9dfd5;">
+                        <h2 style="margin: 0 0 12px; font-size: 22px; color: #173327;">Szia ${safeName}!</h2>
+                        <p style="margin: 0 0 16px; color: #415b4d;">A jelentkezésed törölve lett</p>
+                        <div style="background: #f7f9f4; border: 1px solid #d9dfd5; padding: 16px; border-radius: 12px;">
+                            <div style="font-size: 13px; color: #607267;">Túra</div>
+                            <div style="font-size: 15px; font-weight: 700; color: #173327;">${safeTitle}</div>
+                            <div style="font-size: 13px; color: #607267; margin-top: 8px;">Időpont</div>
+                            <div style="font-size: 14px; color: #173327;">${dateRange}</div>
                         </div>
                     </td>
                 </tr>
                 <tr>
-                    <td style="background: #e2e8f0; padding: 16px 28px; border-radius: 0 0 16px 16px; font-size: 12px; color: #64748b;">
+                    <td style="background: #e8eee4; padding: 16px 28px; border-radius: 0 0 16px 16px; font-size: 12px; color: #607267;">
                         Ha tévedésből mondtad le, írj nekünk bátran.
                     </td>
                 </tr>
@@ -279,36 +279,35 @@ const buildBookingCancelledEmail = ({ name, tourTitle, startDate, endDate }) => 
     return { subject, text, html };
 };
 
-const buildAdminRemovedBookingEmail = ({ name, tourTitle, adminName, startDate, endDate }) => {
+const buildAdminRemovedBookingEmail = ({ name, tourTitle, startDate, endDate }) => {
     const safeName = escapeHtml(name || '');
     const safeTitle = escapeHtml(tourTitle || '');
-    const safeAdmin = escapeHtml(adminName || 'Admin');
     const dateRange = formatDateRange(startDate, endDate) || '-';
-    const subject = `Jelentkezésed törölve lett: ${safeTitle}`;
-    const text = `Szia ${safeName}!\n\n${safeAdmin} törölte a jelentkezésedet.\nTúra: ${safeTitle}\nIdőpont: ${dateRange}\n`;
+    const subject = 'Törlés a túráról!';
+    const text = `Szia ${safeName}!\n\nTörölve lettél a túráról: ${safeTitle}\nIdőpont: ${dateRange}\n`;
     const html = `
-        <div style="background: #f4f7fb; padding: 32px 16px; font-family: 'Trebuchet MS', 'Segoe UI', Arial, sans-serif; color: #1f2933;">
+        <div style="background: #f5f5f0; padding: 32px 16px; font-family: 'Trebuchet MS', 'Segoe UI', Arial, sans-serif; color: #173327;">
             <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width: 640px; margin: 0 auto; border-collapse: collapse;">
                 <tr>
-                    <td style="background: #0f172a; padding: 24px 28px; border-radius: 16px 16px 0 0;">
-                        <div style="color: #f8fafc; font-size: 20px; font-weight: 700; letter-spacing: 0.4px;">Túrázz Velünk</div>
-                        <div style="color: #94a3b8; font-size: 13px; margin-top: 6px;">Jelentkezés törölve</div>
+                    <td style="background: #173327; padding: 24px 28px; border-radius: 16px 16px 0 0;">
+                        <div style="color: #f7f9f4; font-size: 20px; font-weight: 700; letter-spacing: 0.4px;">Túrázz Velünk</div>
+                        <div style="color: #a8bea9; font-size: 13px; margin-top: 6px;">Törlés a túráról</div>
                     </td>
                 </tr>
                 <tr>
-                    <td style="background: #ffffff; padding: 28px; border-left: 1px solid #e2e8f0; border-right: 1px solid #e2e8f0;">
-                        <h2 style="margin: 0 0 12px; font-size: 22px; color: #0f172a;">Szia ${safeName}!</h2>
-                        <p style="margin: 0 0 16px; color: #334155;">${safeAdmin} törölte a jelentkezésedet.</p>
-                        <div style="background: #f8fafc; border: 1px solid #e2e8f0; padding: 16px; border-radius: 12px;">
-                            <div style="font-size: 13px; color: #64748b;">Túra</div>
-                            <div style="font-size: 15px; font-weight: 700; color: #0f172a;">${safeTitle}</div>
-                            <div style="font-size: 13px; color: #64748b; margin-top: 8px;">Időpont</div>
-                            <div style="font-size: 14px; color: #0f172a;">${dateRange}</div>
+                    <td style="background: #fffefa; padding: 28px; border-left: 1px solid #d9dfd5; border-right: 1px solid #d9dfd5;">
+                        <h2 style="margin: 0 0 12px; font-size: 22px; color: #173327;">Szia ${safeName}!</h2>
+                        <p style="margin: 0 0 16px; color: #415b4d;">Törölve lettél a túráról: <strong>${safeTitle}</strong></p>
+                        <div style="background: #f7f9f4; border: 1px solid #d9dfd5; padding: 16px; border-radius: 12px;">
+                            <div style="font-size: 13px; color: #607267;">Túra</div>
+                            <div style="font-size: 15px; font-weight: 700; color: #173327;">${safeTitle}</div>
+                            <div style="font-size: 13px; color: #607267; margin-top: 8px;">Időpont</div>
+                            <div style="font-size: 14px; color: #173327;">${dateRange}</div>
                         </div>
                     </td>
                 </tr>
                 <tr>
-                    <td style="background: #e2e8f0; padding: 16px 28px; border-radius: 0 0 16px 16px; font-size: 12px; color: #64748b;">
+                    <td style="background: #e8eee4; padding: 16px 28px; border-radius: 0 0 16px 16px; font-size: 12px; color: #607267;">
                         Ha kérdésed van, válaszolj erre az emailre.
                     </td>
                 </tr>
@@ -328,32 +327,32 @@ const buildAdminRemovedBookingNotificationEmail = ({ adminName, userName, userEm
     const subject = `Admin törlés: ${safeTitle}`;
     const text = `Admin törlés történt.\nAdmin: ${adminName || '-'}\nFelhasználó: ${userName || '-'} (${userEmail || 'n/a'})\nTúra: ${safeTitle}\nIdőpont: ${dateRange}`;
     const html = `
-        <div style="background: #f4f7fb; padding: 32px 16px; font-family: 'Trebuchet MS', 'Segoe UI', Arial, sans-serif; color: #1f2933;">
+        <div style="background: #f5f5f0; padding: 32px 16px; font-family: 'Trebuchet MS', 'Segoe UI', Arial, sans-serif; color: #173327;">
             <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width: 640px; margin: 0 auto; border-collapse: collapse;">
                 <tr>
-                    <td style="background: #0f172a; padding: 24px 28px; border-radius: 16px 16px 0 0;">
-                        <div style="color: #f8fafc; font-size: 20px; font-weight: 700; letter-spacing: 0.4px;">Túrázz Velünk</div>
-                        <div style="color: #94a3b8; font-size: 13px; margin-top: 6px;">Közlemény</div>
+                    <td style="background: #173327; padding: 24px 28px; border-radius: 16px 16px 0 0;">
+                        <div style="color: #f7f9f4; font-size: 20px; font-weight: 700; letter-spacing: 0.4px;">Túrázz Velünk</div>
+                        <div style="color: #a8bea9; font-size: 13px; margin-top: 6px;">Közlemény</div>
                     </td>
                 </tr>
                 <tr>
-                    <td style="background: #ffffff; padding: 28px; border-left: 1px solid #e2e8f0; border-right: 1px solid #e2e8f0;">
-                        <h2 style="margin: 0 0 12px; font-size: 22px; color: #0f172a;">Admin törlés: ${safeTitle}</h2>
-                        <p style="margin: 0 0 16px; color: #334155;">${safeAdmin} törölte ${safeUser}${safeEmail ? ` (${safeEmail})` : ''} jelentkezését.</p>
-                        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="border-collapse: collapse; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px;">
+                    <td style="background: #fffefa; padding: 28px; border-left: 1px solid #d9dfd5; border-right: 1px solid #d9dfd5;">
+                        <h2 style="margin: 0 0 12px; font-size: 22px; color: #173327;">Admin törlés: ${safeTitle}</h2>
+                        <p style="margin: 0 0 16px; color: #415b4d;">${safeAdmin} törölte ${safeUser}${safeEmail ? ` (${safeEmail})` : ''} jelentkezését.</p>
+                        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="border-collapse: collapse; background: #f7f9f4; border: 1px solid #d9dfd5; border-radius: 12px;">
                             <tr>
-                                <td style="padding: 12px 16px; font-size: 13px; color: #64748b;">Túra</td>
-                                <td style="padding: 12px 16px; font-size: 14px; color: #0f172a; font-weight: 600;">${safeTitle}</td>
+                                <td style="padding: 12px 16px; font-size: 13px; color: #607267;">Túra</td>
+                                <td style="padding: 12px 16px; font-size: 14px; color: #173327; font-weight: 600;">${safeTitle}</td>
                             </tr>
                             <tr>
-                                <td style="padding: 12px 16px; font-size: 13px; color: #64748b;">Időpont</td>
-                                <td style="padding: 12px 16px; font-size: 14px; color: #0f172a;">${dateRange}</td>
+                                <td style="padding: 12px 16px; font-size: 13px; color: #607267;">Időpont</td>
+                                <td style="padding: 12px 16px; font-size: 14px; color: #173327;">${dateRange}</td>
                             </tr>
                         </table>
                     </td>
                 </tr>
                 <tr>
-                    <td style="background: #e2e8f0; padding: 16px 28px; border-radius: 0 0 16px 16px; font-size: 12px; color: #64748b;">
+                    <td style="background: #e8eee4; padding: 16px 28px; border-radius: 0 0 16px 16px; font-size: 12px; color: #607267;">
                         Ez az üzenet a Túrázz Velünk adminisztrációjától érkezett.
                     </td>
                 </tr>
@@ -372,30 +371,30 @@ const buildCancellationRequestEmail = ({ name, tourTitle, reason, startDate, end
     const subject = `Lejelentkezési kérelem rögzítve: ${safeTitle}`;
     const text = `Szia ${safeName}!\n\nA lejelentkezési kérelmedet rögzítettük.\nTúra: ${safeTitle}\nIdőpont: ${dateRange}\nIndok: ${reason || '-'}\n\nHamarosan visszajelzünk.`;
     const html = `
-        <div style="background: #f4f7fb; padding: 32px 16px; font-family: 'Trebuchet MS', 'Segoe UI', Arial, sans-serif; color: #1f2933;">
+        <div style="background: #f5f5f0; padding: 32px 16px; font-family: 'Trebuchet MS', 'Segoe UI', Arial, sans-serif; color: #173327;">
             <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width: 640px; margin: 0 auto; border-collapse: collapse;">
                 <tr>
-                    <td style="background: #0f172a; padding: 24px 28px; border-radius: 16px 16px 0 0;">
-                        <div style="color: #f8fafc; font-size: 20px; font-weight: 700; letter-spacing: 0.4px;">Túrázz Velünk</div>
-                        <div style="color: #94a3b8; font-size: 13px; margin-top: 6px;">Lejelentkezési kérelem</div>
+                    <td style="background: #173327; padding: 24px 28px; border-radius: 16px 16px 0 0;">
+                        <div style="color: #f7f9f4; font-size: 20px; font-weight: 700; letter-spacing: 0.4px;">Túrázz Velünk</div>
+                        <div style="color: #a8bea9; font-size: 13px; margin-top: 6px;">Lejelentkezési kérelem</div>
                     </td>
                 </tr>
                 <tr>
-                    <td style="background: #ffffff; padding: 28px; border-left: 1px solid #e2e8f0; border-right: 1px solid #e2e8f0;">
-                        <h2 style="margin: 0 0 12px; font-size: 22px; color: #0f172a;">Szia ${safeName}!</h2>
-                        <p style="margin: 0 0 16px; color: #334155;">A lejelentkezési kérelmedet rögzítettük.</p>
-                        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="border-collapse: collapse; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px;">
+                    <td style="background: #fffefa; padding: 28px; border-left: 1px solid #d9dfd5; border-right: 1px solid #d9dfd5;">
+                        <h2 style="margin: 0 0 12px; font-size: 22px; color: #173327;">Szia ${safeName}!</h2>
+                        <p style="margin: 0 0 16px; color: #415b4d;">A lejelentkezési kérelmedet rögzítettük.</p>
+                        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="border-collapse: collapse; background: #f7f9f4; border: 1px solid #d9dfd5; border-radius: 12px;">
                             <tr>
-                                <td style="padding: 12px 16px; font-size: 13px; color: #64748b;">Túra</td>
-                                <td style="padding: 12px 16px; font-size: 14px; color: #0f172a; font-weight: 600;">${safeTitle}</td>
+                                <td style="padding: 12px 16px; font-size: 13px; color: #607267;">Túra</td>
+                                <td style="padding: 12px 16px; font-size: 14px; color: #173327; font-weight: 600;">${safeTitle}</td>
                             </tr>
                             <tr>
-                                <td style="padding: 12px 16px; font-size: 13px; color: #64748b;">Időpont</td>
-                                <td style="padding: 12px 16px; font-size: 14px; color: #0f172a;">${dateRange}</td>
+                                <td style="padding: 12px 16px; font-size: 13px; color: #607267;">Időpont</td>
+                                <td style="padding: 12px 16px; font-size: 14px; color: #173327;">${dateRange}</td>
                             </tr>
                             <tr>
-                                <td style="padding: 12px 16px; font-size: 13px; color: #64748b;">Indok</td>
-                                <td style="padding: 12px 16px; font-size: 14px; color: #0f172a;">${safeReason || '-'}</td>
+                                <td style="padding: 12px 16px; font-size: 13px; color: #607267;">Indok</td>
+                                <td style="padding: 12px 16px; font-size: 14px; color: #173327;">${safeReason || '-'}</td>
                             </tr>
                         </table>
                         <div style="margin-top: 18px; background: #ecfeff; border: 1px solid #a5f3fc; color: #155e75; padding: 12px 16px; border-radius: 10px; font-size: 13px;">
@@ -404,7 +403,7 @@ const buildCancellationRequestEmail = ({ name, tourTitle, reason, startDate, end
                     </td>
                 </tr>
                 <tr>
-                    <td style="background: #e2e8f0; padding: 16px 28px; border-radius: 0 0 16px 16px; font-size: 12px; color: #64748b;">
+                    <td style="background: #e8eee4; padding: 16px 28px; border-radius: 0 0 16px 16px; font-size: 12px; color: #607267;">
                         Köszönjük, hogy velünk túrázol.
                     </td>
                 </tr>
@@ -422,26 +421,26 @@ const buildCancellationRejectedEmail = ({ name, tourTitle, startDate, endDate })
     const subject = `Lejelentkezési kérelem elutasítva: ${safeTitle}`;
     const text = `Szia ${safeName}!\n\nA lejelentkezési kérelmedet elutasítottuk.\nTúra: ${safeTitle}\nIdőpont: ${dateRange}\n\nHa kérdésed van, válaszolj erre az emailre.`;
     const html = `
-        <div style="background: #f4f7fb; padding: 32px 16px; font-family: 'Trebuchet MS', 'Segoe UI', Arial, sans-serif; color: #1f2933;">
+        <div style="background: #f5f5f0; padding: 32px 16px; font-family: 'Trebuchet MS', 'Segoe UI', Arial, sans-serif; color: #173327;">
             <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width: 640px; margin: 0 auto; border-collapse: collapse;">
                 <tr>
-                    <td style="background: #0f172a; padding: 24px 28px; border-radius: 16px 16px 0 0;">
-                        <div style="color: #f8fafc; font-size: 20px; font-weight: 700; letter-spacing: 0.4px;">Túrázz Velünk</div>
-                        <div style="color: #94a3b8; font-size: 13px; margin-top: 6px;">Lejelentkezési kérelem</div>
+                    <td style="background: #173327; padding: 24px 28px; border-radius: 16px 16px 0 0;">
+                        <div style="color: #f7f9f4; font-size: 20px; font-weight: 700; letter-spacing: 0.4px;">Túrázz Velünk</div>
+                        <div style="color: #a8bea9; font-size: 13px; margin-top: 6px;">Lejelentkezési kérelem</div>
                     </td>
                 </tr>
                 <tr>
-                    <td style="background: #ffffff; padding: 28px; border-left: 1px solid #e2e8f0; border-right: 1px solid #e2e8f0;">
-                        <h2 style="margin: 0 0 12px; font-size: 22px; color: #0f172a;">Szia ${safeName}!</h2>
-                        <p style="margin: 0 0 16px; color: #334155;">A lejelentkezési kérelmedet elutasítottuk.</p>
-                        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="border-collapse: collapse; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px;">
+                    <td style="background: #fffefa; padding: 28px; border-left: 1px solid #d9dfd5; border-right: 1px solid #d9dfd5;">
+                        <h2 style="margin: 0 0 12px; font-size: 22px; color: #173327;">Szia ${safeName}!</h2>
+                        <p style="margin: 0 0 16px; color: #415b4d;">A lejelentkezési kérelmedet elutasítottuk.</p>
+                        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="border-collapse: collapse; background: #f7f9f4; border: 1px solid #d9dfd5; border-radius: 12px;">
                             <tr>
-                                <td style="padding: 12px 16px; font-size: 13px; color: #64748b;">Túra</td>
-                                <td style="padding: 12px 16px; font-size: 14px; color: #0f172a; font-weight: 600;">${safeTitle}</td>
+                                <td style="padding: 12px 16px; font-size: 13px; color: #607267;">Túra</td>
+                                <td style="padding: 12px 16px; font-size: 14px; color: #173327; font-weight: 600;">${safeTitle}</td>
                             </tr>
                             <tr>
-                                <td style="padding: 12px 16px; font-size: 13px; color: #64748b;">Időpont</td>
-                                <td style="padding: 12px 16px; font-size: 14px; color: #0f172a;">${dateRange}</td>
+                                <td style="padding: 12px 16px; font-size: 13px; color: #607267;">Időpont</td>
+                                <td style="padding: 12px 16px; font-size: 14px; color: #173327;">${dateRange}</td>
                             </tr>
                         </table>
                         <div style="margin-top: 18px; background: #fef2f2; border: 1px solid #fecaca; color: #991b1b; padding: 12px 16px; border-radius: 10px; font-size: 13px;">
@@ -450,7 +449,7 @@ const buildCancellationRejectedEmail = ({ name, tourTitle, startDate, endDate })
                     </td>
                 </tr>
                 <tr>
-                    <td style="background: #e2e8f0; padding: 16px 28px; border-radius: 0 0 16px 16px; font-size: 12px; color: #64748b;">
+                    <td style="background: #e8eee4; padding: 16px 28px; border-radius: 0 0 16px 16px; font-size: 12px; color: #607267;">
                         Köszönjük, hogy velünk túrázol.
                     </td>
                 </tr>
@@ -470,36 +469,36 @@ const buildAdminCancellationRequestEmail = ({ userName, userEmail, tourTitle, re
     const subject = `Lejelentkezési kérelem érkezett: ${safeTitle}`;
     const text = `Lejelentkezési kérelem érkezett.\nFelhasználó: ${userName || '-'} (${userEmail || 'n/a'})\nTúra: ${safeTitle}\nIdőpont: ${dateRange}\nIndok: ${reason || '-'}`;
     const html = `
-        <div style="background: #f4f7fb; padding: 32px 16px; font-family: 'Trebuchet MS', 'Segoe UI', Arial, sans-serif; color: #1f2933;">
+        <div style="background: #f5f5f0; padding: 32px 16px; font-family: 'Trebuchet MS', 'Segoe UI', Arial, sans-serif; color: #173327;">
             <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width: 640px; margin: 0 auto; border-collapse: collapse;">
                 <tr>
-                    <td style="background: #0f172a; padding: 24px 28px; border-radius: 16px 16px 0 0;">
-                        <div style="color: #f8fafc; font-size: 20px; font-weight: 700; letter-spacing: 0.4px;">Túrázz Velünk</div>
-                        <div style="color: #94a3b8; font-size: 13px; margin-top: 6px;">Lejelentkezési kérelem</div>
+                    <td style="background: #173327; padding: 24px 28px; border-radius: 16px 16px 0 0;">
+                        <div style="color: #f7f9f4; font-size: 20px; font-weight: 700; letter-spacing: 0.4px;">Túrázz Velünk</div>
+                        <div style="color: #a8bea9; font-size: 13px; margin-top: 6px;">Lejelentkezési kérelem</div>
                     </td>
                 </tr>
                 <tr>
-                    <td style="background: #ffffff; padding: 28px; border-left: 1px solid #e2e8f0; border-right: 1px solid #e2e8f0;">
-                        <h2 style="margin: 0 0 12px; font-size: 22px; color: #0f172a;">Lejelentkezési kérelem érkezett</h2>
-                        <p style="margin: 0 0 16px; color: #334155;">Felhasználó: ${safeName}${safeEmail ? ` (${safeEmail})` : ''}</p>
-                        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="border-collapse: collapse; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px;">
+                    <td style="background: #fffefa; padding: 28px; border-left: 1px solid #d9dfd5; border-right: 1px solid #d9dfd5;">
+                        <h2 style="margin: 0 0 12px; font-size: 22px; color: #173327;">Lejelentkezési kérelem érkezett</h2>
+                        <p style="margin: 0 0 16px; color: #415b4d;">Felhasználó: ${safeName}${safeEmail ? ` (${safeEmail})` : ''}</p>
+                        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="border-collapse: collapse; background: #f7f9f4; border: 1px solid #d9dfd5; border-radius: 12px;">
                             <tr>
-                                <td style="padding: 12px 16px; font-size: 13px; color: #64748b;">Túra</td>
-                                <td style="padding: 12px 16px; font-size: 14px; color: #0f172a; font-weight: 600;">${safeTitle}</td>
+                                <td style="padding: 12px 16px; font-size: 13px; color: #607267;">Túra</td>
+                                <td style="padding: 12px 16px; font-size: 14px; color: #173327; font-weight: 600;">${safeTitle}</td>
                             </tr>
                             <tr>
-                                <td style="padding: 12px 16px; font-size: 13px; color: #64748b;">Időpont</td>
-                                <td style="padding: 12px 16px; font-size: 14px; color: #0f172a;">${dateRange}</td>
+                                <td style="padding: 12px 16px; font-size: 13px; color: #607267;">Időpont</td>
+                                <td style="padding: 12px 16px; font-size: 14px; color: #173327;">${dateRange}</td>
                             </tr>
                             <tr>
-                                <td style="padding: 12px 16px; font-size: 13px; color: #64748b;">Indok</td>
-                                <td style="padding: 12px 16px; font-size: 14px; color: #0f172a;">${safeReason || '-'}</td>
+                                <td style="padding: 12px 16px; font-size: 13px; color: #607267;">Indok</td>
+                                <td style="padding: 12px 16px; font-size: 14px; color: #173327;">${safeReason || '-'}</td>
                             </tr>
                         </table>
                     </td>
                 </tr>
                 <tr>
-                    <td style="background: #e2e8f0; padding: 16px 28px; border-radius: 0 0 16px 16px; font-size: 12px; color: #64748b;">
+                    <td style="background: #e8eee4; padding: 16px 28px; border-radius: 0 0 16px 16px; font-size: 12px; color: #607267;">
                         Ez az üzenet a Túrázz Velünk adminisztrációjától érkezett.
                     </td>
                 </tr>
@@ -518,32 +517,32 @@ const buildAdminCancellationApprovedEmail = ({ userName, userEmail, tourTitle, s
     const subject = `Lejelentkezés (jóváhagyva): ${safeTitle}`;
     const text = `Lejelentkezés jóváhagyva.\nFelhasználó: ${userName || '-'} (${userEmail || 'n/a'})\nTúra: ${safeTitle}\nIdőpont: ${dateRange}`;
     const html = `
-        <div style="background: #f4f7fb; padding: 32px 16px; font-family: 'Trebuchet MS', 'Segoe UI', Arial, sans-serif; color: #1f2933;">
+        <div style="background: #f5f5f0; padding: 32px 16px; font-family: 'Trebuchet MS', 'Segoe UI', Arial, sans-serif; color: #173327;">
             <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width: 640px; margin: 0 auto; border-collapse: collapse;">
                 <tr>
-                    <td style="background: #0f172a; padding: 24px 28px; border-radius: 16px 16px 0 0;">
-                        <div style="color: #f8fafc; font-size: 20px; font-weight: 700; letter-spacing: 0.4px;">Túrázz Velünk</div>
-                        <div style="color: #94a3b8; font-size: 13px; margin-top: 6px;">Közlemény</div>
+                    <td style="background: #173327; padding: 24px 28px; border-radius: 16px 16px 0 0;">
+                        <div style="color: #f7f9f4; font-size: 20px; font-weight: 700; letter-spacing: 0.4px;">Túrázz Velünk</div>
+                        <div style="color: #a8bea9; font-size: 13px; margin-top: 6px;">Közlemény</div>
                     </td>
                 </tr>
                 <tr>
-                    <td style="background: #ffffff; padding: 28px; border-left: 1px solid #e2e8f0; border-right: 1px solid #e2e8f0;">
-                        <h2 style="margin: 0 0 12px; font-size: 22px; color: #0f172a;">Lejelentkezés (jóváhagyva): ${safeTitle}</h2>
-                        <p style="margin: 0 0 16px; color: #334155;">${safeName}${safeEmail ? ` (${safeEmail})` : ''} lejelentkezett a túráról.</p>
-                        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="border-collapse: collapse; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px;">
+                    <td style="background: #fffefa; padding: 28px; border-left: 1px solid #d9dfd5; border-right: 1px solid #d9dfd5;">
+                        <h2 style="margin: 0 0 12px; font-size: 22px; color: #173327;">Lejelentkezés (jóváhagyva): ${safeTitle}</h2>
+                        <p style="margin: 0 0 16px; color: #415b4d;">${safeName}${safeEmail ? ` (${safeEmail})` : ''} lejelentkezett a túráról.</p>
+                        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="border-collapse: collapse; background: #f7f9f4; border: 1px solid #d9dfd5; border-radius: 12px;">
                             <tr>
-                                <td style="padding: 12px 16px; font-size: 13px; color: #64748b;">Túra</td>
-                                <td style="padding: 12px 16px; font-size: 14px; color: #0f172a; font-weight: 600;">${safeTitle}</td>
+                                <td style="padding: 12px 16px; font-size: 13px; color: #607267;">Túra</td>
+                                <td style="padding: 12px 16px; font-size: 14px; color: #173327; font-weight: 600;">${safeTitle}</td>
                             </tr>
                             <tr>
-                                <td style="padding: 12px 16px; font-size: 13px; color: #64748b;">Időpont</td>
-                                <td style="padding: 12px 16px; font-size: 14px; color: #0f172a;">${dateRange}</td>
+                                <td style="padding: 12px 16px; font-size: 13px; color: #607267;">Időpont</td>
+                                <td style="padding: 12px 16px; font-size: 14px; color: #173327;">${dateRange}</td>
                             </tr>
                         </table>
                     </td>
                 </tr>
                 <tr>
-                    <td style="background: #e2e8f0; padding: 16px 28px; border-radius: 0 0 16px 16px; font-size: 12px; color: #64748b;">
+                    <td style="background: #e8eee4; padding: 16px 28px; border-radius: 0 0 16px 16px; font-size: 12px; color: #607267;">
                         Ez az üzenet a Túrázz Velünk adminisztrációjától érkezett.
                     </td>
                 </tr>
@@ -578,36 +577,36 @@ const buildPaymentEmail = ({ name, tourTitle, amount, startDate, endDate, paymen
     const remainderText = remainder > 0 ? `\nFennmaradó hátralék: ${formatPrice(remainder)}` : '';
     const text = `Szia ${safeName}!\n\n${typeDescription}\nTúra: ${safeTitle}\nIdőpont: ${dateRange}\n${amountLabel}: ${formatPrice(amount)}${remainderText}\n`;
     const html = `
-        <div style="background: #f4f7fb; padding: 32px 16px; font-family: 'Trebuchet MS', 'Segoe UI', Arial, sans-serif; color: #1f2933;">
+        <div style="background: #f5f5f0; padding: 32px 16px; font-family: 'Trebuchet MS', 'Segoe UI', Arial, sans-serif; color: #173327;">
             <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width: 640px; margin: 0 auto; border-collapse: collapse;">
                 <tr>
-                    <td style="background: #0f172a; padding: 24px 28px; border-radius: 16px 16px 0 0;">
-                        <div style="color: #f8fafc; font-size: 20px; font-weight: 700; letter-spacing: 0.4px;">Túrázz Velünk</div>
-                        <div style="color: #94a3b8; font-size: 13px; margin-top: 6px;">Befizetés visszaigazolás</div>
+                    <td style="background: #173327; padding: 24px 28px; border-radius: 16px 16px 0 0;">
+                        <div style="color: #f7f9f4; font-size: 20px; font-weight: 700; letter-spacing: 0.4px;">Túrázz Velünk</div>
+                        <div style="color: #a8bea9; font-size: 13px; margin-top: 6px;">Befizetés visszaigazolás</div>
                     </td>
                 </tr>
                 <tr>
-                    <td style="background: #ffffff; padding: 28px; border-left: 1px solid #e2e8f0; border-right: 1px solid #e2e8f0;">
-                        <h2 style="margin: 0 0 12px; font-size: 22px; color: #0f172a;">Szia ${safeName}!</h2>
-                        <p style="margin: 0 0 16px; color: #334155;">A befizetésed sikeres volt.</p>
-                        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="border-collapse: collapse; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px;">
+                    <td style="background: #fffefa; padding: 28px; border-left: 1px solid #d9dfd5; border-right: 1px solid #d9dfd5;">
+                        <h2 style="margin: 0 0 12px; font-size: 22px; color: #173327;">Szia ${safeName}!</h2>
+                        <p style="margin: 0 0 16px; color: #415b4d;">A befizetésed sikeres volt.</p>
+                        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="border-collapse: collapse; background: #f7f9f4; border: 1px solid #d9dfd5; border-radius: 12px;">
                             <tr>
-                                <td style="padding: 12px 16px; font-size: 13px; color: #64748b;">Túra</td>
-                                <td style="padding: 12px 16px; font-size: 14px; color: #0f172a; font-weight: 600;">${safeTitle}</td>
+                                <td style="padding: 12px 16px; font-size: 13px; color: #607267;">Túra</td>
+                                <td style="padding: 12px 16px; font-size: 14px; color: #173327; font-weight: 600;">${safeTitle}</td>
                             </tr>
                             <tr>
-                                <td style="padding: 12px 16px; font-size: 13px; color: #64748b;">Időpont</td>
-                                <td style="padding: 12px 16px; font-size: 14px; color: #0f172a;">${dateRange}</td>
+                                <td style="padding: 12px 16px; font-size: 13px; color: #607267;">Időpont</td>
+                                <td style="padding: 12px 16px; font-size: 14px; color: #173327;">${dateRange}</td>
                             </tr>
                             <tr>
-                                <td style="padding: 12px 16px; font-size: 13px; color: #64748b;">Összeg</td>
-                                <td style="padding: 12px 16px; font-size: 14px; color: #0f172a; font-weight: 600;">${formatPrice(amount)}</td>
+                                <td style="padding: 12px 16px; font-size: 13px; color: #607267;">Összeg</td>
+                                <td style="padding: 12px 16px; font-size: 14px; color: #173327; font-weight: 600;">${formatPrice(amount)}</td>
                             </tr>
                         </table>
                     </td>
                 </tr>
                 <tr>
-                    <td style="background: #e2e8f0; padding: 16px 28px; border-radius: 0 0 16px 16px; font-size: 12px; color: #64748b;">
+                    <td style="background: #e8eee4; padding: 16px 28px; border-radius: 0 0 16px 16px; font-size: 12px; color: #607267;">
                         Köszönjük, hogy velünk túrázol!
                     </td>
                 </tr>
@@ -638,7 +637,7 @@ const buildAdminPaymentEmail = ({ userName, tourTitle, amount, startDate, endDat
         if (remainder > 0) {
             extraRows = `
                 <tr>
-                    <td style="padding: 12px 16px; font-size: 13px; color: #64748b;">Fennmaradó összeg (hátralék)</td>
+                    <td style="padding: 12px 16px; font-size: 13px; color: #607267;">Fennmaradó összeg (hátralék)</td>
                     <td style="padding: 12px 16px; font-size: 14px; color: #b45309; font-weight: 700;">${formatPrice(remainder)}</td>
                 </tr>
             `;
@@ -659,37 +658,37 @@ const buildAdminPaymentEmail = ({ userName, tourTitle, amount, startDate, endDat
 
     const text = `${typeDescription}\nTúra: ${safeTitle}\nIdőpont: ${dateRange}\n${amountLabel}: ${formatPrice(amount)}${remainderText}\n`;
     const html = `
-        <div style="background: #f4f7fb; padding: 32px 16px; font-family: 'Trebuchet MS', 'Segoe UI', Arial, sans-serif; color: #1f2933;">
+        <div style="background: #f5f5f0; padding: 32px 16px; font-family: 'Trebuchet MS', 'Segoe UI', Arial, sans-serif; color: #173327;">
             <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width: 640px; margin: 0 auto; border-collapse: collapse;">
                 <tr>
-                    <td style="background: #0f172a; padding: 24px 28px; border-radius: 16px 16px 0 0;">
-                        <div style="color: #f8fafc; font-size: 20px; font-weight: 700; letter-spacing: 0.4px;">Túrázz Velünk</div>
-                        <div style="color: #94a3b8; font-size: 13px; margin-top: 6px;">Közlemény</div>
+                    <td style="background: #173327; padding: 24px 28px; border-radius: 16px 16px 0 0;">
+                        <div style="color: #f7f9f4; font-size: 20px; font-weight: 700; letter-spacing: 0.4px;">Túrázz Velünk</div>
+                        <div style="color: #a8bea9; font-size: 13px; margin-top: 6px;">Közlemény</div>
                     </td>
                 </tr>
                 <tr>
-                    <td style="background: #ffffff; padding: 28px; border-left: 1px solid #e2e8f0; border-right: 1px solid #e2e8f0;">
-                        <h2 style="margin: 0 0 12px; font-size: 22px; color: #0f172a;">${subject}</h2>
-                        <p style="margin: 0 0 16px; color: #334155;">${typeDescription}</p>
-                        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="border-collapse: collapse; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px;">
+                    <td style="background: #fffefa; padding: 28px; border-left: 1px solid #d9dfd5; border-right: 1px solid #d9dfd5;">
+                        <h2 style="margin: 0 0 12px; font-size: 22px; color: #173327;">${subject}</h2>
+                        <p style="margin: 0 0 16px; color: #415b4d;">${typeDescription}</p>
+                        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="border-collapse: collapse; background: #f7f9f4; border: 1px solid #d9dfd5; border-radius: 12px;">
                             <tr>
-                                <td style="padding: 12px 16px; font-size: 13px; color: #64748b;">Túra</td>
-                                <td style="padding: 12px 16px; font-size: 14px; color: #0f172a; font-weight: 600;">${safeTitle}</td>
+                                <td style="padding: 12px 16px; font-size: 13px; color: #607267;">Túra</td>
+                                <td style="padding: 12px 16px; font-size: 14px; color: #173327; font-weight: 600;">${safeTitle}</td>
                             </tr>
                             <tr>
-                                <td style="padding: 12px 16px; font-size: 13px; color: #64748b;">Időpont</td>
-                                <td style="padding: 12px 16px; font-size: 14px; color: #0f172a;">${dateRange}</td>
+                                <td style="padding: 12px 16px; font-size: 13px; color: #607267;">Időpont</td>
+                                <td style="padding: 12px 16px; font-size: 14px; color: #173327;">${dateRange}</td>
                             </tr>
                             <tr>
-                                <td style="padding: 12px 16px; font-size: 13px; color: #64748b;">${amountLabel}</td>
-                                <td style="padding: 12px 16px; font-size: 14px; color: #0f172a; font-weight: 600;">${formatPrice(amount)}</td>
+                                <td style="padding: 12px 16px; font-size: 13px; color: #607267;">${amountLabel}</td>
+                                <td style="padding: 12px 16px; font-size: 14px; color: #173327; font-weight: 600;">${formatPrice(amount)}</td>
                             </tr>
                             ${extraRows}
                         </table>
                     </td>
                 </tr>
                 <tr>
-                    <td style="background: #e2e8f0; padding: 16px 28px; border-radius: 0 0 16px 16px; font-size: 12px; color: #64748b;">
+                    <td style="background: #e8eee4; padding: 16px 28px; border-radius: 0 0 16px 16px; font-size: 12px; color: #607267;">
                         Ez az üzenet a Túrázz Velünk adminisztrációjától érkezett.
                     </td>
                 </tr>
@@ -705,22 +704,22 @@ const buildAdminEmail = ({ subject, message }) => {
     const safeMessage = formatMultiline(message);
     const text = `${subject}\n\n${message}`;
     const html = `
-        <div style="background: #f4f7fb; padding: 32px 16px; font-family: 'Trebuchet MS', 'Segoe UI', Arial, sans-serif; color: #1f2933;">
+        <div style="background: #f5f5f0; padding: 32px 16px; font-family: 'Trebuchet MS', 'Segoe UI', Arial, sans-serif; color: #173327;">
             <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width: 640px; margin: 0 auto; border-collapse: collapse;">
                 <tr>
-                    <td style="background: #0f172a; padding: 24px 28px; border-radius: 16px 16px 0 0;">
-                        <div style="color: #f8fafc; font-size: 20px; font-weight: 700; letter-spacing: 0.4px;">Túrázz Velünk</div>
-                        <div style="color: #94a3b8; font-size: 13px; margin-top: 6px;">Közlemény</div>
+                    <td style="background: #173327; padding: 24px 28px; border-radius: 16px 16px 0 0;">
+                        <div style="color: #f7f9f4; font-size: 20px; font-weight: 700; letter-spacing: 0.4px;">Túrázz Velünk</div>
+                        <div style="color: #a8bea9; font-size: 13px; margin-top: 6px;">Közlemény</div>
                     </td>
                 </tr>
                 <tr>
-                    <td style="background: #ffffff; padding: 28px; border-left: 1px solid #e2e8f0; border-right: 1px solid #e2e8f0;">
-                        <h2 style="margin: 0 0 12px; font-size: 22px; color: #0f172a;">${safeSubject}</h2>
-                        <div style="font-size: 14px; color: #334155; line-height: 1.6;">${safeMessage}</div>
+                    <td style="background: #fffefa; padding: 28px; border-left: 1px solid #d9dfd5; border-right: 1px solid #d9dfd5;">
+                        <h2 style="margin: 0 0 12px; font-size: 22px; color: #173327;">${safeSubject}</h2>
+                        <div style="font-size: 14px; color: #415b4d; line-height: 1.6;">${safeMessage}</div>
                     </td>
                 </tr>
                 <tr>
-                    <td style="background: #e2e8f0; padding: 16px 28px; border-radius: 0 0 16px 16px; font-size: 12px; color: #64748b;">
+                    <td style="background: #e8eee4; padding: 16px 28px; border-radius: 0 0 16px 16px; font-size: 12px; color: #607267;">
                         Ez az üzenet a Túrázz Velünk adminisztrációjától érkezett.
                     </td>
                 </tr>
@@ -737,45 +736,45 @@ const buildWaitlistJoinedEmail = ({ name, tourTitle, startDate, endDate }) => {
     const safeTitle = escapeHtml(tourTitle || '');
     const dateRange = formatDateRange(startDate, endDate) || '-';
     const subject = `Várólistára kerültél: ${safeTitle}`;
-    const text = `Szia ${safeName}!\n\nA(z) ${safeTitle} túra betelt, de sikeresen felkerültél a várólistára!\nIdőpont: ${dateRange}\n\nAmennyiben megüresedik egy hely, az adminisztrátor átmozgathat a résztvevők közé, amiről azonnal email értesítést kapsz.\n`;
+    const text = `Szia ${safeName}!\n\nA(z) ${safeTitle} túra betelt, de sikeresen felkerültél a várólistára!\nIdőpont: ${dateRange}\n\nAmennyiben megüresedik egy hely, a túravezető átmozgathat a résztvevők közé, amiről azonnal email értesítést kapsz.\n`;
     const html = `
-        <div style="background: #f4f7fb; padding: 32px 16px; font-family: 'Trebuchet MS', 'Segoe UI', Arial, sans-serif; color: #1f2933;">
+        <div style="background: #f5f5f0; padding: 32px 16px; font-family: 'Trebuchet MS', 'Segoe UI', Arial, sans-serif; color: #173327;">
             <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width: 640px; margin: 0 auto; border-collapse: collapse;">
                 <tr>
-                    <td style="background: #0f172a; padding: 24px 28px; border-radius: 16px 16px 0 0;">
-                        <div style="color: #f8fafc; font-size: 20px; font-weight: 700; letter-spacing: 0.4px;">Túrázz Velünk</div>
+                    <td style="background: #173327; padding: 24px 28px; border-radius: 16px 16px 0 0;">
+                        <div style="color: #f7f9f4; font-size: 20px; font-weight: 700; letter-spacing: 0.4px;">Túrázz Velünk</div>
                         <div style="color: #fbbf24; font-size: 13px; margin-top: 6px; font-weight: 600;">Várólista visszaigazolás ⏳</div>
                     </td>
                 </tr>
                 <tr>
-                    <td style="background: #ffffff; padding: 28px; border-left: 1px solid #e2e8f0; border-right: 1px solid #e2e8f0;">
-                        <h2 style="margin: 0 0 12px; font-size: 22px; color: #0f172a;">Szia ${safeName}!</h2>
-                        <p style="margin: 0 0 16px; color: #334155;">Köszönjük az érdeklődésedet! A(z) <strong>${safeTitle}</strong> túra pillanatnyilag elérte a maximális létszámot, de felvettünk a <strong>várólistára</strong>.</p>
+                    <td style="background: #fffefa; padding: 28px; border-left: 1px solid #d9dfd5; border-right: 1px solid #d9dfd5;">
+                        <h2 style="margin: 0 0 12px; font-size: 22px; color: #173327;">Szia ${safeName}!</h2>
+                        <p style="margin: 0 0 16px; color: #415b4d;">Köszönjük az érdeklődésedet! A(z) <strong>${safeTitle}</strong> túra pillanatnyilag elérte a maximális létszámot, de felvettünk a <strong>várólistára</strong>.</p>
                         
                         <div style="margin-bottom: 20px; background: #fffbeb; border: 1px solid #fde68a; color: #92400e; padding: 16px 18px; border-radius: 12px; font-size: 13px;">
                             <div style="font-weight: 700; font-size: 14px; margin-bottom: 4px;">⏳ Hogyan működik a várólista?</div>
-                            <div>Ha valamelyik jelentkező visszamondja a részvételt, az adminisztrátor átmozgathat a rendes résztvevők közé. Ekkor azonnal kapsz egy újabb emailt, és megnyílik a fizetési lehetőség a fiókodban.</div>
+                            <div>Ha megüresedik egy hely, a túravezető átmozgathat a résztvevők közé. Ekkor azonnal kapsz egy újabb emailt, és megnyílik a fizetési lehetőség a fiókodban.</div>
                         </div>
 
-                        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="border-collapse: collapse; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px;">
+                        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="border-collapse: collapse; background: #f7f9f4; border: 1px solid #d9dfd5; border-radius: 12px;">
                             <tr>
-                                <td style="padding: 12px 16px; font-size: 13px; color: #64748b;">Túra</td>
-                                <td style="padding: 12px 16px; font-size: 14px; color: #0f172a; font-weight: 600;">${safeTitle}</td>
+                                <td style="padding: 12px 16px; font-size: 13px; color: #607267;">Túra</td>
+                                <td style="padding: 12px 16px; font-size: 14px; color: #173327; font-weight: 600;">${safeTitle}</td>
                             </tr>
                             <tr>
-                                <td style="padding: 12px 16px; font-size: 13px; color: #64748b;">Időpont</td>
-                                <td style="padding: 12px 16px; font-size: 14px; color: #0f172a;">${dateRange}</td>
+                                <td style="padding: 12px 16px; font-size: 13px; color: #607267;">Időpont</td>
+                                <td style="padding: 12px 16px; font-size: 14px; color: #173327;">${dateRange}</td>
                             </tr>
                         </table>
                     </td>
                 </tr>
                 <tr>
-                    <td style="background: #ffffff; padding: 0 28px 28px; border-left: 1px solid #e2e8f0; border-right: 1px solid #e2e8f0;">
-                        <p style="margin: 20px 0 0; font-size: 14px; color: #475569;">Üdvözlettel,<br><strong>Túrázz Velünk Csapata</strong></p>
+                    <td style="background: #fffefa; padding: 0 28px 28px; border-left: 1px solid #d9dfd5; border-right: 1px solid #d9dfd5;">
+                        <p style="margin: 20px 0 0; font-size: 14px; color: #607267;">Üdvözlettel,<br><strong>Túrázz Velünk Csapata</strong></p>
                     </td>
                 </tr>
                 <tr>
-                    <td style="background: #e2e8f0; padding: 16px 28px; border-radius: 0 0 16px 16px; font-size: 12px; color: #64748b;">
+                    <td style="background: #e8eee4; padding: 16px 28px; border-radius: 0 0 16px 16px; font-size: 12px; color: #607267;">
                         A profilodban bármikor megnézheted az aktuális státuszodat.
                     </td>
                 </tr>
@@ -794,36 +793,36 @@ const buildAdminWaitlistNotificationEmail = ({ userName, userEmail, tourTitle, s
     const subject = `Új várólistás jelentkezés: ${safeTitle}`;
     const text = `${safeName} (${safeEmail}) feliratkozott a várólistára.\nTúra: ${safeTitle}\nIdőpont: ${dateRange}\n`;
     const html = `
-        <div style="background: #f4f7fb; padding: 32px 16px; font-family: 'Trebuchet MS', 'Segoe UI', Arial, sans-serif; color: #1f2933;">
+        <div style="background: #f5f5f0; padding: 32px 16px; font-family: 'Trebuchet MS', 'Segoe UI', Arial, sans-serif; color: #173327;">
             <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width: 640px; margin: 0 auto; border-collapse: collapse;">
                 <tr>
-                    <td style="background: #0f172a; padding: 24px 28px; border-radius: 16px 16px 0 0;">
-                        <div style="color: #f8fafc; font-size: 20px; font-weight: 700; letter-spacing: 0.4px;">Túrázz Velünk Admin</div>
+                    <td style="background: #173327; padding: 24px 28px; border-radius: 16px 16px 0 0;">
+                        <div style="color: #f7f9f4; font-size: 20px; font-weight: 700; letter-spacing: 0.4px;">Túrázz Velünk Admin</div>
                         <div style="color: #fbbf24; font-size: 13px; margin-top: 6px;">Új várólistás jelentkezés ⏳</div>
                     </td>
                 </tr>
                 <tr>
-                    <td style="background: #ffffff; padding: 28px; border-left: 1px solid #e2e8f0; border-right: 1px solid #e2e8f0;">
-                        <h2 style="margin: 0 0 12px; font-size: 22px; color: #0f172a;">Új várólistás jelentkező</h2>
-                        <p style="margin: 0 0 16px; color: #334155;">Egy új felhasználó feliratkozott egy betelt túra várólistájára:</p>
-                        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="border-collapse: collapse; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px;">
+                    <td style="background: #fffefa; padding: 28px; border-left: 1px solid #d9dfd5; border-right: 1px solid #d9dfd5;">
+                        <h2 style="margin: 0 0 12px; font-size: 22px; color: #173327;">Új várólistás jelentkező</h2>
+                        <p style="margin: 0 0 16px; color: #415b4d;">Egy új felhasználó feliratkozott egy betelt túra várólistájára:</p>
+                        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="border-collapse: collapse; background: #f7f9f4; border: 1px solid #d9dfd5; border-radius: 12px;">
                             <tr>
-                                <td style="padding: 12px 16px; font-size: 13px; color: #64748b;">Felhasználó</td>
-                                <td style="padding: 12px 16px; font-size: 14px; color: #0f172a; font-weight: 600;">${safeName} (${safeEmail})</td>
+                                <td style="padding: 12px 16px; font-size: 13px; color: #607267;">Felhasználó</td>
+                                <td style="padding: 12px 16px; font-size: 14px; color: #173327; font-weight: 600;">${safeName} (${safeEmail})</td>
                             </tr>
                             <tr>
-                                <td style="padding: 12px 16px; font-size: 13px; color: #64748b;">Túra</td>
-                                <td style="padding: 12px 16px; font-size: 14px; color: #0f172a; font-weight: 600;">${safeTitle}</td>
+                                <td style="padding: 12px 16px; font-size: 13px; color: #607267;">Túra</td>
+                                <td style="padding: 12px 16px; font-size: 14px; color: #173327; font-weight: 600;">${safeTitle}</td>
                             </tr>
                             <tr>
-                                <td style="padding: 12px 16px; font-size: 13px; color: #64748b;">Időpont</td>
-                                <td style="padding: 12px 16px; font-size: 14px; color: #0f172a;">${dateRange}</td>
+                                <td style="padding: 12px 16px; font-size: 13px; color: #607267;">Időpont</td>
+                                <td style="padding: 12px 16px; font-size: 14px; color: #173327;">${dateRange}</td>
                             </tr>
                         </table>
                     </td>
                 </tr>
                 <tr>
-                    <td style="background: #e2e8f0; padding: 16px 28px; border-radius: 0 0 16px 16px; font-size: 12px; color: #64748b;">
+                    <td style="background: #e8eee4; padding: 16px 28px; border-radius: 0 0 16px 16px; font-size: 12px; color: #607267;">
                         A várólistát az Adminisztrátori felületen, a "Várólisták" menüpontban kezelheted.
                     </td>
                 </tr>
@@ -839,56 +838,56 @@ const buildWaitlistPromotedEmail = ({ name, tourTitle, startDate, endDate, total
     const safeTitle = escapeHtml(tourTitle || '');
     const dateRange = formatDateRange(startDate, endDate) || '-';
     const subject = `🎉 Bekerültél a résztvevők közé! - ${safeTitle}`;
-    const text = `Szia ${safeName}!\n\nNagyszerű hír: felszabadult egy hely, és az adminisztrátor átmozgatott a várólistáról a(z) ${safeTitle} túra résztvevői közé!\nIdőpont: ${dateRange}\nFizetendő összeg: ${formatPrice(totalPrice)}\n\nA helyed biztosításához kérlek lépj be a Profilodba, és fizesd be a részvételi díjat!\n`;
+    const text = `Szia ${safeName}!\n\nNagyszerű hír: felszabadult egy hely, és a túravezető átmozgatott a várólistáról a(z) ${safeTitle} túra résztvevői közé!\nIdőpont: ${dateRange}\nFizetendő összeg: ${formatPrice(totalPrice)}\n\nA helyed biztosításához a profilodban fizetheted be a részvételi díjat.\n`;
     const html = `
-        <div style="background: #f4f7fb; padding: 32px 16px; font-family: 'Trebuchet MS', 'Segoe UI', Arial, sans-serif; color: #1f2933;">
+        <div style="background: #f5f5f0; padding: 32px 16px; font-family: 'Trebuchet MS', 'Segoe UI', Arial, sans-serif; color: #173327;">
             <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width: 640px; margin: 0 auto; border-collapse: collapse;">
                 <tr>
-                    <td style="background: #0f172a; padding: 24px 28px; border-radius: 16px 16px 0 0;">
-                        <div style="color: #f8fafc; font-size: 20px; font-weight: 700; letter-spacing: 0.4px;">Túrázz Velünk</div>
+                    <td style="background: #173327; padding: 24px 28px; border-radius: 16px 16px 0 0;">
+                        <div style="color: #f7f9f4; font-size: 20px; font-weight: 700; letter-spacing: 0.4px;">Túrázz Velünk</div>
                         <div style="color: #34d399; font-size: 13px; margin-top: 6px; font-weight: 600;">Sikeres átmozgatás a résztvevők közé 🎉</div>
                     </td>
                 </tr>
                 <tr>
-                    <td style="background: #ffffff; padding: 28px; border-left: 1px solid #e2e8f0; border-right: 1px solid #e2e8f0;">
-                        <h2 style="margin: 0 0 12px; font-size: 22px; color: #0f172a;">Szia ${safeName}!</h2>
-                        <p style="margin: 0 0 16px; color: #334155;">Fantasztikus hírünk van: <strong>felszabadult egy hely</strong>, és az adminisztrátor átmozgatott a várólistáról a résztvevők közé az alábbi túrára:</p>
+                    <td style="background: #fffefa; padding: 28px; border-left: 1px solid #d9dfd5; border-right: 1px solid #d9dfd5;">
+                        <h2 style="margin: 0 0 12px; font-size: 22px; color: #173327;">Szia ${safeName}!</h2>
+                        <p style="margin: 0 0 16px; color: #415b4d;">Fantasztikus hírünk van: <strong>felszabadult egy hely</strong>, és a túravezető átmozgatott a várólistáról a résztvevők közé az alábbi túrára:</p>
                         
                         <div style="margin-bottom: 20px; background: #ecfdf5; border: 1px solid #a7f3d0; color: #065f46; padding: 16px 18px; border-radius: 12px; font-size: 13px;">
                             <div style="font-weight: 700; font-size: 15px; margin-bottom: 4px;">✅ A jelentkezésed aktív!</div>
                             <div>A helyed véglegesítéséhez kérlek fizesd be a részvételi díjat a profilodban vagy a túra adatlapján.</div>
                         </div>
 
-                        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="border-collapse: collapse; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px;">
+                        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="border-collapse: collapse; background: #f7f9f4; border: 1px solid #d9dfd5; border-radius: 12px;">
                             <tr>
-                                <td style="padding: 12px 16px; font-size: 13px; color: #64748b;">Túra</td>
-                                <td style="padding: 12px 16px; font-size: 14px; color: #0f172a; font-weight: 600;">${safeTitle}</td>
+                                <td style="padding: 12px 16px; font-size: 13px; color: #607267;">Túra</td>
+                                <td style="padding: 12px 16px; font-size: 14px; color: #173327; font-weight: 600;">${safeTitle}</td>
                             </tr>
                             <tr>
-                                <td style="padding: 12px 16px; font-size: 13px; color: #64748b;">Időpont</td>
-                                <td style="padding: 12px 16px; font-size: 14px; color: #0f172a;">${dateRange}</td>
+                                <td style="padding: 12px 16px; font-size: 13px; color: #607267;">Időpont</td>
+                                <td style="padding: 12px 16px; font-size: 14px; color: #173327;">${dateRange}</td>
                             </tr>
                             ${totalPrice ? `
                             <tr>
-                                <td style="padding: 12px 16px; font-size: 13px; color: #64748b;">Fizetendő összeg</td>
+                                <td style="padding: 12px 16px; font-size: 13px; color: #607267;">Fizetendő összeg</td>
                                 <td style="padding: 12px 16px; font-size: 16px; color: #059669; font-weight: 800;">${formatPrice(totalPrice)}</td>
                             </tr>` : ''}
                         </table>
 
                         <div style="text-align: center; margin-top: 24px; margin-bottom: 16px;">
-                            <a href="${process.env.FRONTEND_URL || 'http://localhost:5173'}/profile" style="background: #10b981; color: #ffffff; padding: 14px 28px; text-decoration: none; border-radius: 12px; font-weight: 700; font-size: 14px; display: inline-block; box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);">
+                            <a href="${process.env.FRONTEND_URL || 'http://localhost:5173'}/profile" style="background: #10b981; color: #fffefa; padding: 14px 28px; text-decoration: none; border-radius: 12px; font-weight: 700; font-size: 14px; display: inline-block; box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);">
                                 Irány a Profil és Fizetés →
                             </a>
                         </div>
                     </td>
                 </tr>
                 <tr>
-                    <td style="background: #ffffff; padding: 0 28px 28px; border-left: 1px solid #e2e8f0; border-right: 1px solid #e2e8f0;">
-                        <p style="margin: 20px 0 0; font-size: 14px; color: #475569;">Üdvözlettel,<br><strong>Túrázz Velünk Csapata</strong></p>
+                    <td style="background: #fffefa; padding: 0 28px 28px; border-left: 1px solid #d9dfd5; border-right: 1px solid #d9dfd5;">
+                        <p style="margin: 20px 0 0; font-size: 14px; color: #607267;">Üdvözlettel,<br><strong>Túrázz Velünk Csapata</strong></p>
                     </td>
                 </tr>
                 <tr>
-                    <td style="background: #e2e8f0; padding: 16px 28px; border-radius: 0 0 16px 16px; font-size: 12px; color: #64748b;">
+                    <td style="background: #e8eee4; padding: 16px 28px; border-radius: 0 0 16px 16px; font-size: 12px; color: #607267;">
                         Köszönjük, hogy velünk tartasz! Ha bármilyen kérdésed van, írj bátran.
                     </td>
                 </tr>
@@ -906,23 +905,23 @@ const buildPasswordResetEmail = ({ name, resetUrl }) => {
     const subject = 'Jelszó visszaállítása — Túrázz Velünk';
     const text = `Szia ${safeName}!\n\nKaptuk a jelszó-visszaállítási kérelmedet.\nAz alábbi linkre kattintva állíthatod be az új jelszavadat (1 óráig érvényes):\n${resetUrl}\n\nHa nem te kérted, hagyd figyelmen kívül ezt az emailt.\n\nÜdvözlettel,\nTúrázz Velünk csapata`;
     const html = `
-        <div style="background: #f4f7fb; padding: 32px 16px; font-family: 'Trebuchet MS', 'Segoe UI', Arial, sans-serif; color: #1f2933;">
+        <div style="background: #f5f5f0; padding: 32px 16px; font-family: 'Trebuchet MS', 'Segoe UI', Arial, sans-serif; color: #173327;">
             <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width: 640px; margin: 0 auto; border-collapse: collapse;">
                 <tr>
-                    <td style="background: #0f172a; padding: 24px 28px; border-radius: 16px 16px 0 0;">
-                        <div style="color: #f8fafc; font-size: 20px; font-weight: 700; letter-spacing: 0.4px;">Túrázz Velünk</div>
-                        <div style="color: #94a3b8; font-size: 13px; margin-top: 6px;">Kaland. Természet. Közös élmények.</div>
+                    <td style="background: #173327; padding: 24px 28px; border-radius: 16px 16px 0 0;">
+                        <div style="color: #f7f9f4; font-size: 20px; font-weight: 700; letter-spacing: 0.4px;">Túrázz Velünk</div>
+                        <div style="color: #a8bea9; font-size: 13px; margin-top: 6px;">Kaland. Természet. Közös élmények.</div>
                     </td>
                 </tr>
                 <tr>
-                    <td style="background: #ffffff; padding: 36px 28px;">
-                        <h2 style="margin: 0 0 16px; font-size: 22px; color: #0f172a;">Jelszó visszaállítása</h2>
+                    <td style="background: #fffefa; padding: 36px 28px;">
+                        <h2 style="margin: 0 0 16px; font-size: 22px; color: #173327;">Jelszó visszaállítása</h2>
                         <p style="margin: 0 0 12px; font-size: 15px; color: #374151;">Szia <strong>${safeName}</strong>!</p>
                         <p style="margin: 0 0 24px; font-size: 15px; color: #374151;">
                             Jelszóvisszaállítást kezdeményeztél. Kattints az alábbi gombra az új jelszó beállításához.
                         </p>
                         <div style="text-align: center; margin: 32px 0;">
-                            <a href="${safeUrl}" style="display: inline-block; background: #065f46; color: #ffffff; text-decoration: none; padding: 14px 36px; border-radius: 12px; font-size: 16px; font-weight: 700; letter-spacing: 0.3px;">
+                            <a href="${safeUrl}" style="display: inline-block; background: #065f46; color: #fffefa; text-decoration: none; padding: 14px 36px; border-radius: 12px; font-size: 16px; font-weight: 700; letter-spacing: 0.3px;">
                                 Jelszó visszaállítása
                             </a>
                         </div>
@@ -937,7 +936,7 @@ const buildPasswordResetEmail = ({ name, resetUrl }) => {
                     </td>
                 </tr>
                 <tr>
-                    <td style="background: #f8fafc; padding: 16px 28px; border-radius: 0 0 16px 16px; text-align: center;">
+                    <td style="background: #f7f9f4; padding: 16px 28px; border-radius: 0 0 16px 16px; text-align: center;">
                         <p style="margin: 0; font-size: 12px; color: #9ca3af;">
                             &copy; ${new Date().getFullYear()} Túrázz Velünk &mdash; Minden jog fenntartva
                         </p>

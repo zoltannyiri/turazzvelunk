@@ -141,7 +141,7 @@ const sendAdminRemovedBookingEmail = async ({ to, name, tourId, tourTitle, admin
         subject,
         text,
         html,
-        notification: tourNotification(tourId, `Jelentkezésed törölve: ${tourTitle}`, 'Az adminisztrátor törölte a jelentkezésedet.')
+        notification: tourNotification(tourId, `Törölve lettél a túráról: ${tourTitle}`, 'A túravezető törölte a jelentkezésedet.')
     });
 };
 
