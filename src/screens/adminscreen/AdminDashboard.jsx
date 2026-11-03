@@ -45,6 +45,8 @@ const AdminDashboard = () => {
   const tabParam = searchParams.get('tab');
 
   const [bookings, setBookings] = useState([]);
+  const [deletingBookingIds, setDeletingBookingIds] = useState([]);
+  const [deletingUserIds, setDeletingUserIds] = useState([]);
   const [expandedTour, setExpandedTour] = useState(null);
   const [expandedCategories, setExpandedCategories] = useState({});
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -713,7 +715,10 @@ const AdminDashboard = () => {
   };
 
   const handleAdminRemoveBooking = async (bookingId) => {
+    if (deletingBookingIds.includes(bookingId)) return;
     if (!window.confirm("Biztosan eltávolítod a túráról?")) return;
+    setDeletingBookingIds(prev => [...prev, bookingId]);
+    try {
     const res = await fetch(`${import.meta.env.VITE_API_URL}/bookings/admin/${bookingId}`,
       {
         method: 'DELETE',
@@ -727,6 +732,11 @@ const AdminDashboard = () => {
       setCancelRequests(prev => prev.filter(r => r.booking_id !== bookingId));
     } else {
       toast.error(data.message || 'Hiba történt.');
+    }
+    } catch {
+      toast.error('A törlés nem sikerült. Próbáld újra.');
+    } finally {
+      setDeletingBookingIds(prev => prev.filter(id => id !== bookingId));
     }
   };
 
@@ -749,7 +759,9 @@ const AdminDashboard = () => {
   };
 
   const handleAdminDeleteUser = async (id) => {
+    if (deletingUserIds.includes(id)) return;
     if (!window.confirm('Biztosan törlöd ezt a felhasználót? Ez nem visszavonható.')) return;
+    setDeletingUserIds(prev => [...prev, id]);
     try {
       const res = await fetch(`${import.meta.env.VITE_API_URL}/auth/users/${id}`, {
         method: 'DELETE',
@@ -764,6 +776,8 @@ const AdminDashboard = () => {
       }
     } catch (err) {
       toast.error('Hiba történt.');
+    } finally {
+      setDeletingUserIds(prev => prev.filter(userId => userId !== id));
     }
   };
 
@@ -1554,12 +1568,10 @@ const AdminDashboard = () => {
                                                         Törlés
                                                       </button>
                                                     ) : null}
-                                                    <button 
+                                                    <button disabled={deletingBookingIds.includes(p.id)} aria-busy={deletingBookingIds.includes(p.id)} 
                                                       onClick={(e) => { e.stopPropagation(); handleAdminRemoveBooking(p.id); }}
-                                                      className="bg-red-50 text-red-600 text-[10px] font-black px-4 py-2 rounded-xl hover:bg-red-500 hover:text-white transition"
-                                                    >
-                                                      Eltávolítás
-                                                    </button>
+                                                      className="disabled:opacity-60 disabled:cursor-wait bg-red-50 text-red-600 text-[10px] font-black px-4 py-2 rounded-xl hover:bg-red-500 hover:text-white transition"
+                                                    >{deletingBookingIds.includes(p.id) ? 'Törlés…' : <> Eltávolítás </>}</button>
                                                   </div>
                                                 </td>
                                               </tr>
@@ -1583,35 +1595,35 @@ const AdminDashboard = () => {
 
             {activeTab === 'bookings' && (
               <div className={adminPanel}>
-                <div className="p-8 md:p-10 flex items-center justify-between bg-gradient-to-r from-white to-slate-50">
+                <div className="p-6 sm:p-8 flex flex-wrap items-center justify-between gap-4 border-b border-[#d9dfd5] bg-[#e8eee4]">
                   <div>
-                    <h2 className="text-2xl font-black text-emerald-950">Összes jelentkezés</h2>
-                    <div className="text-xs text-slate-400 font-bold uppercase tracking-widest">Admin kezelő</div>
+                    <h2 className="text-2xl font-semibold text-[#173327]">Összes jelentkezés</h2>
+                    <p className="mt-2 text-sm text-[#526b59]">Jelentkezők, jóváhagyások és fizetési állapotok egy helyen.</p>
                   </div>
                   <div className="flex items-center gap-3">
                     <button
                       type="button"
                       onClick={fetchBookings}
-                      className="px-4 py-2 rounded-2xl text-xs font-black uppercase tracking-widest bg-emerald-600 text-white shadow-lg shadow-emerald-600/20 hover:bg-emerald-700 transition"
+                      className="px-4 py-2 rounded-lg text-xs font-semibold uppercase tracking-widest bg-[#275940] text-white  hover:bg-[#173d2a] transition"
                     >
                       Frissítés
                     </button>
-                    <div className="text-xs font-black uppercase tracking-widest text-emerald-600">
+                    <div className="text-xs font-semibold uppercase tracking-widest text-[#275940]">
                       {filteredBookings.length} / {bookings.length} db
                     </div>
                   </div>
                 </div>
-                <div className="px-8 pb-4">
+                <div className="p-4 sm:p-6 bg-[#f3f6ef] border-b border-[#d9dfd5]">
                   <div className="grid grid-cols-1 md:grid-cols-[1.3fr_0.6fr_0.6fr] gap-3">
                     <input
                       type="text"
                       placeholder="Keresés túra, felhasználó vagy email alapján..."
-                      className="w-full px-4 py-3 rounded-2xl bg-slate-50 border border-slate-100 text-sm font-semibold focus:ring-2 focus:ring-emerald-500 outline-none"
+                      className="w-full px-4 py-3 rounded-lg bg-[#fffefa] border border-[#cbd8c7] text-sm font-semibold focus:ring-2 focus:ring-[#cbdcc8] focus:border-[#477258] outline-none"
                       value={bookingSearch}
                       onChange={(e) => setBookingSearch(e.target.value)}
                     />
                     <select
-                      className="w-full px-4 py-3 rounded-2xl bg-slate-50 border border-slate-100 text-sm font-semibold focus:ring-2 focus:ring-emerald-500 outline-none"
+                      className="w-full px-4 py-3 rounded-lg bg-[#fffefa] border border-[#cbd8c7] text-sm font-semibold focus:ring-2 focus:ring-[#cbdcc8] focus:border-[#477258] outline-none"
                       value={bookingStatusFilter}
                       onChange={(e) => setBookingStatusFilter(e.target.value)}
                     >
@@ -1622,7 +1634,7 @@ const AdminDashboard = () => {
                       <option value="cancelled">Lemondva</option>
                     </select>
                     <select
-                      className="w-full px-4 py-3 rounded-2xl bg-slate-50 border border-slate-100 text-sm font-semibold focus:ring-2 focus:ring-emerald-500 outline-none"
+                      className="w-full px-4 py-3 rounded-lg bg-[#fffefa] border border-[#cbd8c7] text-sm font-semibold focus:ring-2 focus:ring-[#cbdcc8] focus:border-[#477258] outline-none"
                       value={bookingPaymentFilter}
                       onChange={(e) => setBookingPaymentFilter(e.target.value)}
                     >
@@ -1633,46 +1645,47 @@ const AdminDashboard = () => {
                     </select>
                   </div>
                 </div>
-                <div className="px-8 pb-8 overflow-x-auto">
-                  <table className="w-full text-left">
+                <div className="px-4 pb-6 sm:px-6 overflow-x-auto">
+                  <table className="w-full min-w-[640px] text-left">
                     <thead>
-                      <tr className="text-[10px] font-black uppercase text-slate-400 tracking-widest">
-                        <th className="py-4">Túra</th>
-                        <th className="py-4">Felhasználó</th>
-                        <th className="py-4">Státusz</th>
+                      <tr className="text-[10px] font-semibold uppercase text-[#718174] tracking-widest">
+                        <th className="py-4 pr-5">Túra</th>
+                        <th className="py-4 pr-5">Felhasználó</th>
+                        <th className="py-4 pr-5">Státusz</th>
                         <th className="py-4 text-right">Művelet</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-slate-100">
+                    <tbody className="divide-y divide-[#d9dfd5]">
+                      {filteredBookings.length === 0 && (
+                        <tr><td colSpan={4} className="px-4 py-14 text-center text-sm text-[#607267]">Nincs a szűrésnek megfelelő jelentkezés.</td></tr>
+                      )}
                       {filteredBookings.map((b) => (
-                        <tr key={b.id} className="text-sm">
-                          <td className="py-4">
-                            <div className="font-black text-emerald-950">{b.title}</div>
-                            <div className="text-xs text-slate-400">{b.location}</div>
+                        <tr key={b.id} className="text-sm transition-colors hover:bg-[#edf2e9]/60">
+                          <td className="py-4 pr-5">
+                            <div className="font-semibold text-[#173327]">{b.title}</div>
+                            <div className="text-xs text-[#718174]">{b.location}</div>
                           </td>
-                          <td className="py-4">
-                            <div className="font-bold text-slate-800">{b.user_name}</div>
-                            <div className="text-xs text-slate-400">{b.email}</div>
+                          <td className="py-4 pr-5">
+                            <div className="font-bold text-[#173327]">{b.user_name}</div>
+                            <div className="text-xs text-[#718174]">{b.email}</div>
                           </td>
-                          <td className="py-4">
-                            <span className="text-[10px] font-black uppercase text-slate-500">{getBookingStatusLabel(b)}</span>
+                          <td className="py-4 pr-5">
+                            <span className={`inline-flex rounded-full border px-3 py-1.5 text-xs font-semibold ${b.status === 'confirmed' ? 'border-[#cbdcc8] bg-[#edf2e9] text-[#275940]' : b.status === 'pending' ? 'border-amber-200 bg-amber-50 text-amber-800' : b.status === 'cancelled' ? 'border-rose-200 bg-rose-50 text-rose-700' : 'border-[#d9dfd5] bg-[#f5f5f0] text-[#607267]'}`}>{getBookingStatusLabel(b)}</span>
                           </td>
                           <td className="py-4 text-right">
                             <div className="flex items-center justify-end gap-2">
                               {b.status === 'pending' && (
                                 <button
                                   onClick={() => updateStatus(b.id, 'confirmed')}
-                                  className="bg-emerald-600 text-white text-[10px] font-black px-4 py-2 rounded-xl hover:bg-emerald-700 transition"
+                                  className="bg-[#275940] text-white text-[10px] font-semibold px-4 py-2 rounded-xl hover:bg-[#173d2a] transition"
                                 >
                                   ELFOGADÁS
                                 </button>
                               )}
-                              <button
+                              <button disabled={deletingBookingIds.includes(b.id)} aria-busy={deletingBookingIds.includes(b.id)}
                                 onClick={() => handleAdminRemoveBooking(b.id)}
-                                className="bg-red-500/10 text-red-500 text-[10px] font-black px-4 py-2 rounded-xl hover:bg-red-500 hover:text-white transition"
-                              >
-                                TÖRLÉS
-                              </button>
+                                className="disabled:opacity-60 disabled:cursor-wait bg-red-500/10 text-red-500 text-[10px] font-semibold px-4 py-2 rounded-xl hover:bg-red-500 hover:text-white transition"
+                              >{deletingBookingIds.includes(b.id) ? 'Törlés…' : <> TÖRLÉS </>}</button>
                             </div>
                           </td>
                         </tr>
@@ -1796,13 +1809,11 @@ const AdminDashboard = () => {
                                       >
                                         <CheckCircle size={14} /> Áthelyezés résztvevőnek
                                       </button>
-                                      <button
+                                      <button disabled={deletingBookingIds.includes(w.id)} aria-busy={deletingBookingIds.includes(w.id)}
                                         onClick={() => handleAdminRemoveBooking(w.id)}
-                                        className="p-2 bg-red-50 hover:bg-red-500 text-red-500 hover:text-white rounded-xl border border-red-100 transition"
+                                        className="disabled:opacity-60 disabled:cursor-wait p-2 bg-red-50 hover:bg-red-500 text-red-500 hover:text-white rounded-xl border border-red-100 transition"
                                         title="Eltávolítás a várólistáról"
-                                      >
-                                        <Trash2 size={14} />
-                                      </button>
+                                      >{deletingBookingIds.includes(w.id) ? 'Törlés…' : <> <Trash2 size={14} /> </>}</button>
                                     </div>
                                   </div>
                                 ))}
@@ -1841,13 +1852,11 @@ const AdminDashboard = () => {
                                         </div>
                                         <div className="text-[11px] text-gray-500">{p.user_email}</div>
                                       </div>
-                                      <button
+                                      <button disabled={deletingBookingIds.includes(p.id)} aria-busy={deletingBookingIds.includes(p.id)}
                                         onClick={() => handleAdminRemoveBooking(p.id)}
-                                        className="px-3 py-1.5 bg-red-50 hover:bg-red-500 text-red-500 hover:text-white rounded-xl text-[11px] font-bold border border-red-100 transition flex items-center gap-1 shrink-0"
+                                        className="disabled:opacity-60 disabled:cursor-wait px-3 py-1.5 bg-red-50 hover:bg-red-500 text-red-500 hover:text-white rounded-xl text-[11px] font-bold border border-red-100 transition flex items-center gap-1 shrink-0"
                                         title="Résztvevő törlése a túráról a hely felszabadításához"
-                                      >
-                                        <UserMinus size={13} /> Törlés a túráról
-                                      </button>
+                                      >{deletingBookingIds.includes(p.id) ? 'Törlés…' : <> <UserMinus size={13} /> Törlés a túráról </>}</button>
                                     </div>
                                   ))
                                 )}
@@ -2017,12 +2026,10 @@ const AdminDashboard = () => {
                                   >
                                     {user.role === 'admin' ? 'Admin elvétel' : 'Admin jog'}
                                   </button>
-                                  <button
+                                  <button disabled={deletingUserIds.includes(user.id)} aria-busy={deletingUserIds.includes(user.id)}
                                     onClick={() => handleAdminDeleteUser(user.id)}
-                                    className="px-4 py-2 rounded-xl bg-red-500/10 text-red-500 text-xs font-black uppercase tracking-widest hover:bg-red-500 hover:text-white transition self-start md:self-auto"
-                                  >
-                                    Felhasználó törlése
-                                  </button>
+                                    className="disabled:opacity-60 disabled:cursor-wait px-4 py-2 rounded-xl bg-red-500/10 text-red-500 text-xs font-black uppercase tracking-widest hover:bg-red-500 hover:text-white transition self-start md:self-auto"
+                                  >{deletingUserIds.includes(user.id) ? 'Törlés…' : <> Felhasználó törlése </>}</button>
                                 </div>
                                 {user.bookings.length > 0 ? (
                                   <div>
@@ -2040,12 +2047,10 @@ const AdminDashboard = () => {
                                             <div className="text-xs text-slate-400">{booking.location}</div>
                                           </div>
                                           <div className="text-[10px] font-black uppercase text-slate-400">{getBookingStatusLabel(booking)}</div>
-                                          <button
+                                          <button disabled={deletingBookingIds.includes(booking.id)} aria-busy={deletingBookingIds.includes(booking.id)}
                                             onClick={() => handleAdminRemoveBooking(booking.id)}
-                                            className="px-4 py-2 rounded-xl bg-red-500/10 text-red-500 text-xs font-black uppercase tracking-widest hover:bg-red-500 hover:text-white"
-                                          >
-                                            Törlés a túráról
-                                          </button>
+                                            className="disabled:opacity-60 disabled:cursor-wait px-4 py-2 rounded-xl bg-red-500/10 text-red-500 text-xs font-black uppercase tracking-widest hover:bg-red-500 hover:text-white"
+                                          >{deletingBookingIds.includes(booking.id) ? 'Törlés…' : <> Törlés a túráról </>}</button>
                                         </div>
                                       ))}
                                     </div>
@@ -2497,39 +2502,41 @@ const AdminDashboard = () => {
 
             {activeTab === 'equipment' && (
               <div className={adminPanel}>
-                <div className="p-8 md:p-10 flex items-center justify-between bg-gradient-to-r from-white to-slate-50">
+                <div className="p-6 sm:p-8 flex items-center justify-between border-b border-[#d9dfd5] bg-[#e8eee4]">
                   <div>
-                    <h2 className="text-2xl font-black text-emerald-950">Eszközök</h2>
-                    <div className="text-xs text-slate-400 font-bold uppercase tracking-widest">Létrehozás és készlet</div>
+                    <h2 className="text-2xl font-semibold text-emerald-950">Eszközök</h2>
+                    <p className="mt-2 text-sm text-[#526b59]">Felszerelések, járművek és a rendelkezésre álló készlet kezelése.</p>
                   </div>
-                  <div className="text-xs font-black uppercase tracking-widest text-emerald-600">{equipment.length} db</div>
+                  <div className="text-xs font-semibold uppercase tracking-widest text-[#275940]">{equipment.length} db</div>
                 </div>
 
-                <div className="px-8 pb-8 space-y-6">
-                  <div className="bg-slate-50 rounded-[2rem] p-6 border border-slate-100">
+                <div className="p-4 sm:p-8 space-y-6">
+                  <div className="bg-[#edf2e9] rounded-xl p-6 border border-[#cbd8c7]">
+                    <h3 className="mb-1 font-serif text-2xl text-[#173327]">Új eszköz</h3>
+                    <p className="mb-5 text-sm text-[#526b59]">Add meg az eszköz adatait. Járműnél az ülőhelyek számát is beállíthatod.</p>
                     <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                       <input
                         type="text"
                         placeholder="Eszköz neve"
                         value={newEquipment.name}
                         onChange={(e) => setNewEquipment((prev) => ({ ...prev, name: e.target.value }))}
-                        className="w-full p-3 bg-white border border-slate-100 rounded-2xl"
+                        className="w-full p-3 text-sm text-[#173327] outline-none focus:border-[#477258] focus:ring-2 focus:ring-[#cbdcc8] bg-[#fffefa] border border-[#cbd8c7] rounded-lg"
                       />
                       <input
                         type="number"
                         placeholder="Darabszám"
                         value={newEquipment.total_quantity}
                         onChange={(e) => setNewEquipment((prev) => ({ ...prev, total_quantity: e.target.value }))}
-                        className="w-full p-3 bg-white border border-slate-100 rounded-2xl"
+                        className="w-full p-3 text-sm text-[#173327] outline-none focus:border-[#477258] focus:ring-2 focus:ring-[#cbdcc8] bg-[#fffefa] border border-[#cbd8c7] rounded-lg"
                       />
                       <input
                         type="text"
                         placeholder="Leírás (opcionális)"
                         value={newEquipment.description}
                         onChange={(e) => setNewEquipment((prev) => ({ ...prev, description: e.target.value }))}
-                        className="w-full p-3 bg-white border border-slate-100 rounded-2xl md:col-span-2"
+                        className="w-full p-3 text-sm text-[#173327] outline-none focus:border-[#477258] focus:ring-2 focus:ring-[#cbdcc8] bg-[#fffefa] border border-[#cbd8c7] rounded-lg md:col-span-2"
                       />
-                      <label className="md:col-span-2 flex items-center gap-3 p-3 bg-white border border-slate-100 rounded-2xl cursor-pointer">
+                      <label className="md:col-span-2 flex items-center gap-3 p-3 bg-[#fffefa] border border-[#cbd8c7] rounded-lg cursor-pointer">
                         <input
                           type="checkbox"
                           checked={newEquipment.is_passenger_transport}
@@ -2538,9 +2545,9 @@ const AdminDashboard = () => {
                             is_passenger_transport: e.target.checked,
                             seats_per_unit: e.target.checked ? prev.seats_per_unit : ''
                           }))}
-                          className="h-5 w-5 accent-emerald-600"
+                          className="h-5 w-5 accent-[#275940]"
                         />
-                        <span className="text-xs font-black uppercase tracking-wider text-slate-600">Utasszállítás?</span>
+                        <span className="text-xs font-semibold uppercase tracking-wider text-[#526b59]">Utasszállítás?</span>
                       </label>
                       <input
                         type="number"
@@ -2549,25 +2556,29 @@ const AdminDashboard = () => {
                         placeholder="Férőhely / jármű"
                         value={newEquipment.seats_per_unit}
                         onChange={(e) => setNewEquipment((prev) => ({ ...prev, seats_per_unit: e.target.value }))}
-                        className="w-full p-3 bg-white border border-slate-100 rounded-2xl md:col-span-2 disabled:opacity-40"
+                        className="w-full p-3 text-sm text-[#173327] outline-none focus:border-[#477258] focus:ring-2 focus:ring-[#cbdcc8] bg-[#fffefa] border border-[#cbd8c7] rounded-lg md:col-span-2 disabled:opacity-40"
                       />
                     </div>
                     <button
                       onClick={handleEquipmentCreate}
-                      className="mt-4 px-6 py-3 rounded-2xl bg-emerald-600 text-white text-xs font-black uppercase tracking-widest hover:bg-emerald-700"
+                      className="mt-4 px-6 py-3 rounded-lg bg-[#275940] text-white text-xs font-semibold uppercase tracking-widest hover:bg-[#173d2a]"
                     >
                       Eszköz létrehozása
                     </button>
                   </div>
 
                   {equipmentLoading ? (
-                    <div className="text-center py-10 text-slate-400 font-bold">Betöltés...</div>
+                    <div className="text-center py-10 text-[#718174] font-bold">Betöltés...</div>
                   ) : equipment.length === 0 ? (
-                    <div className="text-center py-10 text-slate-400 font-bold">Nincs eszköz.</div>
+                    <div className="text-center py-10 text-[#718174] font-bold">Nincs eszköz.</div>
                   ) : (
                     <div className="grid gap-4">
                       {equipment.map((item) => (
-                        <div key={item.id} className="bg-white rounded-[2rem] p-6 border border-slate-100">
+                        <div key={item.id} className="bg-[#fffefa] rounded-xl p-6 border border-[#cbd8c7] transition-colors hover:border-[#8da68b]">
+                          <div className="mb-5 flex flex-wrap items-center justify-between gap-3 border-b border-[#d9dfd5] pb-4">
+                            <h3 className="font-serif text-xl text-[#173327]">{item.name || 'Névtelen eszköz'}</h3>
+                            <span className="rounded-full bg-[#edf2e9] px-3 py-1 text-xs font-semibold text-[#275940]">{Number(item.is_passenger_transport) ? 'Utasszállító jármű' : 'Felszerelés'}</span>
+                          </div>
                           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                             <input
                               type="text"
@@ -2575,7 +2586,7 @@ const AdminDashboard = () => {
                               onChange={(e) =>
                                 setEquipment((prev) => prev.map((row) => row.id === item.id ? { ...row, name: e.target.value } : row))
                               }
-                              className="w-full p-3 bg-slate-50 border border-slate-100 rounded-2xl"
+                              className="w-full p-3 text-sm text-[#173327] outline-none focus:border-[#477258] focus:ring-2 focus:ring-[#cbdcc8] bg-[#edf2e9] border border-[#cbd8c7] rounded-lg"
                             />
                             <input
                               type="number"
@@ -2583,7 +2594,7 @@ const AdminDashboard = () => {
                               onChange={(e) =>
                                 setEquipment((prev) => prev.map((row) => row.id === item.id ? { ...row, total_quantity: e.target.value } : row))
                               }
-                              className="w-full p-3 bg-slate-50 border border-slate-100 rounded-2xl"
+                              className="w-full p-3 text-sm text-[#173327] outline-none focus:border-[#477258] focus:ring-2 focus:ring-[#cbdcc8] bg-[#edf2e9] border border-[#cbd8c7] rounded-lg"
                             />
                             <input
                               type="text"
@@ -2591,9 +2602,9 @@ const AdminDashboard = () => {
                               onChange={(e) =>
                                 setEquipment((prev) => prev.map((row) => row.id === item.id ? { ...row, description: e.target.value } : row))
                               }
-                              className="w-full p-3 bg-slate-50 border border-slate-100 rounded-2xl md:col-span-2"
+                              className="w-full p-3 text-sm text-[#173327] outline-none focus:border-[#477258] focus:ring-2 focus:ring-[#cbdcc8] bg-[#edf2e9] border border-[#cbd8c7] rounded-lg md:col-span-2"
                             />
-                            <label className="md:col-span-2 flex items-center gap-3 p-3 bg-slate-50 border border-slate-100 rounded-2xl cursor-pointer">
+                            <label className="md:col-span-2 flex items-center gap-3 p-3 bg-[#edf2e9] border border-[#cbd8c7] rounded-lg cursor-pointer">
                               <input
                                 type="checkbox"
                                 checked={Boolean(Number(item.is_passenger_transport))}
@@ -2604,9 +2615,9 @@ const AdminDashboard = () => {
                                     seats_per_unit: e.target.checked ? (row.seats_per_unit || '') : ''
                                   } : row))
                                 }
-                                className="h-5 w-5 accent-emerald-600"
+                                className="h-5 w-5 accent-[#275940]"
                               />
-                              <span className="text-xs font-black uppercase tracking-wider text-slate-600">Utasszállítás?</span>
+                              <span className="text-xs font-semibold uppercase tracking-wider text-[#526b59]">Utasszállítás?</span>
                             </label>
                             <input
                               type="number"
@@ -2617,19 +2628,19 @@ const AdminDashboard = () => {
                               onChange={(e) =>
                                 setEquipment((prev) => prev.map((row) => row.id === item.id ? { ...row, seats_per_unit: e.target.value } : row))
                               }
-                              className="w-full p-3 bg-slate-50 border border-slate-100 rounded-2xl md:col-span-2 disabled:opacity-40"
+                              className="w-full p-3 text-sm text-[#173327] outline-none focus:border-[#477258] focus:ring-2 focus:ring-[#cbdcc8] bg-[#edf2e9] border border-[#cbd8c7] rounded-lg md:col-span-2 disabled:opacity-40"
                             />
                           </div>
                           <div className="mt-4 flex flex-wrap gap-2">
                             <button
                               onClick={() => handleEquipmentUpdate(item)}
-                              className="px-4 py-2 rounded-xl bg-emerald-600 text-white text-xs font-black uppercase tracking-widest hover:bg-emerald-700"
+                              className="px-4 py-2 rounded-xl bg-[#275940] text-white text-xs font-semibold uppercase tracking-widest hover:bg-[#173d2a]"
                             >
                               Mentés
                             </button>
                             <button
                               onClick={() => handleEquipmentDelete(item.id)}
-                              className="px-4 py-2 rounded-xl bg-red-500/10 text-red-500 text-xs font-black uppercase tracking-widest hover:bg-red-500 hover:text-white"
+                              className="px-4 py-2 rounded-xl bg-red-500/10 text-red-500 text-xs font-semibold uppercase tracking-widest hover:bg-red-500 hover:text-white"
                             >
                               Törlés
                             </button>
