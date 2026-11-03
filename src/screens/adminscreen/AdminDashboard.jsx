@@ -1873,35 +1873,37 @@ const AdminDashboard = () => {
 
             {activeTab === 'cancellations' && (
               <div className={adminPanel}>
-                <div className="p-8 md:p-10 flex items-center justify-between bg-gradient-to-r from-white to-slate-50">
+                <div className="p-6 sm:p-8 flex flex-wrap items-center justify-between gap-4 border-b border-[#d9dfd5] bg-[#e8eee4]">
                   <div>
-                    <h2 className="text-2xl font-black text-emerald-950">Lejelentkezési kérelmek</h2>
-                    <div className="text-xs text-slate-400 font-bold uppercase tracking-widest">Teljes lista</div>
+                    <h2 className="font-serif text-3xl font-normal text-[#173327]">Lejelentkezési kérelmek</h2>
+                    <p className="mt-2 text-sm text-[#526b59]">Tekintsd át az indokokat, és kezeld a résztvevők lejelentkezési kérelmeit.</p>
                   </div>
                   <div className="flex items-center gap-3">
                     <button
                       onClick={fetchCancelRequests}
-                      className="px-4 py-2 rounded-2xl text-xs font-black uppercase tracking-widest bg-emerald-600 text-white shadow-lg shadow-emerald-600/20 hover:bg-emerald-700 transition"
+                      className="px-4 py-2 rounded-lg text-xs font-semibold uppercase tracking-widest bg-[#275940] text-white  hover:bg-[#173d2a] transition"
                     >
                       Frissítés
                     </button>
-                    <div className="px-4 py-2 rounded-full bg-emerald-50 text-emerald-700 text-xs font-black uppercase tracking-widest">
-                      {pendingCancelCount} pending
+                    <div className="px-4 py-2 rounded-full bg-[#edf2e9] text-[#275940] text-xs font-semibold uppercase tracking-widest">
+                      {pendingCancelCount} függőben
                     </div>
                   </div>
                 </div>
-                <div className="px-8 pb-4">
+                <div className="p-4 sm:p-6 bg-[#f3f6ef] border-b border-[#d9dfd5]">
                   <div className="grid grid-cols-1 md:grid-cols-[1.3fr_0.6fr] gap-3">
                     <input
                       type="text"
                       placeholder="Keresés túra, felhasználó vagy email alapján..."
-                      className="w-full px-4 py-3 rounded-2xl bg-slate-50 border border-slate-100 text-sm font-semibold focus:ring-2 focus:ring-emerald-500 outline-none"
+                      className="w-full px-4 py-3 rounded-lg bg-[#fffefa] border border-[#cbd8c7] text-sm font-semibold focus:ring-2 focus:ring-[#cbdcc8] focus:border-[#477258] outline-none"
                       value={cancelSearch}
+                      aria-label="Lejelentkezési kérelmek keresése"
                       onChange={(e) => setCancelSearch(e.target.value)}
                     />
                     <select
-                      className="w-full px-4 py-3 rounded-2xl bg-slate-50 border border-slate-100 text-sm font-semibold focus:ring-2 focus:ring-emerald-500 outline-none"
+                      className="w-full px-4 py-3 rounded-lg bg-[#fffefa] border border-[#cbd8c7] text-sm font-semibold focus:ring-2 focus:ring-[#cbdcc8] focus:border-[#477258] outline-none"
                       value={cancelStatusFilter}
+                      aria-label="Kérelem állapota"
                       onChange={(e) => setCancelStatusFilter(e.target.value)}
                     >
                       <option value="all">Összes státusz</option>
@@ -1911,25 +1913,28 @@ const AdminDashboard = () => {
                     </select>
                   </div>
                 </div>
-                <div className="px-8 pb-8">
+                <div className="p-4 sm:p-6">
                   {filteredCancelRequests.length === 0 ? (
-                    <div className="text-center py-10 text-slate-400 font-bold">Nincs kérelem.</div>
+                    <div className="rounded-xl border border-dashed border-[#cbd8c7] bg-[#f3f6ef] px-6 py-12 text-center text-sm text-[#607267]">Nincs a szűrésnek megfelelő lejelentkezési kérelem.</div>
                   ) : (
                     <div className="grid gap-4">
                       {filteredCancelRequests.map((req) => (
-                        <div key={req.id} className="bg-slate-50 rounded-[2rem] p-6 border border-slate-100">
-                          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                        <div key={req.id} className="bg-[#fffefa] rounded-xl p-6 border border-[#cbd8c7]">
+                          <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
                             <div>
-                              <div className="text-[10px] font-black uppercase tracking-widest text-emerald-600">{req.tour_title}</div>
-                              <div className="text-xs text-slate-400 font-bold">{req.location}</div>
-                              <div className="text-xl font-black text-slate-900 mt-1">{req.user_name}</div>
-                              <div className="text-xs text-slate-400 font-bold">{req.email}</div>
+                              <div className="text-[10px] font-semibold uppercase tracking-widest text-[#275940]">{req.tour_title}</div>
+                              <div className="text-xs text-[#718174] font-bold">{req.location}</div>
+                              <div className="text-xl font-semibold text-[#173327] mt-1">{req.user_name}</div>
+                              <div className="text-xs text-[#718174] font-bold">{req.email}</div>
                             </div>
-                            <div className="text-sm text-slate-600 max-w-xl">{req.reason}</div>
-                            <div className="flex items-center gap-2">
+                            <div className="rounded-lg border border-[#d9dfd5] bg-[#f3f6ef] p-4">
+                              <div className="mb-2 text-[10px] font-semibold uppercase tracking-widest text-[#718174]">Lejelentkezés indoka</div>
+                              <p className="whitespace-pre-wrap break-words text-sm leading-relaxed text-[#526b59]">{req.reason || 'Nincs megadott indok.'}</p>
+                            </div>
+                            <div className="flex flex-wrap items-center gap-2 border-t border-[#d9dfd5] pt-4 xl:col-span-2">
                               <Link
                                 to={`/tours/${req.tour_id}`}
-                                className="px-4 py-2 rounded-xl bg-slate-900 text-white text-xs font-black uppercase tracking-widest hover:bg-emerald-600 transition"
+                                className="px-4 py-2 rounded-xl bg-[#e8eee4] text-[#275940] text-xs font-semibold uppercase tracking-widest hover:bg-[#d9e4d4] transition"
                               >
                                 Túra megnyitása
                               </Link>
@@ -1937,23 +1942,23 @@ const AdminDashboard = () => {
                                 <>
                                   <button
                                     onClick={() => updateCancelRequestStatus(req.id, 'approved')}
-                                    className="px-4 py-2 rounded-xl bg-emerald-600 text-white text-xs font-black uppercase tracking-widest hover:bg-emerald-700"
+                                    className="px-4 py-2 rounded-xl bg-[#275940] text-white text-xs font-semibold uppercase tracking-widest hover:bg-[#173d2a]"
                                   >
                                     Jóváhagyás
                                   </button>
                                   <button
                                     onClick={() => updateCancelRequestStatus(req.id, 'rejected')}
-                                    className="px-4 py-2 rounded-xl bg-red-500/10 text-red-500 text-xs font-black uppercase tracking-widest hover:bg-red-500 hover:text-white"
+                                    className="px-4 py-2 rounded-xl bg-red-500/10 text-red-500 text-xs font-semibold uppercase tracking-widest hover:bg-red-500 hover:text-white"
                                   >
                                     Elutasítás
                                   </button>
                                 </>
                               ) : req.status === 'approved' ? (
-                                <div className="flex items-center gap-2 text-emerald-600 text-xs font-black uppercase tracking-widest">
+                                <div className="flex flex-wrap items-center gap-2 text-[#275940] text-xs font-semibold uppercase tracking-widest">
                                   <CheckCircle size={16} /> Jóváhagyva
                                 </div>
                               ) : (
-                                <div className="flex items-center gap-2 text-red-500 text-xs font-black uppercase tracking-widest">
+                                <div className="flex flex-wrap items-center gap-2 text-red-500 text-xs font-semibold uppercase tracking-widest">
                                   <XCircle size={16} /> Elutasítva
                                 </div>
                               )}
