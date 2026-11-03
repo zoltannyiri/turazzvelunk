@@ -2646,43 +2646,62 @@ const AdminDashboard = () => {
       </div>
 
       {isModalOpen && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-6">
-          <div className="absolute inset-0 bg-emerald-950/60 backdrop-blur-xl"></div>
-          <div className="relative max-h-[90vh] w-full max-w-4xl overflow-y-auto rounded-[1.2rem] border border-[#d9dfd5] bg-[#fffefa] p-6 shadow-[0_25px_80px_rgba(8,28,17,0.25)] md:p-10">
-            <div className="flex items-center justify-between gap-4 mb-8">
-              <h2 className="font-serif text-3xl text-[#173327]">
-                {editingTourId ? 'Túra szerkesztése' : 'Új túra meghirdetése'}
-              </h2>
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6">
+          <div className="absolute inset-0 bg-[#0f1f17]/70 backdrop-blur-sm"></div>
+          <div className="relative bg-white w-full max-w-4xl rounded-3xl shadow-2xl border border-[#dce5d8] p-6 sm:p-8 overflow-y-auto max-h-[90vh] z-10 animate-in fade-in zoom-in-95 duration-200">
+            {/* FEJLÉC */}
+            <div className="border-b border-[#d8dfd4] pb-4 mb-6 flex items-start justify-between">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#648067]">Adminisztráció</p>
+                <h2 className="mt-1 font-serif text-2xl sm:text-3xl text-[#173327]">
+                  {editingTourId ? 'Túra szerkesztése' : 'Új túra meghirdetése'}
+                </h2>
+              </div>
               <button
                 type="button"
                 onClick={() => {
-    setIsModalOpen(false);
-    setEditingTourId(null);
-    setIsDepositEnabled(false);
-    setNewTour(initialTourState);
-  }}
-                className="p-3 rounded-2xl bg-slate-100 text-slate-500 hover:bg-slate-200 transition"
+                  setIsModalOpen(false);
+                  setEditingTourId(null);
+                  setIsDepositEnabled(false);
+                  setNewTour(initialTourState);
+                }}
+                className="p-2 rounded-xl text-[#718174] hover:bg-[#ecefe6] hover:text-[#173327] transition border border-transparent hover:border-[#cad6c9]"
                 aria-label="Ablak bezárása"
               >
-                <X size={20} />
+                <X size={18} />
               </button>
             </div>
-            <form onSubmit={handleSubmitTour} className="grid grid-cols-1 md:grid-cols-2 gap-6">
+
+            <form onSubmit={handleSubmitTour} className="grid grid-cols-1 md:grid-cols-2 gap-5">
               <div className="md:col-span-2">
-                <label className="text-[10px] font-black uppercase text-slate-400 ml-4">Túra megnevezése</label>
-                <input type="text" required value={newTour.title} className="w-full p-4 bg-slate-50 border-none rounded-2xl mt-1 focus:ring-2 focus:ring-emerald-500 transition" 
-                  onChange={e => setNewTour({...newTour, title: e.target.value})} />
-              </div>
-              <div>
-                <label className="text-[10px] font-black uppercase text-slate-400 ml-4">Helyszín</label>
-                <input type="text" required value={newTour.location} className="w-full p-4 bg-slate-50 border-none rounded-2xl mt-1" 
-                  onChange={e => setNewTour({...newTour, location: e.target.value})} />
+                <label className="form-label-premium">Túra megnevezése</label>
+                <input
+                  type="text"
+                  required
+                  value={newTour.title}
+                  className="form-input-premium"
+                  onChange={e => setNewTour({...newTour, title: e.target.value})}
+                />
               </div>
 
               <div>
-                <label className="text-[10px] font-black uppercase text-slate-400 ml-4">Kategória</label>
-                <select value={newTour.category} className="w-full p-4 bg-slate-50 border-none rounded-2xl mt-1 focus:ring-2 focus:ring-emerald-500 transition font-bold"
-                  onChange={e => setNewTour({...newTour, category: e.target.value})}>
+                <label className="form-label-premium">Helyszín</label>
+                <input
+                  type="text"
+                  required
+                  value={newTour.location}
+                  className="form-input-premium"
+                  onChange={e => setNewTour({...newTour, location: e.target.value})}
+                />
+              </div>
+
+              <div>
+                <label className="form-label-premium">Kategória</label>
+                <select
+                  value={newTour.category}
+                  className="form-input-premium"
+                  onChange={e => setNewTour({...newTour, category: e.target.value})}
+                >
                   <option>Hegyi túrák</option>
                   <option>Vízitúrák</option>
                   <option>Jóga</option>
@@ -2691,15 +2710,22 @@ const AdminDashboard = () => {
               </div>
 
               <div>
-                <label className="text-[10px] font-black uppercase text-slate-400 ml-4">Alkategória</label>
-                <input type="text" value={newTour.subcategory} className="w-full p-4 bg-slate-50 border-none rounded-2xl mt-1"
-                  onChange={e => setNewTour({...newTour, subcategory: e.target.value})} />
+                <label className="form-label-premium">Alkategória</label>
+                <input
+                  type="text"
+                  value={newTour.subcategory}
+                  className="form-input-premium"
+                  onChange={e => setNewTour({...newTour, subcategory: e.target.value})}
+                />
               </div>
 
               <div>
-                <label className="text-[10px] font-black uppercase text-slate-400 ml-4">Nehézség</label>
-                <select value={newTour.difficulty} className="w-full p-4 bg-slate-50 border-none rounded-2xl mt-1 focus:ring-2 focus:ring-emerald-500 transition font-bold"
-                  onChange={e => setNewTour({...newTour, difficulty: e.target.value})}>
+                <label className="form-label-premium">Nehézség</label>
+                <select
+                  value={newTour.difficulty}
+                  className="form-input-premium"
+                  onChange={e => setNewTour({...newTour, difficulty: e.target.value})}
+                >
                   <option value="Könnyű">Könnyű</option>
                   <option value="Közepes">Közepes</option>
                   <option value="Nehéz">Nehéz</option>
@@ -2707,8 +2733,8 @@ const AdminDashboard = () => {
               </div>
 
               <div className="md:col-span-1">
-                <label className="text-[10px] font-black uppercase text-slate-400 ml-4 italic">Időtartam (Intervallum)</label>
-                <div className="relative mt-1">
+                <label className="form-label-premium">Időtartam (Intervallum)</label>
+                <div className="relative">
                   <DatePicker
                     selectsRange={true}
                     startDate={newTour.start_date instanceof Date ? newTour.start_date : null}
@@ -2736,141 +2762,119 @@ const AdminDashboard = () => {
                         setEquipmentConflicts({});
                       }
                     }}
-                    className="w-full p-4 bg-slate-50 border-none rounded-2xl focus:ring-2 focus:ring-emerald-500 transition font-bold text-emerald-900"
+                    className="form-input-premium font-medium"
+                    wrapperClassName="w-full"
                     dateFormat="yyyy. MM. dd."
                     locale="hu"
                     calendarStartDay={1}
                     placeholderText="Válaszd ki az intervallumot..."
                     isClearable={true}
-                    renderCustomHeader={({ date, decreaseMonth, increaseMonth, prevMonthButtonDisabled, nextMonthButtonDisabled }) => (
-                      <div className="flex items-center justify-between px-2 pb-2">
-                        <button
-                          type="button"
-                          onClick={decreaseMonth}
-                          disabled={prevMonthButtonDisabled}
-                          className="p-2 rounded-lg hover:bg-slate-100 disabled:opacity-40"
-                        >
-                          ‹
-                        </button>
-                        <div className="font-black text-slate-900">
-                          {date.getFullYear()}. {monthNames[date.getMonth()]}
-                        </div>
-                        <button
-                          type="button"
-                          onClick={increaseMonth}
-                          disabled={nextMonthButtonDisabled}
-                          className="p-2 rounded-lg hover:bg-slate-100 disabled:opacity-40"
-                        >
-                          ›
-                        </button>
-                      </div>
-                    )}
                   />
-                  <Calendar className="absolute right-4 top-4 text-emerald-500/50 pointer-events-none" size={20} />
+                  <Calendar className="absolute right-3.5 top-3.5 text-[#648067] pointer-events-none" size={18} />
                 </div>
               </div>
+
               <div>
-                <label className="text-[10px] font-black uppercase text-slate-400 ml-4">Ár (Ft)</label>
-                <input type="text" inputMode="numeric" required value={formatPriceInput(newTour.price)} className="w-full p-4 bg-slate-50 border-none rounded-2xl mt-1"
-                  onChange={e => setNewTour({...newTour, price: formatPriceInput(e.target.value)})} />
+                <label className="form-label-premium">Ár (Ft)</label>
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  required
+                  value={formatPriceInput(newTour.price)}
+                  className="form-input-premium"
+                  onChange={e => setNewTour({...newTour, price: formatPriceInput(e.target.value)})}
+                />
               </div>
 
-              <div className="md:col-span-2">
-                <div className="flex items-center gap-3 mb-3 px-1">
-                  <label className="flex items-center gap-2 cursor-pointer select-none">
-                    <input
-                      type="checkbox"
-                      className="h-4 w-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
-                      checked={isDepositEnabled}
-                      onChange={(e) => {
-                        const checked = e.target.checked;
-
-                        setIsDepositEnabled(checked);
-
-                        if (!checked) {
-                          setNewTour(prev => ({
-                            ...prev,
-                            deposit_amount: '',
-                            deposit_deadline: null
-                          }));
-                        }
-                      }}
-                    />
-                    <span className="text-[10px] font-black uppercase text-slate-400">Előleg szükséges (opcionális)</span>
-                  </label>
-                </div>
+              <div className="md:col-span-2 rounded-2xl border border-[#dce5d8] bg-[#f7f9f5] p-4">
+                <label className="flex items-center gap-3 text-sm font-bold text-[#173327] cursor-pointer">
+                  <input
+                    type="checkbox"
+                    className="h-4 w-4 accent-[#275940]"
+                    checked={isDepositEnabled}
+                    onChange={(e) => {
+                      const checked = e.target.checked;
+                      setIsDepositEnabled(checked);
+                      if (!checked) {
+                        setNewTour(prev => ({
+                          ...prev,
+                          deposit_amount: '',
+                          deposit_deadline: null
+                        }));
+                      }
+                    }}
+                  />
+                  Előleg szükséges (opcionális)
+                </label>
                 {isDepositEnabled && (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 bg-amber-50/60 rounded-2xl border border-amber-100">
+                  <div className="mt-4 grid gap-4 md:grid-cols-2">
                     <div>
-                      <label className="text-[10px] font-black uppercase text-slate-400 ml-1">Előleg összege (Ft)</label>
+                      <label className="form-label-premium">Előleg összege (Ft)</label>
                       <input
                         type="text"
                         inputMode="numeric"
-                        className="w-full p-4 bg-white border-none rounded-2xl mt-1"
+                        required
+                        className="form-input-premium"
                         value={formatPriceInput(newTour.deposit_amount)}
                         onChange={e => setNewTour(prev => ({ ...prev, deposit_amount: formatPriceInput(e.target.value) }))}
                         placeholder="Pl. 15 000"
                       />
                     </div>
-                    <div className="relative">
-                      <label className="text-[10px] font-black uppercase text-slate-400 ml-1">Előleg határideje</label>
-                      <DatePicker
-                        selected={newTour.deposit_deadline}
-                        onChange={date => setNewTour(prev => ({ ...prev, deposit_deadline: date }))}
-                        locale="hu"
-                        dateFormat="yyyy.MM.dd"
-                        placeholderText="Dátum kiválasztása"
-                        minDate={new Date()}
-                        maxDate={(() => {
-                          if (!(newTour.start_date instanceof Date)) return null;
-                          const previousDay = new Date(newTour.start_date);
-                          previousDay.setDate(previousDay.getDate() - 1);
-                          return previousDay;
-                        })()}
-                        className="w-full p-4 bg-white border-none rounded-2xl mt-1"
-                        wrapperClassName="w-full"
-                      />
-                      <Calendar className="absolute right-4 top-10 text-amber-400/60 pointer-events-none" size={18} />
+                    <div>
+                      <label className="form-label-premium">Előleg határideje</label>
+                      <div className="relative">
+                        <DatePicker
+                          selected={newTour.deposit_deadline}
+                          onChange={date => setNewTour(prev => ({ ...prev, deposit_deadline: date }))}
+                          locale="hu"
+                          dateFormat="yyyy. MM. dd."
+                          placeholderText="Dátum kiválasztása"
+                          minDate={new Date()}
+                          maxDate={(() => {
+                            if (!(newTour.start_date instanceof Date)) return null;
+                            const previousDay = new Date(newTour.start_date);
+                            previousDay.setDate(previousDay.getDate() - 1);
+                            return previousDay;
+                          })()}
+                          className="form-input-premium"
+                          wrapperClassName="w-full"
+                        />
+                        <Calendar className="absolute right-3.5 top-3.5 text-[#648067] pointer-events-none" size={18} />
+                      </div>
                     </div>
                   </div>
                 )}
               </div>
 
-              <div className="md:col-span-2 bg-slate-50/70 p-5 md:p-6 rounded-3xl border border-slate-200/80">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-slate-200/60 mb-4">
-                  <div className="flex items-center gap-2.5">
-                    {/* <div className="w-8 h-8 rounded-xl bg-emerald-100/80 text-emerald-700 flex items-center justify-center">
-                      <Package size={18} />
-                    </div> */}
-                    <div>
-                      <h4 className="text-sm font-black text-slate-800 tracking-tight">
-                        Felszerelések & Bérleti díjak
-                      </h4>
-                    </div>
+              <div className="md:col-span-2 rounded-2xl border border-[#dce5d8] bg-[#f7f9f5] p-4 sm:p-5">
+                <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[#dce5d8] pb-3 mb-4">
+                  <div>
+                    <h3 className="font-serif text-xl text-[#173327]">Felszerelések & Bérleti díjak</h3>
+                    <p className="mt-1 text-xs text-[#65756a]">Válaszd ki a túrához tartozó eszközöket és add meg a díjukat.</p>
                   </div>
-                  <span className={`self-start sm:self-auto text-xs font-bold px-3 py-1 rounded-full border transition-all ${
+                  <span className={`text-xs font-bold px-3 py-1 rounded-full border transition-all ${
                     selectedEquipmentIds.length > 0 
-                      ? 'bg-emerald-100 text-emerald-800 border-emerald-200 shadow-2xs' 
-                      : 'bg-slate-100 text-slate-500 border-slate-200'
+                      ? 'bg-[#edf3ec] text-[#275940] border-[#b9cfbb]' 
+                      : 'bg-white text-[#718174] border-[#dce5d8]'
                   }`}>
                     {selectedEquipmentIds.length} felszerelés csatolva
                   </span>
                 </div>
 
                 {(!newTour.start_date || !newTour.end_date) && (
-                  <div className="mb-4 p-3 bg-amber-50/80 border border-amber-200/70 rounded-2xl flex items-center gap-2.5 text-xs text-amber-900 font-medium">
-                    <AlertTriangle size={15} className="text-amber-600 shrink-0" />
+                  <div className="mb-4 p-3 bg-[#fdf8f0] border border-[#f0debe] rounded-xl flex items-center gap-2.5 text-xs text-[#876027] font-medium">
+                    <AlertTriangle size={15} className="text-[#c89553] shrink-0" />
                     <span>Az átfedő túrák pontos szabad készletének számításához előbb válassz időtartamot a fenti naptárban!</span>
                   </div>
                 )}
 
                 <div className="grid gap-3">
                   {equipmentLoading ? (
-                    <div className="p-4 text-center text-xs text-slate-400 font-bold bg-white rounded-2xl border border-slate-200/50">
+                    <div className="p-4 text-center text-xs text-[#718174] font-medium bg-white rounded-xl border border-[#dce5d8]">
                       Felszerelések betöltése...
                     </div>
                   ) : equipment.length === 0 ? (
-                    <div className="p-4 text-center text-xs text-slate-400 font-bold bg-white rounded-2xl border border-slate-200/50">
+                    <div className="p-4 text-center text-xs text-[#718174] font-medium bg-white rounded-xl border border-[#dce5d8]">
                       Nincs regisztrált felszerelés. Hozz létre újat az Eszközök fülön.
                     </div>
                   ) : (
@@ -2890,15 +2894,14 @@ const AdminDashboard = () => {
                         return (
                           <div
                             key={item.id}
-                            className={`flex flex-col gap-3.5 p-4 rounded-2xl border transition-all duration-200 ${
+                            className={`flex flex-col gap-3.5 p-4 rounded-xl border transition-all duration-200 ${
                               isSelected
-                                ? 'bg-white border-emerald-400/90 shadow-sm ring-2 ring-emerald-500/10'
+                                ? 'bg-white border-[#8eaf92] shadow-sm ring-2 ring-[#477258]/15'
                                 : isUnavailable
-                                  ? 'bg-slate-100/40 border-slate-200/50 opacity-60'
-                                  : 'bg-white/80 hover:bg-white border-slate-200/80 hover:border-slate-300 shadow-2xs'
+                                  ? 'bg-[#f7f9f5]/60 border-[#e4eae1] opacity-60'
+                                  : 'bg-white hover:bg-[#fcfffa] border-[#dce5d8] hover:border-[#b4c7b0] shadow-2xs'
                             }`}
                           >
-                            {/* Felső sáv: Név, jelvények, készlet és hozzárendelés gomb */}
                             <div className="flex items-start justify-between gap-3">
                               <div className="flex items-start gap-3 flex-1 min-w-0">
                                 <label className="relative flex items-center justify-center pt-0.5 cursor-pointer">
@@ -2907,7 +2910,7 @@ const AdminDashboard = () => {
                                     checked={isSelected}
                                     disabled={isLocked || isUnavailable}
                                     aria-label={`${item.name} csatolása a túrához`}
-                                    className="h-5 w-5 rounded-lg border-slate-300 text-emerald-600 focus:ring-emerald-500 focus:ring-offset-0 disabled:cursor-not-allowed disabled:opacity-50 cursor-pointer transition"
+                                    className="h-4 w-4 accent-[#275940] disabled:cursor-not-allowed cursor-pointer"
                                     onChange={(e) => {
                                       if (e.target.checked && isUnavailable) return;
                                       setSelectedEquipmentIds((prev) => e.target.checked
@@ -2927,34 +2930,34 @@ const AdminDashboard = () => {
                                 </label>
                                 <div className="flex-1 min-w-0">
                                   <div className="flex items-center gap-2 flex-wrap">
-                                    <span className={`font-bold text-sm tracking-tight ${isSelected ? 'text-slate-900' : 'text-slate-700'}`}>
+                                    <span className={`font-bold text-sm tracking-tight ${isSelected ? 'text-[#173327]' : 'text-[#344a3c]'}`}>
                                       {item.name}
                                     </span>
-                                    <span className={`text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md border shrink-0 ${
+                                    <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md border shrink-0 ${
                                       newTour.equipment_full_rental?.[item.id]
-                                        ? 'text-amber-700 bg-amber-100 border-amber-200'
-                                        : 'text-sky-700 bg-sky-100 border-sky-200'
+                                        ? 'text-[#8a5b29] bg-[#faefe0] border-[#ebd0ad]'
+                                        : 'text-[#275940] bg-[#eef5ee] border-[#c5dcce]'
                                     }`}>
                                       {newTour.equipment_full_rental?.[item.id] ? 'Teljes jármű bérlés' : `${seatsPerUnit} férőhely / jármű`}
                                     </span>
                                     {isLocked && (
-                                      <span className="text-[10px] font-black uppercase tracking-wider text-amber-700 bg-amber-100/80 px-2 py-0.5 rounded-md border border-amber-200 shrink-0">
+                                      <span className="text-[10px] font-bold uppercase tracking-wider text-[#8a5b29] bg-[#faefe0] px-2 py-0.5 rounded-md border border-[#ebd0ad] shrink-0">
                                         Foglalás alatt
                                       </span>
                                     )}
                                     {isUnavailable && !isSelected && (
-                                      <span className="text-[10px] font-black uppercase tracking-wider text-rose-600 bg-rose-100/80 px-2 py-0.5 rounded-md border border-rose-200 shrink-0">
+                                      <span className="text-[10px] font-bold uppercase tracking-wider text-[#9c523f] bg-[#fcece9] px-2 py-0.5 rounded-md border border-[#f5c7be] shrink-0">
                                         Elfogyott
                                       </span>
                                     )}
                                   </div>
                                   <div className="flex flex-wrap items-center gap-2 mt-1">
-                                    <span className="text-[11px] font-medium text-slate-500">
-                                      Készlet: <strong className="text-slate-700 font-semibold">{item.total_quantity} db</strong>
+                                    <span className="text-[11px] font-medium text-[#65756a]">
+                                      Készlet: <strong className="text-[#173327] font-semibold">{item.total_quantity} db</strong>
                                     </span>
-                                    <span className="text-slate-300">•</span>
+                                    <span className="text-[#cad6c9]">•</span>
                                     <span className="text-[11px] font-medium">
-                                      Szabad készletből: <strong className={availableFromStock > 0 ? 'text-emerald-700 font-bold' : 'text-rose-600 font-bold'}>{availableFromStock} db</strong>
+                                      Szabad készletből: <strong className={availableFromStock > 0 ? 'text-[#275940] font-bold' : 'text-[#9c523f] font-bold'}>{availableFromStock} db</strong>
                                     </span>
                                   </div>
                                 </div>
@@ -2975,22 +2978,18 @@ const AdminDashboard = () => {
                                       }));
                                     }
                                   }}
-                                  className="text-xs font-bold text-slate-500 hover:text-emerald-700 bg-slate-100 hover:bg-emerald-50 px-3.5 py-1.5 rounded-xl border border-slate-200 hover:border-emerald-300 transition cursor-pointer shrink-0"
+                                  className="text-xs font-bold text-[#477258] hover:text-[#173327] bg-[#edf3ec] hover:bg-[#dfeadd] px-3.5 py-1.5 rounded-xl border border-[#b9cfbb] transition cursor-pointer shrink-0"
                                 >
                                   + Hozzárendelés
                                 </button>
                               )}
                             </div>
 
-                            {/* Alsó sáv: A 3 opció arányosan elosztva a csík alatt (grid 3 oszlopban) */}
                             {isSelected && (
-                              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 md:gap-4 pt-3.5 border-t border-slate-100">
-                                {/* 1. Darabszám */}
+                              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 md:gap-4 pt-3.5 border-t border-[#e4eae1] mt-1">
                                 <div className="flex flex-col min-w-0">
-                                  <span className="text-[9px] font-black uppercase tracking-wider text-slate-400 mb-1">
-                                    Darabszám
-                                  </span>
-                                  <div className="flex items-center h-10 w-full bg-slate-50 border border-slate-200 rounded-xl overflow-hidden hover:border-slate-300 focus-within:border-emerald-500 focus-within:ring-2 focus-within:ring-emerald-500/20 focus-within:bg-white transition shadow-2xs">
+                                  <span className="form-label-premium">Darabszám</span>
+                                  <div className="flex items-center h-10 w-full bg-[#f7f9f5] border border-[#dce5d8] rounded-xl overflow-hidden hover:border-[#b4c7b0] focus-within:border-[#477258] focus-within:ring-2 focus-within:ring-[#477258]/15 focus-within:bg-white transition">
                                     <button
                                       type="button"
                                       disabled={currentQty <= (isLocked ? currentQty : 1) || Boolean(newTour.equipment_full_rental?.[item.id])}
@@ -3004,7 +3003,7 @@ const AdminDashboard = () => {
                                           }
                                         }));
                                       }}
-                                      className="w-9 h-full shrink-0 flex items-center justify-center text-slate-400 hover:text-slate-700 hover:bg-slate-100 active:bg-slate-200 disabled:opacity-25 disabled:hover:bg-transparent rounded-l-xl transition cursor-pointer"
+                                      className="w-9 h-full shrink-0 flex items-center justify-center text-[#648067] hover:text-[#173327] hover:bg-[#edf2e9] active:bg-[#dfeadd] disabled:opacity-25 rounded-l-xl transition cursor-pointer"
                                       title="Darabszám csökkentése"
                                     >
                                       <Minus size={13} strokeWidth={2.5} />
@@ -3015,7 +3014,7 @@ const AdminDashboard = () => {
                                         min={isLocked ? currentQty : 1}
                                         max={maxAssignQty}
                                         disabled={maxAssignQty < (isLocked ? currentQty : 1)}
-                                        className="w-12 text-center font-black text-sm bg-transparent outline-none text-slate-800 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                        className="w-12 text-center font-bold text-sm bg-transparent outline-none text-[#173327] [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                                         value={newTour.equipment_quantities?.[item.id] ?? 1}
                                         onChange={(e) => {
                                           const val = parseInt(e.target.value) || 1;
@@ -3031,7 +3030,7 @@ const AdminDashboard = () => {
                                           }));
                                         }}
                                       />
-                                      <span className="text-xs font-bold text-slate-400 pr-1 select-none">db</span>
+                                      <span className="text-xs font-semibold text-[#718174] pr-1 select-none">db</span>
                                     </div>
                                     <button
                                       type="button"
@@ -3046,28 +3045,25 @@ const AdminDashboard = () => {
                                           }
                                         }));
                                       }}
-                                      className="w-9 h-full shrink-0 flex items-center justify-center text-slate-400 hover:text-slate-700 hover:bg-slate-100 active:bg-slate-200 disabled:opacity-25 disabled:hover:bg-transparent rounded-r-xl transition cursor-pointer"
+                                      className="w-9 h-full shrink-0 flex items-center justify-center text-[#648067] hover:text-[#173327] hover:bg-[#edf2e9] active:bg-[#dfeadd] disabled:opacity-25 rounded-r-xl transition cursor-pointer"
                                       title="Darabszám növelése"
                                     >
                                       <Plus size={13} strokeWidth={2.5} />
                                     </button>
                                   </div>
-                                  <span className={`mt-0.5 text-center text-[9px] font-semibold ${currentQty > maxAssignQty ? 'text-rose-600' : 'text-slate-400'}`}>
+                                  <span className={`mt-0.5 text-center text-[9px] font-semibold ${currentQty > maxAssignQty ? 'text-[#9c523f]' : 'text-[#718174]'}`}>
                                     {currentQty > maxAssignQty ? `Készlethiány · max: ${maxAssignQty} db` : `max: ${maxAssignQty} db`}
                                   </span>
-                                  <span className="text-[9px] font-black mt-0.5 text-center" style={{color: newTour.equipment_full_rental?.[item.id] ? '#d97706' : '#0369a1'}}>
+                                  <span className="text-[9px] font-bold mt-0.5 text-center text-[#275940]">
                                     {newTour.equipment_full_rental?.[item.id]
                                       ? `${currentQty} jármű (teljes bérlés)`
                                       : `${currentQty * seatsPerUnit} ülőhely`}
                                   </span>
                                 </div>
 
-                                {/* 2. Bérlési mód */}
                                 <div className="flex flex-col min-w-0">
-                                  <span className="text-[9px] font-black uppercase tracking-wider text-slate-400 mb-1">
-                                    Bérlési mód
-                                  </span>
-                                  <div className="flex items-center gap-1 h-10 w-full bg-slate-50 border border-slate-200 rounded-xl overflow-hidden p-1 shadow-2xs">
+                                  <span className="form-label-premium">Bérlési mód</span>
+                                  <div className="flex items-center gap-1 h-10 w-full bg-[#f7f9f5] border border-[#dce5d8] rounded-xl overflow-hidden p-1">
                                     <button
                                       type="button"
                                       onClick={() => {
@@ -3076,7 +3072,7 @@ const AdminDashboard = () => {
                                           equipment_full_rental: { ...(prev.equipment_full_rental || {}), [item.id]: false }
                                         }));
                                       }}
-                                      className={`flex-1 h-full text-[10px] font-black uppercase tracking-wider transition rounded-lg ${!newTour.equipment_full_rental?.[item.id] ? 'bg-sky-600 text-white shadow-xs' : 'text-slate-500 hover:bg-slate-100'}`}
+                                      className={`flex-1 h-full text-[10px] font-bold uppercase tracking-wider transition rounded-lg ${!newTour.equipment_full_rental?.[item.id] ? 'bg-[#275940] text-white shadow-xs' : 'text-[#648067] hover:bg-[#edf2e9]'}`}
                                       title="Ülőhelyek egyenként bérelhetők"
                                     >
                                       Ülőhelyes
@@ -3091,21 +3087,20 @@ const AdminDashboard = () => {
                                           equipment_quantities: { ...(prev.equipment_quantities || {}), [item.id]: 1 }
                                         }));
                                       }}
-                                      className={`flex-1 h-full text-[10px] font-black uppercase tracking-wider transition rounded-lg ${newTour.equipment_full_rental?.[item.id] ? 'bg-amber-500 text-white shadow-xs' : 'text-slate-500 hover:bg-slate-100 disabled:opacity-40'}`}
+                                      className={`flex-1 h-full text-[10px] font-bold uppercase tracking-wider transition rounded-lg ${newTour.equipment_full_rental?.[item.id] ? 'bg-[#b88035] text-white shadow-xs' : 'text-[#648067] hover:bg-[#edf2e9] disabled:opacity-40'}`}
                                       title="Az egész jármű egyszerre foglalható le"
                                     >
                                       Teljes jármű
                                     </button>
                                   </div>
-                                  <span className="text-[9px] text-slate-400 font-semibold mt-0.5 text-center">
+                                  <span className="text-[9px] text-[#718174] font-medium mt-0.5 text-center">
                                     {newTour.equipment_full_rental?.[item.id] ? '1 fő = egész jármű' : '1 fő = 1 ülőhely'}
                                   </span>
                                 </div>
 
-                                {/* 3. Díj */}
                                 <div className="flex flex-col min-w-0">
-                                  <span className="text-[9px] font-black uppercase tracking-wider text-slate-400 mb-1">
-                                    {newTour.equipment_full_rental?.[item.id] ? 'Díj / egész jármű' : 'Díj / ülőhely'}
+                                  <span className="form-label-premium">
+                                    {newTour.equipment_full_rental?.[item.id] ? 'Díj / egész jármű (Ft)' : 'Díj / ülőhely (Ft)'}
                                   </span>
                                   <div className="relative h-10 w-full">
                                     <input
@@ -3114,7 +3109,7 @@ const AdminDashboard = () => {
                                       disabled={isLocked}
                                       placeholder="0"
                                       aria-label={`${item.name} ára Forintban`}
-                                      className="w-full h-full pl-3 pr-8 font-bold text-sm bg-slate-50 border border-slate-200 rounded-xl hover:border-slate-300 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 focus:bg-white outline-none text-slate-800 transition shadow-2xs"
+                                      className="w-full h-full pl-3 pr-8 font-bold text-sm bg-[#f7f9f5] border border-[#dce5d8] rounded-xl hover:border-[#b4c7b0] focus:border-[#477258] focus:ring-2 focus:ring-[#477258]/15 focus:bg-white outline-none text-[#173327] transition"
                                       value={formatPriceInput(newTour.equipment_prices?.[item.id] ?? 0)}
                                       onChange={(e) =>
                                         setNewTour((prev) => ({
@@ -3126,11 +3121,11 @@ const AdminDashboard = () => {
                                         }))
                                       }
                                     />
-                                    <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs font-black text-slate-400 pointer-events-none select-none">
+                                    <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs font-bold text-[#718174] pointer-events-none select-none">
                                       Ft
                                     </span>
                                   </div>
-                                  <span className="text-[9px] text-slate-400 font-semibold mt-0.5 text-center">
+                                  <span className="text-[9px] text-[#718174] font-medium mt-0.5 text-center">
                                     {Number(parsePriceInput(newTour.equipment_prices?.[item.id] || 0)) === 0 ? 'Ingyenes' : 'Díj / fő'}
                                   </span>
                                 </div>
@@ -3140,16 +3135,15 @@ const AdminDashboard = () => {
                         );
                       }
 
-                      // NEM személyszállító eszköz -> egyetlen sorban marad a névvel
                       return (
                         <div
                           key={item.id}
-                          className={`flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-2xl border transition-all duration-200 ${
+                          className={`flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-xl border transition-all duration-200 ${
                             isSelected
-                              ? 'bg-white border-emerald-400/90 shadow-sm ring-2 ring-emerald-500/10'
+                              ? 'bg-white border-[#8eaf92] shadow-sm ring-2 ring-[#477258]/15'
                               : isUnavailable
-                                ? 'bg-slate-100/40 border-slate-200/50 opacity-60'
-                                : 'bg-white/80 hover:bg-white border-slate-200/80 hover:border-slate-300 shadow-2xs'
+                                ? 'bg-[#f7f9f5]/60 border-[#e4eae1] opacity-60'
+                                : 'bg-white hover:bg-[#fcfffa] border-[#dce5d8] hover:border-[#b4c7b0] shadow-2xs'
                           }`}
                         >
                           <div className="flex items-start gap-3 flex-1 min-w-0">
@@ -3159,7 +3153,7 @@ const AdminDashboard = () => {
                                 checked={isSelected}
                                 disabled={isLocked || isUnavailable}
                                 aria-label={`${item.name} csatolása a túrához`}
-                                className="h-5 w-5 rounded-lg border-slate-300 text-emerald-600 focus:ring-emerald-500 focus:ring-offset-0 disabled:cursor-not-allowed disabled:opacity-50 cursor-pointer transition"
+                                className="h-4 w-4 accent-[#275940] disabled:cursor-not-allowed cursor-pointer"
                                 onChange={(e) => {
                                   if (e.target.checked && isUnavailable) return;
                                   setSelectedEquipmentIds((prev) => e.target.checked
@@ -3179,39 +3173,37 @@ const AdminDashboard = () => {
                             </label>
                             <div className="flex-1 min-w-0">
                               <div className="flex items-center gap-2 flex-wrap">
-                                <span className={`font-bold text-sm tracking-tight ${isSelected ? 'text-slate-900' : 'text-slate-700'}`}>
+                                <span className={`font-bold text-sm tracking-tight ${isSelected ? 'text-[#173327]' : 'text-[#344a3c]'}`}>
                                   {item.name}
                                 </span>
                                 {isLocked && (
-                                  <span className="text-[10px] font-black uppercase tracking-wider text-amber-700 bg-amber-100/80 px-2 py-0.5 rounded-md border border-amber-200 shrink-0">
+                                  <span className="text-[10px] font-bold uppercase tracking-wider text-[#8a5b29] bg-[#faefe0] px-2 py-0.5 rounded-md border border-[#ebd0ad] shrink-0">
                                     Foglalás alatt
                                   </span>
                                 )}
                                 {isUnavailable && !isSelected && (
-                                  <span className="text-[10px] font-black uppercase tracking-wider text-rose-600 bg-rose-100/80 px-2 py-0.5 rounded-md border border-rose-200 shrink-0">
+                                  <span className="text-[10px] font-bold uppercase tracking-wider text-[#9c523f] bg-[#fcece9] px-2 py-0.5 rounded-md border border-[#f5c7be] shrink-0">
                                     Elfogyott
                                   </span>
                                 )}
                               </div>
                               <div className="flex flex-wrap items-center gap-2 mt-1">
-                                <span className="text-[11px] font-medium text-slate-500">
-                                  Készlet: <strong className="text-slate-700 font-semibold">{item.total_quantity} db</strong>
+                                <span className="text-[11px] font-medium text-[#65756a]">
+                                  Készlet: <strong className="text-[#173327] font-semibold">{item.total_quantity} db</strong>
                                 </span>
-                                <span className="text-slate-300">•</span>
+                                <span className="text-[#cad6c9]">•</span>
                                 <span className="text-[11px] font-medium">
-                                  Szabad készletből: <strong className={availableFromStock > 0 ? 'text-emerald-700 font-bold' : 'text-rose-600 font-bold'}>{availableFromStock} db</strong>
+                                  Szabad készletből: <strong className={availableFromStock > 0 ? 'text-[#275940] font-bold' : 'text-[#9c523f] font-bold'}>{availableFromStock} db</strong>
                                 </span>
                               </div>
                             </div>
                           </div>
 
                           {isSelected ? (
-                            <div className="flex items-center gap-3 pt-3 sm:pt-0 border-t sm:border-t-0 border-slate-100 shrink-0">
+                            <div className="flex items-center gap-3 pt-3 sm:pt-0 border-t sm:border-t-0 border-[#e4eae1] shrink-0">
                               <div className="flex flex-col">
-                                <span className="text-[9px] font-black uppercase tracking-wider text-slate-400 mb-1">
-                                  Darabszám
-                                </span>
-                                <div className="flex items-center h-10 bg-slate-50 border border-slate-200 rounded-xl overflow-hidden hover:border-slate-300 focus-within:border-emerald-500 focus-within:ring-2 focus-within:ring-emerald-500/20 focus-within:bg-white transition shadow-2xs">
+                                <span className="form-label-premium">Darabszám</span>
+                                <div className="flex items-center h-10 bg-[#f7f9f5] border border-[#dce5d8] rounded-xl overflow-hidden hover:border-[#b4c7b0] focus-within:border-[#477258] focus-within:ring-2 focus-within:ring-[#477258]/15 focus-within:bg-white transition">
                                   <button
                                     type="button"
                                     disabled={currentQty <= (isLocked ? currentQty : 1)}
@@ -3225,7 +3217,7 @@ const AdminDashboard = () => {
                                         }
                                       }));
                                     }}
-                                    className="w-8 h-full flex items-center justify-center text-slate-400 hover:text-slate-700 hover:bg-slate-100 active:bg-slate-200 disabled:opacity-25 disabled:hover:bg-transparent rounded-l-xl transition cursor-pointer"
+                                    className="w-8 h-full flex items-center justify-center text-[#648067] hover:text-[#173327] hover:bg-[#edf2e9] active:bg-[#dfeadd] disabled:opacity-25 rounded-l-xl transition cursor-pointer"
                                     title="Darabszám csökkentése"
                                   >
                                     <Minus size={13} strokeWidth={2.5} />
@@ -3236,7 +3228,7 @@ const AdminDashboard = () => {
                                       min={isLocked ? currentQty : 1}
                                       max={maxAssignQty}
                                       disabled={maxAssignQty < (isLocked ? currentQty : 1)}
-                                      className="w-10 text-center font-black text-sm bg-transparent outline-none text-slate-800 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                      className="w-10 text-center font-bold text-sm bg-transparent outline-none text-[#173327] [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                                       value={newTour.equipment_quantities?.[item.id] ?? 1}
                                       onChange={(e) => {
                                         const val = parseInt(e.target.value) || 1;
@@ -3252,7 +3244,7 @@ const AdminDashboard = () => {
                                         }));
                                       }}
                                     />
-                                    <span className="text-xs font-bold text-slate-400 pr-1 select-none">db</span>
+                                    <span className="text-xs font-semibold text-[#718174] pr-1 select-none">db</span>
                                   </div>
                                   <button
                                     type="button"
@@ -3267,21 +3259,19 @@ const AdminDashboard = () => {
                                         }
                                       }));
                                     }}
-                                    className="w-8 h-full flex items-center justify-center text-slate-400 hover:text-slate-700 hover:bg-slate-100 active:bg-slate-200 disabled:opacity-25 disabled:hover:bg-transparent rounded-r-xl transition cursor-pointer"
+                                    className="w-8 h-full flex items-center justify-center text-[#648067] hover:text-[#173327] hover:bg-[#edf2e9] active:bg-[#dfeadd] disabled:opacity-25 rounded-r-xl transition cursor-pointer"
                                     title="Darabszám növelése"
                                   >
                                     <Plus size={13} strokeWidth={2.5} />
                                   </button>
                                 </div>
-                                <span className={`mt-0.5 text-center text-[9px] font-semibold ${currentQty > maxAssignQty ? 'text-rose-600' : 'text-slate-400'}`}>
+                                <span className={`mt-0.5 text-center text-[9px] font-semibold ${currentQty > maxAssignQty ? 'text-[#9c523f]' : 'text-[#718174]'}`}>
                                   {currentQty > maxAssignQty ? `Készlethiány · max: ${maxAssignQty} db` : `max: ${maxAssignQty} db`}
                                 </span>
                               </div>
 
                               <div className="flex flex-col">
-                                <span className="text-[9px] font-black uppercase tracking-wider text-slate-400 mb-1">
-                                  Bérleti díj / db
-                                </span>
+                                <span className="form-label-premium">Bérleti díj / db (Ft)</span>
                                 <div className="relative h-10">
                                   <input
                                     type="text"
@@ -3289,7 +3279,7 @@ const AdminDashboard = () => {
                                     disabled={isLocked}
                                     placeholder="0"
                                     aria-label={`${item.name} ára Forintban`}
-                                    className="w-32 md:w-36 h-full pl-3 pr-8 font-bold text-sm bg-slate-50 border border-slate-200 rounded-xl hover:border-slate-300 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 focus:bg-white outline-none text-slate-800 transition shadow-2xs"
+                                    className="w-32 md:w-36 h-full pl-3 pr-8 font-bold text-sm bg-[#f7f9f5] border border-[#dce5d8] rounded-xl hover:border-[#b4c7b0] focus:border-[#477258] focus:ring-2 focus:ring-[#477258]/15 focus:bg-white outline-none text-[#173327] transition"
                                     value={formatPriceInput(newTour.equipment_prices?.[item.id] ?? 0)}
                                     onChange={(e) =>
                                       setNewTour((prev) => ({
@@ -3301,11 +3291,11 @@ const AdminDashboard = () => {
                                       }))
                                     }
                                   />
-                                  <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs font-black text-slate-400 pointer-events-none select-none">
+                                  <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs font-bold text-[#718174] pointer-events-none select-none">
                                     Ft
                                   </span>
                                 </div>
-                                <span className="text-[9px] text-slate-400 font-semibold mt-0.5">
+                                <span className="text-[9px] text-[#718174] font-medium mt-0.5">
                                   {Number(parsePriceInput(newTour.equipment_prices?.[item.id] || 0)) === 0 ? 'Ingyenes' : 'Díj / db'}
                                 </span>
                               </div>
@@ -3327,7 +3317,7 @@ const AdminDashboard = () => {
                                       }));
                                     }
                                   }}
-                                  className="text-xs font-bold text-slate-500 hover:text-emerald-700 bg-slate-100 hover:bg-emerald-50 px-3.5 py-1.5 rounded-xl border border-slate-200 hover:border-emerald-300 transition cursor-pointer"
+                                  className="text-xs font-bold text-[#477258] hover:text-[#173327] bg-[#edf3ec] hover:bg-[#dfeadd] px-3.5 py-1.5 rounded-xl border border-[#b9cfbb] transition cursor-pointer"
                                 >
                                   + Hozzárendelés
                                 </button>
@@ -3342,24 +3332,43 @@ const AdminDashboard = () => {
               </div>
 
               <div>
-                <label className="text-[10px] font-black uppercase text-slate-400 ml-4">Maximális létszám</label>
-                <input type="number" required value={newTour.max_participants} className="w-full p-4 bg-slate-50 border-none rounded-2xl mt-1" 
-                  onChange={e => setNewTour({...newTour, max_participants: e.target.value})} />
+                <label className="form-label-premium">Maximális létszám</label>
+                <input
+                  type="number"
+                  required
+                  value={newTour.max_participants}
+                  className="form-input-premium"
+                  onChange={e => setNewTour({...newTour, max_participants: e.target.value})}
+                />
               </div>
 
               <div className="md:col-span-2">
-                <label className="text-[10px] font-black uppercase text-slate-400 ml-4">Kép URL</label>
-                <input type="text" required value={newTour.image_url} className="w-full p-4 bg-slate-50 border-none rounded-2xl mt-1"  
-                  onChange={e => setNewTour({...newTour, image_url: e.target.value})} />
+                <label className="form-label-premium">Kép URL</label>
+                <input
+                  type="text"
+                  required
+                  value={newTour.image_url}
+                  className="form-input-premium"
+                  onChange={e => setNewTour({...newTour, image_url: e.target.value})}
+                />
               </div>
+
               <div className="md:col-span-2">
-                <label className="text-[10px] font-black uppercase text-slate-400 ml-4">Leírás</label>
-                <textarea rows="4" required value={newTour.description} className="w-full p-4 bg-slate-50 border-none rounded-2xl mt-1 font-medium" 
-                  onChange={e => setNewTour({...newTour, description: e.target.value})}></textarea>
+                <label className="form-label-premium">Leírás</label>
+                <textarea
+                  rows="4"
+                  required
+                  value={newTour.description}
+                  className="form-input-premium"
+                  onChange={e => setNewTour({...newTour, description: e.target.value})}
+                ></textarea>
               </div>
-              <button type="submit" className="group relative flex w-full items-center justify-center gap-3 overflow-hidden rounded-xl bg-[#275940] py-4 text-base font-bold text-white transition-colors hover:bg-[#173d2a] md:col-span-2">
-                <span className="relative z-10">{editingTourId ? 'MÓDOSÍTÁSOK MENTÉSE' : 'TÚRA KÖZZÉTÉTELE'}</span>
-                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000"></div>
+
+              <button
+                type="submit"
+                className="md:col-span-2 w-full py-3.5 rounded-2xl font-bold text-xs bg-[#275940] hover:bg-[#1d4330] text-white shadow-sm transition-all uppercase tracking-wider cursor-pointer"
+              >
+                {editingTourId ? 'Módosítások mentése' : 'Túra közzététele'}
               </button>
             </form>
           </div>

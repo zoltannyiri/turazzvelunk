@@ -84,3 +84,34 @@
     margin-left: auto !important;
   }
 }
+
+/* Modal Form Styles */
+.form-input-premium {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  background-color: #f7f9f5;
+  border: 1px solid #dce5d8;
+  border-radius: 0.875rem;
+  margin-top: 0.25rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #173327;
+  outline: none;
+  transition: all 0.2s ease;
+}
+
+.form-input-premium:focus {
+  border-color: #477258;
+  background-color: white;
+  box-shadow: 0 0 0 3px rgba(71, 114, 88, 0.15);
+}
+
+.form-label-premium {
+  display: block;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: #648067;
+  letter-spacing: 0.12em;
+  margin-bottom: 0.25rem;
+}
