@@ -2647,12 +2647,7 @@ const AdminDashboard = () => {
 
       {isModalOpen && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-6">
-          <div className="absolute inset-0 bg-emerald-950/60 backdrop-blur-xl" onClick={() => {
-    setIsModalOpen(false);
-    setEditingTourId(null);
-    setIsDepositEnabled(false);
-    setNewTour(initialTourState);
-  }}></div>
+          <div className="absolute inset-0 bg-emerald-950/60 backdrop-blur-xl"></div>
           <div className="relative max-h-[90vh] w-full max-w-4xl overflow-y-auto rounded-[1.2rem] border border-[#d9dfd5] bg-[#fffefa] p-6 shadow-[0_25px_80px_rgba(8,28,17,0.25)] md:p-10">
             <div className="flex items-center justify-between gap-4 mb-8">
               <h2 className="font-serif text-3xl text-[#173327]">

@@ -391,7 +391,7 @@ const CalendarScreen = () => {
             {/* --- ADMIN MODÁL ÚJ TÚRA MEGHIRDETÉSÉHEZ / SZERKESZTÉSHEZ --- */}
             {isModalOpen && (
                 <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6">
-                    <div className="absolute inset-0 bg-[#0f1f17]/70 backdrop-blur-sm" onClick={() => setIsModalOpen(false)}></div>
+                    <div className="absolute inset-0 bg-[#0f1f17]/70 backdrop-blur-sm"></div>
                     <div className="relative bg-white w-full max-w-3xl rounded-3xl shadow-2xl border border-[#dce5d8] p-6 sm:p-8 overflow-y-auto max-h-[90vh] z-10 animate-in fade-in zoom-in-95 duration-200">
                         
                         {/* FEJLÉC */}
