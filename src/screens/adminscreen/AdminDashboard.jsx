@@ -112,6 +112,7 @@ const AdminDashboard = () => {
   const [errorLoading, setErrorLoading] = useState(false);
   const [errorSearch, setErrorSearch] = useState('');
   const [errorLevelFilter, setErrorLevelFilter] = useState('');
+  const [expandedErrorId, setExpandedErrorId] = useState(null);
   const [isDepositEnabled, setIsDepositEnabled] = useState(false);
   const activityLabels = useMemo(() => ({
     user_registered: 'Regisztráció',
@@ -644,17 +645,44 @@ const AdminDashboard = () => {
   const filteredErrorLogs = useMemo(() => {
     const term = normalizeValue(errorSearch.trim());
     return errorLogs.filter((log) => {
+      if (errorLevelFilter && log.level !== errorLevelFilter) {
+        return false;
+      }
       if (!term) return true;
       const haystack = [
         log.message,
         log.path,
         log.method,
+        log.status_code,
         log.user_name,
         log.user_email
       ].map(normalizeValue).join(' ');
       return haystack.includes(term);
     });
-  }, [errorLogs, errorSearch]);
+  }, [errorLogs, errorSearch, errorLevelFilter]);
+
+  const getErrorLevelMeta = useCallback((level, statusCode) => {
+    const normLevel = String(level || 'error').toLowerCase();
+    if (normLevel === 'info') {
+      return {
+        label: 'Info',
+        badgeClass: 'bg-blue-50 text-blue-800 border-blue-200/80',
+        dotClass: 'bg-blue-500'
+      };
+    }
+    if (normLevel === 'warn' || (statusCode && statusCode >= 400 && statusCode < 500)) {
+      return {
+        label: normLevel === 'warn' ? 'Figyelmeztetés' : 'Kliens hiba',
+        badgeClass: 'bg-amber-50 text-amber-800 border-amber-200/80',
+        dotClass: 'bg-amber-500'
+      };
+    }
+    return {
+      label: 'Hiba',
+      badgeClass: 'bg-rose-50 text-rose-800 border-rose-200/80',
+      dotClass: 'bg-rose-500'
+    };
+  }, []);
 
   const filteredActivityLog = useMemo(() => {
     const term = normalizeValue(activitySearch.trim());
@@ -2310,70 +2338,190 @@ const AdminDashboard = () => {
 
             {activeTab === 'errors' && (
               <div className={adminPanel}>
-                <div className="p-8 md:p-10 flex items-center justify-between bg-gradient-to-r from-white to-slate-50">
+                <div className="p-6 sm:p-8 flex flex-wrap items-center justify-between gap-4 border-b border-[#d9dfd5] bg-[#e8eee4]">
                   <div>
-                    <h2 className="text-2xl font-black text-emerald-950">Hibanapló</h2>
-                    <div className="text-xs text-slate-400 font-bold uppercase tracking-widest">Szerver hibák és rendellenességek</div>
+                    <span className={adminEyebrow}>Rendszernapló</span>
+                    <h2 className="text-2xl font-semibold text-[#173327] mt-1">Hibanapló</h2>
+                    <p className="mt-2 text-sm text-[#526b59]">
+                      Szerver- és kliensoldali hibák, figyelmeztetések és rendellenességek.
+                    </p>
                   </div>
-                  <button
-                    type="button"
-                    onClick={fetchErrorLogs}
-                    className="px-4 py-2 rounded-2xl text-xs font-black uppercase tracking-widest bg-emerald-600 text-white shadow-lg shadow-emerald-600/20 hover:bg-emerald-700 transition"
-                  >
-                    Frissítés
-                  </button>
+                  <div className="flex items-center gap-3">
+                    <button
+                      type="button"
+                      onClick={() => fetchErrorLogs(false)}
+                      className="px-4 py-2 rounded-lg text-xs font-semibold uppercase tracking-widest bg-[#275940] text-white hover:bg-[#173d2a] transition flex items-center gap-2 cursor-pointer shadow-sm"
+                    >
+                      <RefreshCw size={14} className={errorLoading ? 'animate-spin' : ''} />
+                      Frissítés
+                    </button>
+                    <div className="text-xs font-semibold uppercase tracking-widest text-[#275940] bg-[#edf2e9] px-3.5 py-2 rounded-full border border-[#cbd8c7]">
+                      {filteredErrorLogs.length} / {errorLogs.length} bejegyzés
+                    </div>
+                  </div>
                 </div>
-                <div className="px-8 pb-4">
-                  <div className="grid grid-cols-1 md:grid-cols-[1.2fr_0.6fr] gap-3">
+
+                <div className="p-4 sm:p-6 bg-[#f3f6ef] border-b border-[#d9dfd5]">
+                  <div className="grid grid-cols-1 md:grid-cols-[1.3fr_0.7fr] gap-3">
                     <input
                       type="text"
-                      placeholder="Keresés üzenet, endpoint vagy felhasználó alapján..."
-                      className="w-full px-4 py-3 rounded-2xl bg-slate-50 border border-slate-100 text-sm font-semibold focus:ring-2 focus:ring-emerald-500 outline-none"
+                      placeholder="Keresés hibaüzenet, végpont, kód vagy felhasználó alapján..."
+                      className="w-full px-4 py-3 rounded-lg bg-[#fffefa] border border-[#cbd8c7] text-sm font-semibold focus:ring-2 focus:ring-[#cbdcc8] focus:border-[#477258] outline-none text-[#173327] placeholder:text-[#88998b]"
                       value={errorSearch}
                       onChange={(e) => setErrorSearch(e.target.value)}
                     />
                     <select
-                      className="w-full px-4 py-3 rounded-2xl bg-slate-50 border border-slate-100 text-sm font-semibold focus:ring-2 focus:ring-emerald-500 outline-none"
+                      className="w-full px-4 py-3 rounded-lg bg-[#fffefa] border border-[#cbd8c7] text-sm font-semibold focus:ring-2 focus:ring-[#cbdcc8] focus:border-[#477258] outline-none text-[#173327]"
                       value={errorLevelFilter}
                       onChange={(e) => setErrorLevelFilter(e.target.value)}
                     >
-                      <option value="">Összes szint</option>
-                      <option value="error">Error</option>
-                      <option value="warn">Warn</option>
-                      <option value="info">Info</option>
+                      <option value="">Összes szint (Error, Warn, Info)</option>
+                      <option value="error">Csak hibák (Error)</option>
+                      <option value="warn">Figyelmeztetések (Warn)</option>
+                      <option value="info">Információk (Info)</option>
                     </select>
                   </div>
                 </div>
-                <div className="px-8 pb-8">
+
+                <div className="p-4 sm:p-6">
                   {errorLoading ? (
-                    <div className="text-center py-10 text-slate-400 font-bold">Betöltés...</div>
+                    <div className="rounded-xl border border-dashed border-[#cbd8c7] bg-[#f3f6ef] px-6 py-12 text-center text-sm font-semibold text-[#607267]">
+                      Betöltés folyamatban...
+                    </div>
                   ) : filteredErrorLogs.length === 0 ? (
-                    <div className="text-center py-10 text-slate-400 font-bold">Nincs naplózott hiba.</div>
+                    <div className="rounded-xl border border-dashed border-[#cbd8c7] bg-[#f3f6ef] px-6 py-12 text-center text-sm font-semibold text-[#607267]">
+                      Nincs a szűrésnek megfelelő naplózott hiba.
+                    </div>
                   ) : (
                     <div className="grid gap-4">
-                      {filteredErrorLogs.map((log) => (
-                        <div key={log.id} className="bg-slate-50 rounded-[2rem] p-6 border border-slate-100">
-                          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
-                            <div>
-                              <div className="text-[10px] font-black uppercase tracking-widest text-emerald-600">
-                                {log.level || 'error'} · {log.status_code || ''}
+                      {filteredErrorLogs.map((log) => {
+                        const levelMeta = getErrorLevelMeta(log.level, log.status_code);
+                        const isExpanded = expandedErrorId === log.id;
+                        return (
+                          <div
+                            key={log.id}
+                            className="bg-[#fffefa] rounded-xl p-5 sm:p-6 border border-[#cbd8c7] shadow-sm hover:border-[#b4c7b0] transition"
+                          >
+                            <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
+                              <div className="space-y-2.5 min-w-0 flex-1">
+                                <div className="flex flex-wrap items-center gap-2.5">
+                                  <span
+                                    className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[10px] font-semibold uppercase tracking-wider border ${levelMeta.badgeClass}`}
+                                  >
+                                    <span className={`w-1.5 h-1.5 rounded-full ${levelMeta.dotClass}`} />
+                                    {levelMeta.label}
+                                    {log.level ? ` (${log.level.toUpperCase()})` : ''}
+                                  </span>
+
+                                  {log.status_code ? (
+                                    <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-mono font-bold bg-[#f3f6ef] border border-[#d9dfd5] text-[#173327]">
+                                      HTTP {log.status_code}
+                                    </span>
+                                  ) : null}
+
+                                  {log.method && (
+                                    <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-mono font-bold bg-[#edf2e9] border border-[#cbd8c7] text-[#275940]">
+                                      {log.method}
+                                    </span>
+                                  )}
+
+                                  <span className="text-xs text-[#718174]">
+                                    {log.created_at
+                                      ? new Date(log.created_at).toLocaleString('hu-HU', {
+                                          year: 'numeric',
+                                          month: 'short',
+                                          day: 'numeric',
+                                          hour: '2-digit',
+                                          minute: '2-digit',
+                                          second: '2-digit'
+                                        })
+                                      : ''}
+                                  </span>
+                                </div>
+
+                                <div className="text-base sm:text-lg font-semibold text-[#173327] leading-snug break-words">
+                                  {log.message}
+                                </div>
+
+                                {log.path && (
+                                  <div className="text-xs text-[#526b59] flex items-center gap-2 flex-wrap">
+                                    <span className="font-medium text-[#718174]">Végpont / URL:</span>
+                                    <code className="px-2 py-1 bg-[#f3f6ef] border border-[#d9dfd5] rounded text-[11px] font-mono text-[#173327] break-all">
+                                      {log.path}
+                                    </code>
+                                  </div>
+                                )}
+
+                                {(log.user_name || log.user_email) && (
+                                  <div className="flex flex-wrap items-center gap-2 pt-1 text-xs">
+                                    <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#f3f6ef] border border-[#d9dfd5] text-[#173327]">
+                                      <span className="text-[#718174] font-medium">Érintett felhasználó:</span>
+                                      {log.user_id ? (
+                                        <Link
+                                          to={`/profile/${log.user_id}`}
+                                          className="font-bold text-[#275940] hover:text-[#173d2a] hover:underline"
+                                        >
+                                          {log.user_name || 'Felhasználó'}
+                                        </Link>
+                                      ) : (
+                                        <strong className="font-bold">{log.user_name || 'Ismeretlen'}</strong>
+                                      )}
+                                      {log.user_email && (
+                                        <span className="text-[#718174] text-[11px] hidden sm:inline">
+                                          ({log.user_email})
+                                        </span>
+                                      )}
+                                    </div>
+                                  </div>
+                                )}
                               </div>
-                              <div className="text-lg font-black text-slate-900 mt-1">{log.message}</div>
-                              <div className="text-xs text-slate-400 mt-2">
-                                {log.method ? `${log.method} ` : ''}{log.path || ''}
-                              </div>
-                              {(log.user_name || log.user_email) && (
-                                <div className="text-xs text-slate-500 mt-2">
-                                  Felhasználó: {log.user_name || 'Ismeretlen'} {log.user_email ? `(${log.user_email})` : ''}
+
+                              {(log.stack || log.ip || log.user_agent) && (
+                                <div className="shrink-0 self-start md:self-center pt-2 md:pt-0">
+                                  <button
+                                    type="button"
+                                    onClick={() => setExpandedErrorId(isExpanded ? null : log.id)}
+                                    className="px-3.5 py-2 rounded-lg bg-[#e8eee4] text-[#275940] text-xs font-semibold uppercase tracking-wider hover:bg-[#d9e4d4] transition flex items-center gap-1.5 cursor-pointer"
+                                  >
+                                    {isExpanded ? 'Kevesebb' : 'Részletek'}
+                                    {isExpanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+                                  </button>
                                 </div>
                               )}
                             </div>
-                            <div className="text-xs text-slate-400 font-bold">
-                              {log.created_at ? new Date(log.created_at).toLocaleString('hu-HU') : ''}
-                            </div>
+
+                            {isExpanded && (
+                              <div className="mt-4 pt-4 border-t border-[#d9dfd5] space-y-3 animate-in fade-in duration-150">
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                                  {log.ip && (
+                                    <div className="p-2.5 rounded-lg bg-[#f3f6ef] border border-[#d9dfd5]">
+                                      <span className="text-[#718174] font-semibold block mb-0.5">IP cím:</span>
+                                      <span className="font-mono text-[#173327]">{log.ip}</span>
+                                    </div>
+                                  )}
+                                  {log.user_agent && (
+                                    <div className="p-2.5 rounded-lg bg-[#f3f6ef] border border-[#d9dfd5]">
+                                      <span className="text-[#718174] font-semibold block mb-0.5">Böngésző / Kliens:</span>
+                                      <span className="font-mono text-[11px] text-[#173327] break-all leading-relaxed">{log.user_agent}</span>
+                                    </div>
+                                  )}
+                                </div>
+
+                                {log.stack && (
+                                  <div className="mt-2">
+                                    <div className="text-[11px] font-semibold uppercase tracking-wider text-[#718174] mb-1">
+                                      Hiba részletei (Stack Trace):
+                                    </div>
+                                    <pre className="p-3.5 rounded-lg bg-[#173327] text-[#dce5d8] text-xs font-mono overflow-x-auto max-h-60 whitespace-pre-wrap leading-relaxed selection:bg-[#275940]">
+                                      {log.stack}
+                                    </pre>
+                                  </div>
+                                )}
+                              </div>
+                            )}
                           </div>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   )}
                 </div>
