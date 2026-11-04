@@ -5,7 +5,8 @@ import { Chart as ChartJS, ArcElement, Tooltip, Legend } from 'chart.js';
 import { 
   Package, Minus, X,
   CheckCircle, Users, DollarSign, 
-  ChevronDown, ChevronUp, Plus, Edit3, Trash2, Calendar, MessageSquareText, XCircle, LayoutGrid, ListChecks, UserCog, Mail, Activity, AlertTriangle, Clock, ArrowRight, UserMinus
+  ChevronDown, ChevronUp, Plus, Edit3, Trash2, Calendar, MessageSquareText, XCircle, LayoutGrid, ListChecks, UserCog, Mail, Activity, AlertTriangle, Clock, ArrowRight, UserMinus,
+  RefreshCw
 } from 'lucide-react';
 import { toast } from 'react-toastify';
 import DatePicker, { registerLocale } from "react-datepicker";
@@ -105,6 +106,8 @@ const AdminDashboard = () => {
   const [emailModalData, setEmailModalData] = useState(null);
   const [activityLog, setActivityLog] = useState([]);
   const [activityLoading, setActivityLoading] = useState(false);
+  const [activitySearch, setActivitySearch] = useState('');
+  const [activityTypeFilter, setActivityTypeFilter] = useState('all');
   const [errorLogs, setErrorLogs] = useState([]);
   const [errorLoading, setErrorLoading] = useState(false);
   const [errorSearch, setErrorSearch] = useState('');
@@ -652,6 +655,74 @@ const AdminDashboard = () => {
       return haystack.includes(term);
     });
   }, [errorLogs, errorSearch]);
+
+  const filteredActivityLog = useMemo(() => {
+    const term = normalizeValue(activitySearch.trim());
+    return activityLog.filter((item) => {
+      if (activityTypeFilter !== 'all' && item.type !== activityTypeFilter) {
+        return false;
+      }
+      if (!term) return true;
+      const haystack = [
+        item.message,
+        item.user_name,
+        item.user_email,
+        item.tour_title,
+        activityLabels[item.type] || item.type
+      ].map(normalizeValue).join(' ');
+      return haystack.includes(term);
+    });
+  }, [activityLog, activitySearch, activityTypeFilter, activityLabels]);
+
+  const getActivityTypeMeta = useCallback((type) => {
+    switch (type) {
+      case 'booking_paid':
+        return {
+          label: 'Túra befizetés',
+          badgeClass: 'bg-emerald-50 text-emerald-800 border-emerald-200/80',
+          dotClass: 'bg-emerald-500'
+        };
+      case 'booking_created':
+        return {
+          label: 'Túrára jelentkezés',
+          badgeClass: 'bg-[#edf2e9] text-[#275940] border-[#cbd8c7]',
+          dotClass: 'bg-[#275940]'
+        };
+      case 'user_registered':
+        return {
+          label: 'Regisztráció',
+          badgeClass: 'bg-blue-50 text-blue-800 border-blue-200/80',
+          dotClass: 'bg-blue-500'
+        };
+      case 'booking_cancel_requested':
+        return {
+          label: 'Lejelentkezési kérelem',
+          badgeClass: 'bg-amber-50 text-amber-800 border-amber-200/80',
+          dotClass: 'bg-amber-500'
+        };
+      case 'booking_cancel_approved':
+        return {
+          label: 'Lejelentkezés jóváhagyva',
+          badgeClass: 'bg-teal-50 text-teal-800 border-teal-200/80',
+          dotClass: 'bg-teal-500'
+        };
+      case 'booking_cancelled':
+      case 'booking_cancel_rejected':
+      case 'booking_admin_removed':
+      case 'user_deleted':
+        return {
+          label: activityLabels[type] || 'Törlés / Lemondás',
+          badgeClass: 'bg-rose-50 text-rose-800 border-rose-200/80',
+          dotClass: 'bg-rose-500'
+        };
+      default:
+        return {
+          label: activityLabels[type] || type,
+          badgeClass: 'bg-[#f3f6ef] text-[#526b59] border-[#cbd8c7]',
+          dotClass: 'bg-[#526b59]'
+        };
+    }
+  }, [activityLabels]);
 
   const updateStatus = async (id, newStatus) => {
     const res = await fetch(`${import.meta.env.VITE_API_URL}/bookings/${id}/status`, {
@@ -2076,72 +2147,161 @@ const AdminDashboard = () => {
 
             {activeTab === 'activity' && (
               <div className={adminPanel}>
-                <div className="p-8 md:p-10 flex items-center justify-between bg-gradient-to-r from-white to-slate-50">
+                <div className="p-6 sm:p-8 flex flex-wrap items-center justify-between gap-4 border-b border-[#d9dfd5] bg-[#e8eee4]">
                   <div>
-                    <h2 className="text-2xl font-black text-emerald-950">Tevékenységnapló</h2>
-                    <div className="text-xs text-slate-400 font-bold uppercase tracking-widest">Regisztrációk, jelentkezések, fizetések, lejelentkezések</div>
+                    <span className={adminEyebrow}>Eseménynapló</span>
+                    <h2 className="text-2xl font-semibold text-[#173327] mt-1">Tevékenységnapló</h2>
+                    <p className="mt-2 text-sm text-[#526b59]">
+                      Regisztrációk, jelentkezések, fizetések és lejelentkezések időrendben.
+                    </p>
                   </div>
-                  <button
-                    type="button"
-                    onClick={fetchActivityLog}
-                    className="px-4 py-2 rounded-2xl text-xs font-black uppercase tracking-widest bg-emerald-600 text-white shadow-lg shadow-emerald-600/20 hover:bg-emerald-700 transition"
-                  >
-                    Frissítés
-                  </button>
+                  <div className="flex items-center gap-3">
+                    <button
+                      type="button"
+                      onClick={() => fetchActivityLog(false)}
+                      className="px-4 py-2 rounded-lg text-xs font-semibold uppercase tracking-widest bg-[#275940] text-white hover:bg-[#173d2a] transition flex items-center gap-2 cursor-pointer shadow-sm"
+                    >
+                      <RefreshCw size={14} className={activityLoading ? 'animate-spin' : ''} />
+                      Frissítés
+                    </button>
+                    <div className="text-xs font-semibold uppercase tracking-widest text-[#275940] bg-[#edf2e9] px-3.5 py-2 rounded-full border border-[#cbd8c7]">
+                      {filteredActivityLog.length} / {activityLog.length} esemény
+                    </div>
+                  </div>
                 </div>
-                <div className="px-8 pb-8">
+
+                <div className="p-4 sm:p-6 bg-[#f3f6ef] border-b border-[#d9dfd5]">
+                  <div className="grid grid-cols-1 md:grid-cols-[1.3fr_0.7fr] gap-3">
+                    <input
+                      type="text"
+                      placeholder="Keresés esemény, felhasználó vagy túra alapján..."
+                      className="w-full px-4 py-3 rounded-lg bg-[#fffefa] border border-[#cbd8c7] text-sm font-semibold focus:ring-2 focus:ring-[#cbdcc8] focus:border-[#477258] outline-none text-[#173327] placeholder:text-[#88998b]"
+                      value={activitySearch}
+                      onChange={(e) => setActivitySearch(e.target.value)}
+                    />
+                    <select
+                      className="w-full px-4 py-3 rounded-lg bg-[#fffefa] border border-[#cbd8c7] text-sm font-semibold focus:ring-2 focus:ring-[#cbdcc8] focus:border-[#477258] outline-none text-[#173327]"
+                      value={activityTypeFilter}
+                      onChange={(e) => setActivityTypeFilter(e.target.value)}
+                    >
+                      <option value="all">Összes eseménytípus</option>
+                      {Object.entries(activityLabels).map(([key, label]) => (
+                        <option key={key} value={key}>{label}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                <div className="p-4 sm:p-6">
                   {activityLoading ? (
-                    <div className="text-center py-10 text-slate-400 font-bold">Betöltés...</div>
-                  ) : activityLog.length === 0 ? (
-                    <div className="text-center py-10 text-slate-400 font-bold">Nincs naplózott esemény.</div>
+                    <div className="rounded-xl border border-dashed border-[#cbd8c7] bg-[#f3f6ef] px-6 py-12 text-center text-sm font-semibold text-[#607267]">
+                      Betöltés folyamatban...
+                    </div>
+                  ) : filteredActivityLog.length === 0 ? (
+                    <div className="rounded-xl border border-dashed border-[#cbd8c7] bg-[#f3f6ef] px-6 py-12 text-center text-sm font-semibold text-[#607267]">
+                      Nincs a szűrésnek megfelelő naplózott esemény.
+                    </div>
                   ) : (
                     <div className="grid gap-4">
-                      {activityLog.map((item) => (
-                        <div key={item.id} className="bg-slate-50 rounded-[2rem] p-6 border border-slate-100">
-                          <div className="text-xs font-black uppercase tracking-widest text-emerald-600">
-                            {activityLabels[item.type] || item.type}
-                          </div>
-                          <div className="text-lg font-black text-slate-900 mt-2">{item.message}</div>
-                          <div className="text-xs text-slate-400 mt-2">
-                            {item.created_at ? new Date(item.created_at).toLocaleString('hu-HU') : ''}
-                          </div>
-                          {(item.user_name || item.tour_title) && (
-                            <div className="text-xs text-slate-500 mt-3">
-                              {item.user_name ? (
-                                <>
-                                  Felhasználó:{' '}
-                                  {item.user_id ? (
-                                    <Link
-                                      to={`/profile/${item.user_id}`}
-                                      className="font-black text-emerald-700 hover:text-emerald-800"
-                                    >
-                                      {item.user_name}
-                                    </Link>
-                                  ) : (
-                                    <span className="font-black text-slate-700">{item.user_name}</span>
-                                  )}
-                                </>
-                              ) : null}
-                              {item.user_name && item.tour_title ? ' · ' : ''}
-                              {item.tour_title ? (
-                                <>
-                                  Túra:{' '}
-                                  {item.tour_id ? (
-                                    <Link
-                                      to={`/tours/${item.tour_id}`}
-                                      className="font-black text-emerald-700 hover:text-emerald-800"
-                                    >
-                                      {item.tour_title}
-                                    </Link>
-                                  ) : (
-                                    <span className="font-black text-slate-700">{item.tour_title}</span>
-                                  )}
-                                </>
-                              ) : null}
+                      {filteredActivityLog.map((item) => {
+                        const typeMeta = getActivityTypeMeta(item.type);
+                        return (
+                          <div
+                            key={item.id}
+                            className="bg-[#fffefa] rounded-xl p-5 sm:p-6 border border-[#cbd8c7] shadow-sm hover:border-[#b4c7b0] transition"
+                          >
+                            <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
+                              <div className="space-y-2 min-w-0 flex-1">
+                                <div className="flex flex-wrap items-center gap-2.5">
+                                  <span
+                                    className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[10px] font-semibold uppercase tracking-wider border ${typeMeta.badgeClass}`}
+                                  >
+                                    <span className={`w-1.5 h-1.5 rounded-full ${typeMeta.dotClass}`} />
+                                    {typeMeta.label}
+                                  </span>
+                                  <span className="text-xs text-[#718174]">
+                                    {item.created_at
+                                      ? new Date(item.created_at).toLocaleString('hu-HU', {
+                                          year: 'numeric',
+                                          month: 'short',
+                                          day: 'numeric',
+                                          hour: '2-digit',
+                                          minute: '2-digit'
+                                        })
+                                      : ''}
+                                  </span>
+                                </div>
+
+                                <div className="text-base sm:text-lg font-semibold text-[#173327] leading-snug break-words">
+                                  {item.message}
+                                </div>
+
+                                {(item.user_name || item.tour_title) && (
+                                  <div className="flex flex-wrap items-center gap-2 pt-1 text-xs">
+                                    {item.user_name && (
+                                      <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#f3f6ef] border border-[#d9dfd5] text-[#173327]">
+                                        <span className="text-[#718174] font-medium">Felhasználó:</span>
+                                        {item.user_id ? (
+                                          <Link
+                                            to={`/profile/${item.user_id}`}
+                                            className="font-bold text-[#275940] hover:text-[#173d2a] hover:underline"
+                                          >
+                                            {item.user_name}
+                                          </Link>
+                                        ) : (
+                                          <strong className="font-bold">{item.user_name}</strong>
+                                        )}
+                                        {item.user_email && (
+                                          <span className="text-[#718174] text-[11px] hidden sm:inline">
+                                            ({item.user_email})
+                                          </span>
+                                        )}
+                                      </div>
+                                    )}
+
+                                    {item.tour_title && (
+                                      <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#f3f6ef] border border-[#d9dfd5] text-[#173327]">
+                                        <span className="text-[#718174] font-medium">Túra:</span>
+                                        {item.tour_id ? (
+                                          <Link
+                                            to={`/tours/${item.tour_id}`}
+                                            className="font-bold text-[#275940] hover:text-[#173d2a] hover:underline"
+                                          >
+                                            {item.tour_title}
+                                          </Link>
+                                        ) : (
+                                          <strong className="font-bold">{item.tour_title}</strong>
+                                        )}
+                                      </div>
+                                    )}
+                                  </div>
+                                )}
+                              </div>
+
+                              <div className="flex items-center gap-2 shrink-0 self-start md:self-center pt-2 md:pt-0">
+                                {item.tour_id && (
+                                  <Link
+                                    to={`/tours/${item.tour_id}`}
+                                    className="px-3.5 py-2 rounded-lg bg-[#e8eee4] text-[#275940] text-xs font-semibold uppercase tracking-wider hover:bg-[#d9e4d4] transition flex items-center gap-1.5"
+                                  >
+                                    Túra megtekintése
+                                    <ArrowRight size={13} />
+                                  </Link>
+                                )}
+                                {item.user_id && !item.tour_id && (
+                                  <Link
+                                    to={`/profile/${item.user_id}`}
+                                    className="px-3.5 py-2 rounded-lg bg-[#e8eee4] text-[#275940] text-xs font-semibold uppercase tracking-wider hover:bg-[#d9e4d4] transition flex items-center gap-1.5"
+                                  >
+                                    Profil megtekintése
+                                    <ArrowRight size={13} />
+                                  </Link>
+                                )}
+                              </div>
                             </div>
-                          )}
-                        </div>
-                      ))}
+                          </div>
+                        );
+                      })}
                     </div>
                   )}
                 </div>
