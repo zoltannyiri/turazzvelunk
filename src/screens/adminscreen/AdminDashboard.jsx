@@ -69,6 +69,8 @@ const AdminDashboard = () => {
   const [users, setUsers] = useState([]);
   const [usersLoading, setUsersLoading] = useState(true);
   const [expandedUserId, setExpandedUserId] = useState(null);
+  const [userSearch, setUserSearch] = useState('');
+  const [userRoleFilter, setUserRoleFilter] = useState('all');
   const [tours, setTours] = useState([]);
   const [toursLoading, setToursLoading] = useState(true);
   const [equipment, setEquipment] = useState([]);
@@ -751,6 +753,23 @@ const AdminDashboard = () => {
         };
     }
   }, [activityLabels]);
+
+  const filteredUsers = useMemo(() => {
+    const term = normalizeValue(userSearch.trim());
+    return usersWithBookings.filter((user) => {
+      if (userRoleFilter !== 'all' && user.role !== userRoleFilter) {
+        return false;
+      }
+      if (!term) return true;
+      const haystack = [
+        user.name,
+        user.email,
+        user.role,
+        ...(user.bookings || []).map((b) => b.title)
+      ].map(normalizeValue).join(' ');
+      return haystack.includes(term);
+    });
+  }, [usersWithBookings, userSearch, userRoleFilter]);
 
   const updateStatus = async (id, newStatus) => {
     const res = await fetch(`${import.meta.env.VITE_API_URL}/bookings/${id}/status`, {
@@ -1796,177 +1815,226 @@ const AdminDashboard = () => {
             )}
 
             {activeTab === 'waitlists' && (
-              <div className="space-y-6">
-                <div className={`${adminPanel} flex flex-col justify-between gap-4 p-6 md:flex-row md:items-center`}>
+              <div className={adminPanel}>
+                {/* Fejléc */}
+                <div className="p-6 sm:p-8 flex flex-wrap items-center justify-between gap-4 border-b border-[#d9dfd5] bg-[#e8eee4]">
                   <div>
-                    <h2 className="text-xl font-black text-gray-900 tracking-tight flex items-center gap-2">
-                      <Clock className="text-amber-500" size={24} /> Várólisták kezelése
-                    </h2>
-                    <p className="text-xs text-gray-500 mt-1">
-                      Betelt túrák várólistáján szereplő felhasználók kezelése és manuális átmozgatása a résztvevők közé.
+                    <span className={adminEyebrow}>Kapacitás és várólista</span>
+                    <h2 className="text-2xl font-semibold text-[#173327] mt-1">Várólisták kezelése</h2>
+                    <p className="mt-2 text-sm text-[#526b59]">
+                      Betelt túrák várólistáján szereplő felhasználók áttekintése és manuális áthelyezése a résztvevők közé.
                     </p>
                   </div>
                   <div className="flex items-center gap-3">
-                    <input
-                      type="text"
-                      placeholder="Keresés túra, név vagy email alapján..."
-                      value={waitlistSearch}
-                      onChange={(e) => setWaitlistSearch(e.target.value)}
-                      className="px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-2xl text-xs focus:ring-2 focus:ring-amber-500 outline-none w-64 text-gray-800"
-                    />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        fetchBookings(false);
+                        fetchTours(false);
+                      }}
+                      className="px-4 py-2 rounded-lg text-xs font-semibold uppercase tracking-widest bg-[#275940] text-white hover:bg-[#173d2a] transition flex items-center gap-2 cursor-pointer shadow-sm"
+                    >
+                      <RefreshCw size={14} className={toursLoading ? 'animate-spin' : ''} />
+                      Frissítés
+                    </button>
+                    <div className="text-xs font-semibold uppercase tracking-widest text-[#275940] bg-[#edf2e9] px-3.5 py-2 rounded-full border border-[#cbd8c7]">
+                      {totalWaitlistCount} várakozó
+                    </div>
                   </div>
                 </div>
 
-                {(() => {
-                  const toursWithWaitlist = tours.map(tour => {
-                    const tourBookings = bookings.filter(b => b.tour_id === tour.id);
-                    const waitlisted = tourBookings.filter(b => b.status === 'waitlist');
-                    const confirmedOrPending = tourBookings.filter(b => ['confirmed', 'pending'].includes(b.status));
-                    return {
-                      ...tour,
-                      waitlisted,
-                      confirmedOrPending
-                    };
-                  }).filter(t => {
-                    if (waitlistSearch.trim()) {
-                      const term = waitlistSearch.toLowerCase();
-                      const matchTitle = (t.title || '').toLowerCase().includes(term);
-                      const matchUser = t.waitlisted.some(w => (w.user_name || '').toLowerCase().includes(term) || (w.user_email || '').toLowerCase().includes(term));
-                      return matchTitle || matchUser;
-                    }
-                    return t.waitlisted.length > 0;
-                  });
+                {/* Keresősáv */}
+                <div className="p-4 sm:p-6 bg-[#f3f6ef] border-b border-[#d9dfd5]">
+                  <input
+                    type="text"
+                    placeholder="Keresés túra neve, várólistás vagy email címe alapján..."
+                    className="w-full px-4 py-3 rounded-lg bg-[#fffefa] border border-[#cbd8c7] text-sm font-semibold focus:ring-2 focus:ring-[#cbdcc8] focus:border-[#477258] outline-none text-[#173327] placeholder:text-[#88998b]"
+                    value={waitlistSearch}
+                    onChange={(e) => setWaitlistSearch(e.target.value)}
+                  />
+                </div>
 
-                  if (toursWithWaitlist.length === 0) {
-                    return (
-                      <div className="bg-white p-12 rounded-3xl text-center border border-gray-100 shadow-sm">
-                        <div className="w-16 h-16 bg-amber-50 text-amber-500 rounded-2xl flex items-center justify-center mx-auto mb-4 border border-amber-100">
-                          <Clock size={32} />
+                {/* Tartalom */}
+                <div className="p-4 sm:p-6">
+                  {(() => {
+                    const toursWithWaitlist = tours.map((tour) => {
+                      const tourBookings = bookings.filter((b) => b.tour_id === tour.id);
+                      const waitlisted = tourBookings.filter((b) => b.status === 'waitlist');
+                      const confirmedOrPending = tourBookings.filter((b) => ['confirmed', 'pending'].includes(b.status));
+                      return {
+                        ...tour,
+                        waitlisted,
+                        confirmedOrPending
+                      };
+                    }).filter((t) => {
+                      if (waitlistSearch.trim()) {
+                        const term = waitlistSearch.toLowerCase();
+                        const matchTitle = (t.title || '').toLowerCase().includes(term);
+                        const matchUser = t.waitlisted.some((w) => (w.user_name || '').toLowerCase().includes(term) || (w.user_email || '').toLowerCase().includes(term));
+                        return matchTitle || matchUser;
+                      }
+                      return t.waitlisted.length > 0;
+                    });
+
+                    if (toursWithWaitlist.length === 0) {
+                      return (
+                        <div className="rounded-xl border border-dashed border-[#cbd8c7] bg-[#f3f6ef] px-6 py-12 text-center text-sm font-semibold text-[#607267]">
+                          <div className="w-12 h-12 bg-amber-50 text-amber-700 rounded-xl flex items-center justify-center mx-auto mb-3 border border-amber-200/80">
+                            <Clock size={24} />
+                          </div>
+                          <div className="text-base font-semibold text-[#173327]">Jelenleg nincs várólistás jelentkező</div>
+                          <p className="text-xs text-[#718174] max-w-md mx-auto mt-1.5 font-normal">
+                            Amikor egy túra betelik és új felhasználók jelentkeznek rá, automatikusan ide kerülnek a várólistára.
+                          </p>
                         </div>
-                        <h3 className="text-lg font-black text-gray-900">Jelenleg nincs várólistás jelentkező</h3>
-                        <p className="text-xs text-gray-500 max-w-md mx-auto mt-2">
-                          Amikor egy túra betelik és új felhasználók jelentkeznek rá, automatikusan ide kerülnek a várólistára.
-                        </p>
+                      );
+                    }
+
+                    return (
+                      <div className="space-y-6">
+                        {toursWithWaitlist.map((t) => (
+                          <div key={t.id} className="bg-[#fffefa] rounded-xl border border-[#cbd8c7] shadow-sm overflow-hidden">
+                            {/* Túra kártya fejléc */}
+                            <div className="p-5 sm:p-6 bg-[#f3f6ef] border-b border-[#d9dfd5] flex flex-col md:flex-row md:items-center justify-between gap-4">
+                              <div>
+                                <div className="flex flex-wrap items-center gap-2.5">
+                                  <h3 className="font-serif text-xl sm:text-2xl font-normal text-[#173327]">{t.title}</h3>
+                                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[10px] font-semibold uppercase tracking-wider bg-amber-50 text-amber-800 border border-amber-200/80">
+                                    <Clock size={12} /> Várólista: {t.waitlisted.length} fő
+                                  </span>
+                                </div>
+                                <div className="text-xs text-[#718174] mt-1.5 flex flex-wrap items-center gap-4">
+                                  <span>Időpont: <strong className="text-[#173327]">{formatHungarianDate(t.start_date)} - {formatHungarianDate(t.end_date)}</strong></span>
+                                  <span>Kapacitás: <strong className="text-[#275940]">{t.confirmedOrPending.length} / {t.max_participants || '∞'} fő</strong></span>
+                                </div>
+                              </div>
+                              <Link
+                                to={`/tours/${t.id}`}
+                                className="px-3.5 py-2 rounded-lg bg-[#e8eee4] text-[#275940] text-xs font-semibold uppercase tracking-wider hover:bg-[#d9e4d4] transition flex items-center gap-1.5 self-start md:self-auto shrink-0"
+                              >
+                                Túra megtekintése <ArrowRight size={13} />
+                              </Link>
+                            </div>
+
+                            {/* Két oszlop: Várólistások & Résztvevők */}
+                            <div className="p-5 sm:p-6 grid grid-cols-1 lg:grid-cols-2 gap-6">
+                              {/* Várólistások */}
+                              <div className="space-y-3">
+                                <div className="flex items-center justify-between">
+                                  <h4 className="text-xs font-semibold uppercase tracking-wider text-amber-800 flex items-center gap-1.5">
+                                    <Clock size={14} /> Várólistások (Sorrendben)
+                                  </h4>
+                                  <span className="text-[10px] text-[#718174] font-medium">Jelentkezési idő szerint</span>
+                                </div>
+                                <div className="space-y-2.5">
+                                  {t.waitlisted.map((w, index) => (
+                                    <div
+                                      key={w.id}
+                                      className="p-3.5 sm:p-4 bg-amber-50/40 rounded-xl border border-amber-200/70 flex flex-col sm:flex-row sm:items-center justify-between gap-3"
+                                    >
+                                      <div className="flex items-center gap-3 min-w-0">
+                                        <div className="w-7 h-7 rounded-lg bg-amber-100 text-amber-900 border border-amber-300 font-bold text-xs flex items-center justify-center shrink-0">
+                                          #{index + 1}
+                                        </div>
+                                        <div className="min-w-0">
+                                          <div className="font-semibold text-[#173327] text-sm truncate">{w.user_name}</div>
+                                          <div className="text-xs text-[#718174] truncate">{w.user_email}</div>
+                                          <div className="text-[10px] text-amber-800 mt-0.5">
+                                            Jelentkezett: {w.booked_at ? new Date(w.booked_at).toLocaleString('hu-HU') : '-'}
+                                          </div>
+                                        </div>
+                                      </div>
+                                      <div className="flex items-center gap-2 shrink-0 self-start sm:self-auto">
+                                        <button
+                                          type="button"
+                                          onClick={() => handlePromoteWaitlistUser(w.id)}
+                                          className="px-3 py-1.5 bg-[#275940] hover:bg-[#173d2a] text-white rounded-lg text-xs font-semibold uppercase tracking-wider transition flex items-center gap-1.5 shadow-sm cursor-pointer"
+                                          title="Áthelyezés a résztvevők közé és értesítő email küldése"
+                                        >
+                                          <CheckCircle size={13} /> Áthelyezés résztvevőnek
+                                        </button>
+                                        <button
+                                          type="button"
+                                          disabled={deletingBookingIds.includes(w.id)}
+                                          aria-busy={deletingBookingIds.includes(w.id)}
+                                          onClick={() => handleAdminRemoveBooking(w.id)}
+                                          className="disabled:opacity-60 disabled:cursor-wait p-2 bg-rose-50 hover:bg-rose-500 text-rose-600 hover:text-white rounded-lg border border-rose-200 transition cursor-pointer"
+                                          title="Eltávolítás a várólistáról"
+                                        >
+                                          {deletingBookingIds.includes(w.id) ? '...' : <Trash2 size={14} />}
+                                        </button>
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+
+                              {/* Jelenlegi résztvevők */}
+                              <div className="space-y-3">
+                                <div className="flex items-center justify-between">
+                                  <h4 className="text-xs font-semibold uppercase tracking-wider text-[#275940] flex items-center gap-1.5">
+                                    <Users size={14} /> Jelenlegi résztvevők ({t.confirmedOrPending.length} fő)
+                                  </h4>
+                                  <span className="text-[10px] text-[#718174] font-medium">Helyfelszabadítás törléssel</span>
+                                </div>
+                                <div className="space-y-2.5 max-h-[360px] overflow-y-auto pr-1">
+                                  {t.confirmedOrPending.length === 0 ? (
+                                    <div className="p-4 bg-[#f3f6ef] rounded-xl text-center text-xs text-[#718174] border border-[#d9dfd5]">
+                                      Nincs aktív résztvevő ezen a túrán.
+                                    </div>
+                                  ) : (
+                                    t.confirmedOrPending.map((p) => (
+                                      <div
+                                        key={p.id}
+                                        className="p-3 bg-[#f8faf6] rounded-xl border border-[#d9dfd5] flex items-center justify-between gap-3"
+                                      >
+                                        <div className="min-w-0">
+                                          <div className="font-semibold text-[#173327] text-xs flex flex-wrap items-center gap-2">
+                                            <span className="truncate">{p.user_name}</span>
+                                            <span
+                                              className={`px-2 py-0.5 rounded text-[9px] font-semibold uppercase border ${
+                                                p.status === 'confirmed'
+                                                  ? 'bg-[#edf2e9] text-[#275940] border-[#cbd8c7]'
+                                                  : 'bg-amber-50 text-amber-800 border-amber-200'
+                                              }`}
+                                            >
+                                              {p.status === 'confirmed' ? 'Elfogadva' : 'Jóváhagyásra vár'}
+                                            </span>
+                                            {p.payment_status === 'paid' && (
+                                              <span className="px-2 py-0.5 rounded text-[9px] font-semibold uppercase bg-emerald-50 text-emerald-800 border border-emerald-200">
+                                                Fizetve
+                                              </span>
+                                            )}
+                                          </div>
+                                          <div className="text-[11px] text-[#718174] truncate">{p.user_email}</div>
+                                        </div>
+                                        <button
+                                          type="button"
+                                          disabled={deletingBookingIds.includes(p.id)}
+                                          aria-busy={deletingBookingIds.includes(p.id)}
+                                          onClick={() => handleAdminRemoveBooking(p.id)}
+                                          className="disabled:opacity-60 disabled:cursor-wait px-2.5 py-1.5 bg-rose-50 hover:bg-rose-500 text-rose-600 hover:text-white rounded-lg text-[11px] font-semibold border border-rose-200 transition flex items-center gap-1 shrink-0 cursor-pointer"
+                                          title="Résztvevő törlése a túráról a hely felszabadításához"
+                                        >
+                                          {deletingBookingIds.includes(p.id) ? '...' : (
+                                            <>
+                                              <UserMinus size={12} />
+                                              Törlés
+                                            </>
+                                          )}
+                                        </button>
+                                      </div>
+                                    ))
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
                       </div>
                     );
-                  }
-
-                  return (
-                    <div className="space-y-6">
-                      {toursWithWaitlist.map(t => (
-                        <div key={t.id} className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
-                          <div className="p-6 bg-slate-900 text-white flex flex-col md:flex-row md:items-center justify-between gap-4">
-                            <div>
-                              <div className="flex items-center gap-3">
-                                <h3 className="text-lg font-black tracking-tight">{t.title}</h3>
-                                <span className="px-3 py-1 bg-amber-500/20 text-amber-300 border border-amber-500/30 rounded-full text-xs font-black">
-                                  ⏳ Várólista: {t.waitlisted.length} fő
-                                </span>
-                              </div>
-                              <div className="text-xs text-slate-400 mt-1 flex items-center gap-4">
-                                <span>Időpont: {formatHungarianDate(t.start_date)} - {formatHungarianDate(t.end_date)}</span>
-                                <span>Kapacitás: <strong className="text-emerald-400">{t.confirmedOrPending.length} / {t.max_participants || '∞'} fő</strong></span>
-                              </div>
-                            </div>
-                            <Link
-                              to={`/tours/${t.id}`}
-                              className="px-4 py-2 bg-white/10 hover:bg-white/20 text-white rounded-xl text-xs font-bold transition flex items-center gap-2 self-start md:self-auto"
-                            >
-                              Túra megtekintése <ArrowRight size={14} />
-                            </Link>
-                          </div>
-
-                          <div className="p-6 grid grid-cols-1 lg:grid-cols-2 gap-6">
-                            {/* Waitlisted Users */}
-                            <div className="space-y-3">
-                              <div className="flex items-center justify-between">
-                                <h4 className="text-xs font-black uppercase tracking-wider text-amber-600 flex items-center gap-1.5">
-                                  <Clock size={14} /> Várólistások (Sorrendben)
-                                </h4>
-                                <span className="text-[10px] font-bold text-gray-400">Jelentkezési idő szerint</span>
-                              </div>
-                              <div className="space-y-2.5">
-                                {t.waitlisted.map((w, index) => (
-                                  <div key={w.id} className="p-4 bg-amber-50/50 rounded-2xl border border-amber-200/60 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                                    <div className="flex items-center gap-3">
-                                      <div className="w-7 h-7 rounded-xl bg-amber-500 text-slate-950 font-black text-xs flex items-center justify-center shrink-0 shadow-sm">
-                                        #{index + 1}
-                                      </div>
-                                      <div>
-                                        <div className="font-bold text-gray-900 text-sm">{w.user_name}</div>
-                                        <div className="text-xs text-gray-500">{w.user_email}</div>
-                                        <div className="text-[10px] text-amber-700/80 mt-0.5">
-                                          Jelentkezett: {w.booked_at ? new Date(w.booked_at).toLocaleString('hu-HU') : '-'}
-                                        </div>
-                                      </div>
-                                    </div>
-                                    <div className="flex items-center gap-2 shrink-0">
-                                      <button
-                                        onClick={() => handlePromoteWaitlistUser(w.id)}
-                                        className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-black shadow-md shadow-emerald-600/20 transition flex items-center gap-1.5"
-                                        title="Áthelyezés a résztvevők közé és értesítő email küldése"
-                                      >
-                                        <CheckCircle size={14} /> Áthelyezés résztvevőnek
-                                      </button>
-                                      <button disabled={deletingBookingIds.includes(w.id)} aria-busy={deletingBookingIds.includes(w.id)}
-                                        onClick={() => handleAdminRemoveBooking(w.id)}
-                                        className="disabled:opacity-60 disabled:cursor-wait p-2 bg-red-50 hover:bg-red-500 text-red-500 hover:text-white rounded-xl border border-red-100 transition"
-                                        title="Eltávolítás a várólistáról"
-                                      >{deletingBookingIds.includes(w.id) ? 'Törlés…' : <> <Trash2 size={14} /> </>}</button>
-                                    </div>
-                                  </div>
-                                ))}
-                              </div>
-                            </div>
-
-                            {/* Current Active Participants */}
-                            <div className="space-y-3">
-                              <div className="flex items-center justify-between">
-                                <h4 className="text-xs font-black uppercase tracking-wider text-emerald-600 flex items-center gap-1.5">
-                                  <Users size={14} /> Jelenlegi résztvevők ({t.confirmedOrPending.length} fő)
-                                </h4>
-                                <span className="text-[10px] font-bold text-gray-400">Helycsinálás törléssel lehetséges</span>
-                              </div>
-                              <div className="space-y-2.5 max-h-[360px] overflow-y-auto pr-1">
-                                {t.confirmedOrPending.length === 0 ? (
-                                  <div className="p-4 bg-gray-50 rounded-2xl text-center text-xs text-gray-400">
-                                    Nincs aktív résztvevő
-                                  </div>
-                                ) : (
-                                  t.confirmedOrPending.map(p => (
-                                    <div key={p.id} className="p-3.5 bg-gray-50 rounded-2xl border border-gray-100 flex items-center justify-between gap-3">
-                                      <div>
-                                        <div className="font-bold text-gray-900 text-xs flex items-center gap-2">
-                                          {p.user_name}
-                                          <span className={`px-2 py-0.5 rounded-md text-[9px] font-black uppercase ${
-                                            p.status === 'confirmed' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'
-                                          }`}>
-                                            {p.status === 'confirmed' ? 'Elfogadva' : 'Jóváhagyásra vár'}
-                                          </span>
-                                          {p.payment_status === 'paid' && (
-                                            <span className="px-2 py-0.5 rounded-md text-[9px] font-black uppercase bg-emerald-600 text-white">
-                                              Fizetve
-                                            </span>
-                                          )}
-                                        </div>
-                                        <div className="text-[11px] text-gray-500">{p.user_email}</div>
-                                      </div>
-                                      <button disabled={deletingBookingIds.includes(p.id)} aria-busy={deletingBookingIds.includes(p.id)}
-                                        onClick={() => handleAdminRemoveBooking(p.id)}
-                                        className="disabled:opacity-60 disabled:cursor-wait px-3 py-1.5 bg-red-50 hover:bg-red-500 text-red-500 hover:text-white rounded-xl text-[11px] font-bold border border-red-100 transition flex items-center gap-1 shrink-0"
-                                        title="Résztvevő törlése a túráról a hely felszabadításához"
-                                      >{deletingBookingIds.includes(p.id) ? 'Törlés…' : <> <UserMinus size={13} /> Törlés a túráról </>}</button>
-                                    </div>
-                                  ))
-                                )}
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  );
-                })()}
+                  })()}
+                </div>
               </div>
             )}
 
@@ -2073,95 +2141,177 @@ const AdminDashboard = () => {
 
             {activeTab === 'users' && (
               <div className={adminPanel}>
-                <div className="p-8 md:p-10 flex items-center justify-between bg-gradient-to-r from-white to-slate-50">
+                {/* Fejléc */}
+                <div className="p-6 sm:p-8 flex flex-wrap items-center justify-between gap-4 border-b border-[#d9dfd5] bg-[#e8eee4]">
                   <div>
-                    <h2 className="text-2xl font-black text-emerald-950">Felhasználók</h2>
-                    <div className="text-xs text-slate-400 font-bold uppercase tracking-widest">Jogosultságok és túrák</div>
+                    <span className={adminEyebrow}>Felhasználói fiókok</span>
+                    <h2 className="text-2xl font-semibold text-[#173327] mt-1">Felhasználók</h2>
+                    <p className="mt-2 text-sm text-[#526b59]">
+                      Regisztrált tagok, szerepkörök, jogosultságok és leadott jelentkezések áttekintése.
+                    </p>
                   </div>
                   <div className="flex items-center gap-3">
                     <button
-                      onClick={fetchUsers}
-                      className="px-4 py-2 rounded-2xl text-xs font-black uppercase tracking-widest bg-emerald-600 text-white shadow-lg shadow-emerald-600/20 hover:bg-emerald-700 transition"
+                      type="button"
+                      onClick={() => fetchUsers(false)}
+                      className="px-4 py-2 rounded-lg text-xs font-semibold uppercase tracking-widest bg-[#275940] text-white hover:bg-[#173d2a] transition flex items-center gap-2 cursor-pointer shadow-sm"
                     >
+                      <RefreshCw size={14} className={usersLoading ? 'animate-spin' : ''} />
                       Frissítés
                     </button>
-                    <div className="text-xs font-black uppercase tracking-widest text-emerald-600">{users.length} db</div>
+                    <div className="text-xs font-semibold uppercase tracking-widest text-[#275940] bg-[#edf2e9] px-3.5 py-2 rounded-full border border-[#cbd8c7]">
+                      {filteredUsers.length} / {users.length} felhasználó
+                    </div>
                   </div>
                 </div>
-                <div className="px-8 pb-8">
+
+                {/* Kereső és szerepkör-szűrő */}
+                <div className="p-4 sm:p-6 bg-[#f3f6ef] border-b border-[#d9dfd5]">
+                  <div className="grid grid-cols-1 md:grid-cols-[1.3fr_0.7fr] gap-3">
+                    <input
+                      type="text"
+                      placeholder="Keresés név, email cím vagy túracím alapján..."
+                      className="w-full px-4 py-3 rounded-lg bg-[#fffefa] border border-[#cbd8c7] text-sm font-semibold focus:ring-2 focus:ring-[#cbdcc8] focus:border-[#477258] outline-none text-[#173327] placeholder:text-[#88998b]"
+                      value={userSearch}
+                      onChange={(e) => setUserSearch(e.target.value)}
+                    />
+                    <select
+                      className="w-full px-4 py-3 rounded-lg bg-[#fffefa] border border-[#cbd8c7] text-sm font-semibold focus:ring-2 focus:ring-[#cbdcc8] focus:border-[#477258] outline-none text-[#173327]"
+                      value={userRoleFilter}
+                      onChange={(e) => setUserRoleFilter(e.target.value)}
+                    >
+                      <option value="all">Összes szerepkör</option>
+                      <option value="admin">Csak Adminisztrátorok</option>
+                      <option value="user">Csak Felhasználók</option>
+                    </select>
+                  </div>
+                </div>
+
+                {/* Lista */}
+                <div className="p-4 sm:p-6">
                   {usersLoading ? (
-                    <div className="text-center py-10 text-slate-400 font-bold">Betöltés...</div>
-                  ) : usersWithBookings.length === 0 ? (
-                    <div className="text-center py-10 text-slate-400 font-bold">Nincs felhasználó.</div>
+                    <div className="rounded-xl border border-dashed border-[#cbd8c7] bg-[#f3f6ef] px-6 py-12 text-center text-sm font-semibold text-[#607267]">
+                      Betöltés folyamatban...
+                    </div>
+                  ) : filteredUsers.length === 0 ? (
+                    <div className="rounded-xl border border-dashed border-[#cbd8c7] bg-[#f3f6ef] px-6 py-12 text-center text-sm font-semibold text-[#607267]">
+                      Nincs a szűrésnek megfelelő felhasználó.
+                    </div>
                   ) : (
                     <div className="grid gap-4">
-                      {usersWithBookings.map((user) => {
+                      {filteredUsers.map((user) => {
                         const isExpanded = expandedUserId === user.id;
                         return (
-                          <div key={user.id} className="bg-slate-50 rounded-[2rem] p-6 border border-slate-100">
-                            <div className="flex items-center justify-between gap-4">
-                              <div>
-                                <div className="text-xl font-black text-slate-900">{user.name}</div>
-                                <div className="text-xs text-slate-400 font-bold">{user.email}</div>
+                          <div
+                            key={user.id}
+                            className="bg-[#fffefa] rounded-xl p-5 sm:p-6 border border-[#cbd8c7] shadow-sm hover:border-[#b4c7b0] transition"
+                          >
+                            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                              <div className="min-w-0">
+                                <div className="flex flex-wrap items-center gap-2.5">
+                                  <span className="text-lg font-semibold text-[#173327]">{user.name}</span>
+                                  <span
+                                    className={`inline-flex items-center px-2.5 py-0.5 rounded-md text-[10px] font-semibold uppercase tracking-wider border ${
+                                      user.role === 'admin'
+                                        ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
+                                        : 'bg-[#f3f6ef] text-[#526b59] border-[#d9dfd5]'
+                                    }`}
+                                  >
+                                    {user.role === 'admin' ? 'Adminisztrátor' : 'Felhasználó'}
+                                  </span>
+                                  <span className="text-xs text-[#718174]">
+                                    ({user.bookings?.length || 0} jelentkezés)
+                                  </span>
+                                </div>
+                                <div className="text-xs text-[#718174] mt-1">{user.email}</div>
                               </div>
+
                               <button
+                                type="button"
                                 onClick={() => setExpandedUserId(isExpanded ? null : user.id)}
-                                className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white text-slate-700 text-xs font-black uppercase tracking-widest hover:bg-emerald-50 transition"
+                                className="px-3.5 py-2 rounded-lg bg-[#e8eee4] text-[#275940] text-xs font-semibold uppercase tracking-wider hover:bg-[#d9e4d4] transition flex items-center gap-1.5 self-start md:self-auto cursor-pointer"
                               >
-                                Részletek {isExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                                {isExpanded ? 'Kevesebb' : 'Részletek'}
+                                {isExpanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
                               </button>
                             </div>
+
                             {isExpanded && (
-                              <div className="mt-4 border-t border-slate-100 pt-4 space-y-4">
-                                <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
-                                  <div className="flex flex-wrap items-center gap-3">
-                                    <div className="text-[10px] font-black uppercase tracking-widest text-slate-400">Szerepkör</div>
-                                    <div className="text-xs font-black uppercase tracking-widest text-emerald-600">{user.role}</div>
-                                    <button
-                                      onClick={() => openUserProfile(user.id)}
-                                      className="px-4 py-2 rounded-xl bg-emerald-50 text-emerald-700 text-xs font-black uppercase tracking-widest hover:bg-emerald-100 transition"
-                                    >
-                                      Profil megnyitása
-                                    </button>
-                                  </div>
+                              <div className="mt-5 border-t border-[#d9dfd5] pt-5 space-y-4 animate-in fade-in duration-150">
+                                {/* Műveleti gombok */}
+                                <div className="flex flex-wrap items-center gap-2.5">
                                   <button
-                                    onClick={() => handleRoleUpdate(user.id, user.role === 'admin' ? 'user' : 'admin')}
-                                    className="px-4 py-2 rounded-xl bg-slate-900 text-white text-xs font-black uppercase tracking-widest hover:bg-emerald-600 transition self-start md:self-auto"
+                                    type="button"
+                                    onClick={() => openUserProfile(user.id)}
+                                    className="px-3.5 py-2 rounded-lg bg-[#e8eee4] text-[#275940] text-xs font-semibold uppercase tracking-wider hover:bg-[#d9e4d4] transition flex items-center gap-1.5 cursor-pointer"
                                   >
-                                    {user.role === 'admin' ? 'Admin elvétel' : 'Admin jog'}
+                                    Profil adatlap megnyitása
+                                    <ArrowRight size={13} />
                                   </button>
-                                  <button disabled={deletingUserIds.includes(user.id)} aria-busy={deletingUserIds.includes(user.id)}
+
+                                  <button
+                                    type="button"
+                                    onClick={() => handleRoleUpdate(user.id, user.role === 'admin' ? 'user' : 'admin')}
+                                    className="px-3.5 py-2 rounded-lg bg-[#275940] text-white hover:bg-[#173d2a] text-xs font-semibold uppercase tracking-wider transition cursor-pointer"
+                                  >
+                                    {user.role === 'admin' ? 'Admin jog visszavonása' : 'Admin jogosultság adása'}
+                                  </button>
+
+                                  <button
+                                    type="button"
+                                    disabled={deletingUserIds.includes(user.id)}
+                                    aria-busy={deletingUserIds.includes(user.id)}
                                     onClick={() => handleAdminDeleteUser(user.id)}
-                                    className="disabled:opacity-60 disabled:cursor-wait px-4 py-2 rounded-xl bg-red-500/10 text-red-500 text-xs font-black uppercase tracking-widest hover:bg-red-500 hover:text-white transition self-start md:self-auto"
-                                  >{deletingUserIds.includes(user.id) ? 'Törlés…' : <> Felhasználó törlése </>}</button>
+                                    className="disabled:opacity-60 disabled:cursor-wait px-3.5 py-2 rounded-lg bg-rose-50 text-rose-700 hover:bg-rose-500 hover:text-white border border-rose-200 text-xs font-semibold uppercase tracking-wider transition cursor-pointer"
+                                  >
+                                    {deletingUserIds.includes(user.id) ? 'Törlés folyamatban…' : 'Felhasználó törlése'}
+                                  </button>
                                 </div>
-                                {user.bookings.length > 0 ? (
-                                  <div>
-                                    <div className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">Jelentkezések</div>
-                                    <div className="grid gap-2">
+
+                                {/* Jelentkezések listája */}
+                                <div className="pt-2">
+                                  <div className="text-[11px] font-semibold uppercase tracking-wider text-[#526b59] mb-2.5">
+                                    Leadott jelentkezések ({user.bookings?.length || 0})
+                                  </div>
+                                  {user.bookings && user.bookings.length > 0 ? (
+                                    <div className="grid gap-2.5">
                                       {user.bookings.map((booking) => (
-                                        <div key={booking.id} className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 bg-white rounded-2xl p-4">
-                                          <div>
+                                        <div
+                                          key={booking.id}
+                                          className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 bg-[#f8faf6] rounded-xl p-3.5 border border-[#d9dfd5]"
+                                        >
+                                          <div className="min-w-0">
                                             <Link
                                               to={`/tours/${booking.tour_id}`}
-                                              className="font-black text-emerald-950 text-sm hover:text-emerald-600 transition"
+                                              className="font-semibold text-sm text-[#173327] hover:text-[#275940] hover:underline transition"
                                             >
                                               {booking.title}
                                             </Link>
-                                            <div className="text-xs text-slate-400">{booking.location}</div>
+                                            <div className="text-xs text-[#718174]">{booking.location}</div>
                                           </div>
-                                          <div className="text-[10px] font-black uppercase text-slate-400">{getBookingStatusLabel(booking)}</div>
-                                          <button disabled={deletingBookingIds.includes(booking.id)} aria-busy={deletingBookingIds.includes(booking.id)}
-                                            onClick={() => handleAdminRemoveBooking(booking.id)}
-                                            className="disabled:opacity-60 disabled:cursor-wait px-4 py-2 rounded-xl bg-red-500/10 text-red-500 text-xs font-black uppercase tracking-widest hover:bg-red-500 hover:text-white"
-                                          >{deletingBookingIds.includes(booking.id) ? 'Törlés…' : <> Törlés a túráról </>}</button>
+                                          <div className="flex items-center gap-3 shrink-0">
+                                            <span className="text-xs font-semibold text-[#526b59] bg-[#e8eee4] px-2.5 py-1 rounded-md border border-[#cbd8c7]">
+                                              {getBookingStatusLabel(booking)}
+                                            </span>
+                                            <button
+                                              type="button"
+                                              disabled={deletingBookingIds.includes(booking.id)}
+                                              aria-busy={deletingBookingIds.includes(booking.id)}
+                                              onClick={() => handleAdminRemoveBooking(booking.id)}
+                                              className="disabled:opacity-60 disabled:cursor-wait px-2.5 py-1.5 rounded-lg bg-rose-50 hover:bg-rose-500 text-rose-600 hover:text-white border border-rose-200 text-xs font-semibold uppercase tracking-wider transition cursor-pointer"
+                                            >
+                                              {deletingBookingIds.includes(booking.id) ? '...' : 'Törlés a túráról'}
+                                            </button>
+                                          </div>
                                         </div>
                                       ))}
                                     </div>
-                                  </div>
-                                ) : (
-                                  <div className="text-xs text-slate-400 font-bold">Nincs aktív jelentkezés.</div>
-                                )}
+                                  ) : (
+                                    <div className="text-xs text-[#718174] italic p-3 bg-[#f3f6ef] rounded-lg border border-[#d9dfd5]">
+                                      Nincs aktív jelentkezés ehhez a felhasználóhoz.
+                                    </div>
+                                  )}
+                                </div>
                               </div>
                             )}
                           </div>
@@ -2530,85 +2680,114 @@ const AdminDashboard = () => {
 
             {activeTab === 'email' && (
               <div className={adminPanel}>
-                <div className="p-8 md:p-10 flex items-center justify-between bg-gradient-to-r from-white to-slate-50">
+                {/* Fejléc */}
+                <div className="p-6 sm:p-8 flex flex-wrap items-center justify-between gap-4 border-b border-[#d9dfd5] bg-[#e8eee4]">
                   <div>
-                    <h2 className="text-2xl font-black text-emerald-950">Email küldés</h2>
-                    <div className="text-xs text-slate-400 font-bold uppercase tracking-widest">Üzenet küldése és kezelése</div>
+                    <span className={adminEyebrow}>Kommunikáció</span>
+                    <h2 className="text-2xl font-semibold text-[#173327] mt-1">Email küldés és kezelés</h2>
+                    <p className="mt-2 text-sm text-[#526b59]">
+                      Értesítő levelek küldése a túrázóknak, és a korábbi forgalom áttekintése.
+                    </p>
                   </div>
-                  <div className="flex flex-wrap gap-2">
+                  <div className="flex flex-wrap items-center gap-2">
                     <button
                       type="button"
                       onClick={() => setEmailSection('send')}
-                      className={`px-4 py-2 rounded-2xl text-xs font-black uppercase tracking-widest transition ${emailSection === 'send' ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-600/20' : 'bg-white text-slate-600 hover:bg-emerald-50'}`}
+                      className={`px-4 py-2 rounded-lg text-xs font-semibold uppercase tracking-widest transition cursor-pointer ${
+                        emailSection === 'send'
+                          ? 'bg-[#275940] text-white shadow-sm'
+                          : 'bg-[#fffefa] text-[#526b59] border border-[#cbd8c7] hover:bg-[#edf2e9]'
+                      }`}
                     >
-                      Email küldés
+                      Email küldése
                     </button>
                     <button
                       type="button"
                       onClick={() => setEmailSection('manage')}
-                      className={`px-4 py-2 rounded-2xl text-xs font-black uppercase tracking-widest transition ${emailSection === 'manage' ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-600/20' : 'bg-white text-slate-600 hover:bg-emerald-50'}`}
+                      className={`px-4 py-2 rounded-lg text-xs font-semibold uppercase tracking-widest transition cursor-pointer ${
+                        emailSection === 'manage'
+                          ? 'bg-[#275940] text-white shadow-sm'
+                          : 'bg-[#fffefa] text-[#526b59] border border-[#cbd8c7] hover:bg-[#edf2e9]'
+                      }`}
                     >
                       Email kezelése
                     </button>
                   </div>
                 </div>
 
-                <div className="px-8 pb-8">
+                <div className="p-4 sm:p-8">
                   {emailSection === 'send' ? (
-                    <div className="grid grid-cols-1 lg:grid-cols-[1.1fr_0.9fr] gap-6">
-                      <div className="space-y-4">
-                        <div className="text-xs font-black uppercase tracking-widest text-emerald-600">
-                          Címzettek: {effectiveRecipients.length}
+                    <div className="grid grid-cols-1 lg:grid-cols-[1.15fr_0.85fr] gap-6">
+                      {/* Üzenet összeállítása */}
+                      <div className="bg-[#fffefa] rounded-xl p-5 sm:p-6 border border-[#cbd8c7] shadow-sm space-y-4">
+                        <div className="flex items-center justify-between border-b border-[#d9dfd5] pb-3">
+                          <h3 className="font-serif text-xl font-normal text-[#173327]">Új üzenet összeállítása</h3>
+                          <span className="text-xs font-semibold uppercase tracking-wider text-[#275940] bg-[#edf2e9] px-3 py-1 rounded-full border border-[#cbd8c7]">
+                            {effectiveRecipients.length} címzett
+                          </span>
                         </div>
-                        <div className="bg-slate-50 rounded-[2rem] p-6 border border-slate-100">
-                          <label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Tárgy</label>
+
+                        <div>
+                          <label className="block text-[11px] font-bold uppercase tracking-wider text-[#526b59] mb-1.5">
+                            Levél tárgya
+                          </label>
                           <input
                             type="text"
                             value={emailSubject}
                             onChange={(e) => setEmailSubject(e.target.value)}
-                            placeholder="Pl. Fontos információ a közelgő túráról"
-                            className="w-full mt-2 p-3 bg-white border border-slate-100 rounded-2xl"
+                            placeholder="Pl. Fontos információ a hétvégi túráról..."
+                            className="w-full px-4 py-3 rounded-lg bg-[#fffefa] border border-[#cbd8c7] text-sm font-semibold focus:ring-2 focus:ring-[#cbdcc8] focus:border-[#477258] outline-none text-[#173327] placeholder:text-[#88998b]"
                           />
                         </div>
-                        <div className="bg-slate-50 rounded-[2rem] p-6 border border-slate-100">
-                          <label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Üzenet</label>
+
+                        <div>
+                          <label className="block text-[11px] font-bold uppercase tracking-wider text-[#526b59] mb-1.5">
+                            Üzenet szövege
+                          </label>
                           <textarea
                             rows={8}
                             value={emailMessage}
                             onChange={(e) => setEmailMessage(e.target.value)}
-                            placeholder="Írd ide az üzenetet..."
-                            className="w-full mt-2 p-3 bg-white border border-slate-100 rounded-2xl resize-none"
+                            placeholder="Írd ide a résztvevőknek szánt tájékoztatót..."
+                            className="w-full px-4 py-3 rounded-lg bg-[#fffefa] border border-[#cbd8c7] text-sm font-medium focus:ring-2 focus:ring-[#cbdcc8] focus:border-[#477258] outline-none text-[#173327] placeholder:text-[#88998b] resize-none leading-relaxed"
                           />
                         </div>
+
                         <button
                           type="button"
                           onClick={handleSendAdminEmail}
                           disabled={emailSending}
-                          className="w-full py-4 rounded-[2rem] font-black text-sm bg-emerald-600 text-white shadow-xl hover:bg-emerald-700 transition-all disabled:opacity-60"
+                          className="w-full py-3.5 rounded-xl font-bold text-xs uppercase tracking-wider bg-[#275940] hover:bg-[#173d2a] text-white shadow-sm transition-all disabled:opacity-60 cursor-pointer"
                         >
-                          {emailSending ? 'Küldés folyamatban...' : 'Email küldése'}
+                          {emailSending ? 'Küldés folyamatban...' : 'Email kiküldése most'}
                         </button>
                       </div>
 
-                      <div className="bg-slate-50 rounded-[2rem] p-6 border border-slate-100">
-                        <div className="flex flex-col gap-4">
+                      {/* Címzettek kiválasztása */}
+                      <div className="bg-[#fffefa] rounded-xl p-5 sm:p-6 border border-[#cbd8c7] shadow-sm space-y-4">
+                        <div className="flex flex-col gap-3 border-b border-[#d9dfd5] pb-3">
                           <div className="flex items-center justify-between">
-                            <div className="text-[10px] font-black uppercase tracking-widest text-slate-400">Címzettek</div>
-                            <div className="text-[10px] font-black uppercase tracking-widest text-emerald-600">
-                              {emailTargetMode === 'tour' ? 'Túra résztvevői' : emailTargetMode === 'all' ? 'Összes felhasználó' : 'Kijelölt'}
-                            </div>
+                            <h3 className="font-serif text-xl font-normal text-[#173327]">Címzettek köre</h3>
+                            <span className="text-[10px] font-semibold uppercase tracking-wider text-[#275940]">
+                              {emailTargetMode === 'tour' ? 'Túra résztvevői' : emailTargetMode === 'all' ? 'Összes regisztrált' : 'Kijelölt személyek'}
+                            </span>
                           </div>
+
                           <div className="flex flex-wrap gap-2">
                             {[
-                              { id: 'selected', label: 'Kijelölt felhasználók' },
-                              { id: 'all', label: 'Összes felhasználó' },
+                              { id: 'selected', label: 'Kijelölt tagok' },
+                              { id: 'all', label: 'Összes tag' },
                               { id: 'tour', label: 'Túra résztvevői' }
                             ].map((mode) => (
                               <button
                                 key={mode.id}
                                 type="button"
                                 onClick={() => setEmailTargetMode(mode.id)}
-                                className={`px-4 py-2 rounded-2xl text-xs font-black uppercase tracking-widest transition ${emailTargetMode === mode.id ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-600/20' : 'bg-white text-slate-600 hover:bg-emerald-50'}`}
+                                className={`px-3 py-1.5 rounded-lg text-xs font-semibold uppercase tracking-wider transition cursor-pointer ${
+                                  emailTargetMode === mode.id
+                                    ? 'bg-[#275940] text-white'
+                                    : 'bg-[#f3f6ef] text-[#526b59] border border-[#d9dfd5] hover:bg-[#e8eee4]'
+                                }`}
                               >
                                 {mode.label}
                               </button>
@@ -2617,14 +2796,16 @@ const AdminDashboard = () => {
                         </div>
 
                         {emailTargetMode === 'tour' && (
-                          <div className="mt-4">
-                            <label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Túra kiválasztása</label>
+                          <div>
+                            <label className="block text-[11px] font-bold uppercase tracking-wider text-[#526b59] mb-1.5">
+                              Túra kiválasztása
+                            </label>
                             <select
                               value={emailTourId}
                               onChange={(e) => setEmailTourId(e.target.value)}
-                              className="w-full mt-2 p-3 bg-white border border-slate-100 rounded-2xl"
+                              className="w-full px-4 py-3 rounded-lg bg-[#fffefa] border border-[#cbd8c7] text-sm font-semibold focus:ring-2 focus:ring-[#cbdcc8] focus:border-[#477258] outline-none text-[#173327]"
                             >
-                              <option value="">Válassz túrát...</option>
+                              <option value="">Válassz egy túrát...</option>
                               {emailEligibleTours.map((tour) => (
                                 <option key={tour.id} value={tour.id}>
                                   {tour.title}
@@ -2635,52 +2816,57 @@ const AdminDashboard = () => {
                         )}
 
                         {usersLoading ? (
-                          <div className="text-center py-10 text-slate-400 font-bold">Betöltés...</div>
+                          <div className="rounded-xl border border-dashed border-[#cbd8c7] bg-[#f3f6ef] px-4 py-8 text-center text-sm font-semibold text-[#607267]">
+                            Betöltés folyamatban...
+                          </div>
                         ) : emailTargetMode === 'all' ? (
-                          <div className="mt-4 rounded-2xl border border-slate-100 bg-white p-4 text-sm text-slate-600">
-                            Az email az összes felhasználónak ki lesz küldve.
+                          <div className="rounded-lg border border-[#cbd8c7] bg-[#f3f6ef] p-4 text-xs font-medium text-[#526b59] leading-relaxed">
+                            A megírt üzenet az <strong>összes regisztrált felhasználónak</strong> ({users.length} fő) kiküldésre kerül.
                           </div>
                         ) : emailTargetMode === 'tour' ? (
-                          <div className="mt-4">
+                          <div>
                             {!emailTourId ? (
-                              <div className="rounded-2xl border border-slate-100 bg-white p-4 text-sm text-slate-500">
-                                Válassz ki egy túrát a résztvevők listájához.
+                              <div className="rounded-lg border border-[#cbd8c7] bg-[#f3f6ef] p-4 text-xs font-medium text-[#526b59]">
+                                Válassz ki egy túrát a résztvevők listájának megtekintéséhez.
                               </div>
                             ) : tourParticipants.length === 0 ? (
-                              <div className="rounded-2xl border border-slate-100 bg-white p-4 text-sm text-slate-500">
+                              <div className="rounded-lg border border-[#cbd8c7] bg-[#f3f6ef] p-4 text-xs font-medium text-[#526b59]">
                                 Nincs elfogadott résztvevő a kiválasztott túrán.
                               </div>
                             ) : (
-                              <div className="grid gap-3 max-h-[420px] overflow-y-auto pr-2">
+                              <div className="grid gap-2 max-h-[380px] overflow-y-auto pr-1">
                                 {tourParticipants.map((participant) => (
-                                  <div key={participant.user_id} className="flex items-center gap-3 p-3 rounded-2xl border bg-white border-slate-100">
-                                    <div>
-                                      <div className="text-sm font-black text-slate-900">{participant.user_name}</div>
-                                      <div className="text-xs text-slate-400 font-bold">{participant.email}</div>
-                                    </div>
+                                  <div
+                                    key={participant.user_id}
+                                    className="p-3 rounded-lg border border-[#d9dfd5] bg-[#f8faf6]"
+                                  >
+                                    <div className="text-sm font-semibold text-[#173327]">{participant.user_name}</div>
+                                    <div className="text-xs text-[#718174]">{participant.email}</div>
                                   </div>
                                 ))}
                               </div>
                             )}
                           </div>
                         ) : users.length === 0 ? (
-                          <div className="text-center py-10 text-slate-400 font-bold">Nincs felhasználó.</div>
+                          <div className="rounded-xl border border-dashed border-[#cbd8c7] bg-[#f3f6ef] px-4 py-8 text-center text-sm font-semibold text-[#607267]">
+                            Nincs felhasználó.
+                          </div>
                         ) : (
-                          <div className="mt-4 grid gap-3 max-h-[420px] overflow-y-auto pr-2">
+                          <div className="grid gap-2 max-h-[380px] overflow-y-auto pr-1">
                             {users.map((user) => (
                               <label
                                 key={user.id}
-                                className="flex items-center gap-3 p-3 rounded-2xl border bg-white border-slate-100 hover:border-emerald-200 transition"
+                                className="flex items-center gap-3 p-3 rounded-lg border border-[#d9dfd5] bg-[#f8faf6] hover:border-[#cbd8c7] hover:bg-[#edf2e9]/50 transition cursor-pointer"
                               >
                                 <input
                                   type="checkbox"
                                   checked={emailRecipients.includes(user.email)}
                                   onChange={() => toggleEmailRecipient(user.email)}
-                                  className="accent-emerald-600"
+                                  className="h-4 w-4 accent-[#275940] rounded"
                                 />
-                                <div>
-                                  <div className="text-sm font-black text-slate-900">{user.name}</div>
-                                  <div className="text-xs text-slate-400 font-bold">{user.email}</div>
+                                <div className="min-w-0">
+                                  <div className="text-sm font-semibold text-[#173327] truncate">{user.name}</div>
+                                  <div className="text-xs text-[#718174] truncate">{user.email}</div>
                                 </div>
                               </label>
                             ))}
@@ -2690,27 +2876,39 @@ const AdminDashboard = () => {
                     </div>
                   ) : (
                     <div className="space-y-6">
-                      <div className="flex items-center justify-between">
-                        <div className="text-xs font-black uppercase tracking-widest text-slate-400">Email kezelése</div>
+                      <div className="flex flex-wrap items-center justify-between gap-4">
+                        <div>
+                          <h3 className="font-serif text-xl font-normal text-[#173327]">Levelezési előzmények</h3>
+                          <p className="text-xs text-[#718174]">Elküldött és beérkezett rendszerüzenetek naplója</p>
+                        </div>
                         <button
                           type="button"
                           onClick={fetchEmailManage}
-                          className="px-4 py-2 rounded-2xl text-xs font-black uppercase tracking-widest bg-emerald-600 text-white shadow-lg shadow-emerald-600/20 hover:bg-emerald-700 transition"
+                          className="px-4 py-2 rounded-lg text-xs font-semibold uppercase tracking-widest bg-[#275940] text-white hover:bg-[#173d2a] transition flex items-center gap-2 cursor-pointer shadow-sm"
                         >
+                          <RefreshCw size={14} className={emailManageLoading ? 'animate-spin' : ''} />
                           Frissítés
                         </button>
                       </div>
 
                       {emailManageLoading ? (
-                        <div className="text-center py-10 text-slate-400 font-bold">Betöltés...</div>
+                        <div className="rounded-xl border border-dashed border-[#cbd8c7] bg-[#f3f6ef] px-6 py-12 text-center text-sm font-semibold text-[#607267]">
+                          Betöltés folyamatban...
+                        </div>
                       ) : (
                         <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-                          <div className="bg-slate-50 rounded-[2rem] p-6 border border-slate-100">
-                            <div className="text-sm font-black text-emerald-900">Elküldött emailek</div>
+                          {/* Elküldött emailek */}
+                          <div className="bg-[#fffefa] rounded-xl p-5 sm:p-6 border border-[#cbd8c7] shadow-sm">
+                            <div className="flex items-center justify-between mb-4 border-b border-[#d9dfd5] pb-2">
+                              <h4 className="font-semibold text-base text-[#173327]">Elküldött emailek</h4>
+                              <span className="text-xs font-semibold uppercase tracking-wider text-[#275940] bg-[#edf2e9] px-2.5 py-0.5 rounded-full border border-[#cbd8c7]">
+                                {emailSent.length} db
+                              </span>
+                            </div>
                             {emailSent.length === 0 ? (
-                              <div className="text-sm text-slate-500 mt-4">Nincs elküldött email.</div>
+                              <div className="text-xs text-[#718174] italic py-6 text-center">Nincs elküldött email.</div>
                             ) : (
-                              <div className="mt-4 space-y-3 max-h-[420px] overflow-y-auto pr-2">
+                              <div className="space-y-2.5 max-h-[440px] overflow-y-auto pr-1">
                                 {emailSent.map((item) => (
                                   <button
                                     key={item.id}
@@ -2722,23 +2920,29 @@ const AdminDashboard = () => {
                                       date: item.created_at,
                                       recipients: item.recipients
                                     })}
-                                    className="w-full text-left bg-white rounded-2xl p-4 border border-slate-100 hover:border-emerald-200 transition"
+                                    className="w-full text-left bg-[#f8faf6] rounded-xl p-4 border border-[#d9dfd5] hover:border-[#275940] hover:bg-[#edf2e9] transition cursor-pointer"
                                   >
-                                    <div className="text-sm font-black text-slate-900">{item.subject}</div>
-                                    <div className="text-xs text-slate-400 mt-1">{new Date(item.created_at).toLocaleString('hu-HU')}</div>
-                                    <div className="text-xs text-slate-500 mt-2">Címzettek: {item.recipients.length}</div>
+                                    <div className="font-semibold text-sm text-[#173327]">{item.subject}</div>
+                                    <div className="text-xs text-[#718174] mt-1">{new Date(item.created_at).toLocaleString('hu-HU')}</div>
+                                    <div className="text-xs font-medium text-[#526b59] mt-2">Címzettek: {item.recipients.length} fő</div>
                                   </button>
                                 ))}
                               </div>
                             )}
                           </div>
 
-                          <div className="bg-slate-50 rounded-[2rem] p-6 border border-slate-100">
-                            <div className="text-sm font-black text-emerald-900">Bejövő emailek</div>
+                          {/* Bejövő emailek */}
+                          <div className="bg-[#fffefa] rounded-xl p-5 sm:p-6 border border-[#cbd8c7] shadow-sm">
+                            <div className="flex items-center justify-between mb-4 border-b border-[#d9dfd5] pb-2">
+                              <h4 className="font-semibold text-base text-[#173327]">Bejövő emailek</h4>
+                              <span className="text-xs font-semibold uppercase tracking-wider text-[#275940] bg-[#edf2e9] px-2.5 py-0.5 rounded-full border border-[#cbd8c7]">
+                                {emailInbox.length} db
+                              </span>
+                            </div>
                             {emailInbox.length === 0 ? (
-                              <div className="text-sm text-slate-500 mt-4">Nincs bejövő email regisztrált címtől.</div>
+                              <div className="text-xs text-[#718174] italic py-6 text-center">Nincs bejövő email regisztrált címtől.</div>
                             ) : (
-                              <div className="mt-4 space-y-3 max-h-[420px] overflow-y-auto pr-2">
+                              <div className="space-y-2.5 max-h-[440px] overflow-y-auto pr-1">
                                 {emailInbox.map((item) => (
                                   <button
                                     key={item.uid}
@@ -2750,13 +2954,13 @@ const AdminDashboard = () => {
                                       date: item.date,
                                       from: item.from
                                     })}
-                                    className="w-full text-left bg-white rounded-2xl p-4 border border-slate-100 hover:border-emerald-200 transition"
+                                    className="w-full text-left bg-[#f8faf6] rounded-xl p-4 border border-[#d9dfd5] hover:border-[#275940] hover:bg-[#edf2e9] transition cursor-pointer"
                                   >
-                                    <div className="text-sm font-black text-slate-900">{item.subject || '(Nincs tárgy)'}</div>
-                                    <div className="text-xs text-slate-400 mt-1">
+                                    <div className="font-semibold text-sm text-[#173327]">{item.subject || '(Nincs tárgy)'}</div>
+                                    <div className="text-xs text-[#718174] mt-1">
                                       {item.from?.name ? `${item.from.name} <${item.from.email}>` : item.from?.email}
                                     </div>
-                                    <div className="text-xs text-slate-400 mt-1">{item.date ? new Date(item.date).toLocaleString('hu-HU') : ''}</div>
+                                    <div className="text-xs text-[#718174] mt-1">{item.date ? new Date(item.date).toLocaleString('hu-HU') : ''}</div>
                                   </button>
                                 ))}
                               </div>
@@ -2771,42 +2975,43 @@ const AdminDashboard = () => {
             )}
 
             {emailModalOpen && emailModalData && (
-              <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 px-4" onClick={closeEmailModal}>
+              <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#0f1f17]/70 backdrop-blur-sm p-4 sm:p-6" onClick={closeEmailModal}>
                 <div
-                  className="w-full max-w-2xl bg-white rounded-[2rem] shadow-2xl border border-slate-100 overflow-hidden"
+                  className="w-full max-w-2xl bg-white rounded-3xl shadow-2xl border border-[#dce5d8] overflow-hidden animate-in fade-in zoom-in-95 duration-200"
                   onClick={(e) => e.stopPropagation()}
                 >
-                  <div className="p-6 border-b border-slate-100 flex items-start justify-between gap-4">
+                  <div className="p-6 border-b border-[#d8dfd4] bg-[#f8faf6] flex items-start justify-between gap-4">
                     <div>
-                      <div className="text-xs font-black uppercase tracking-widest text-emerald-600">
+                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-md text-[10px] font-semibold uppercase tracking-wider bg-[#edf2e9] text-[#275940] border border-[#cbd8c7]">
                         {emailModalData.type === 'sent' ? 'Elküldött email' : 'Bejövő email'}
-                      </div>
-                      <div className="text-xl font-black text-slate-900 mt-2">{emailModalData.subject}</div>
+                      </span>
+                      <h3 className="font-serif text-2xl text-[#173327] mt-2">{emailModalData.subject}</h3>
                       {emailModalData.date && (
-                        <div className="text-xs text-slate-400 mt-1">{new Date(emailModalData.date).toLocaleString('hu-HU')}</div>
+                        <div className="text-xs text-[#718174] mt-1">{new Date(emailModalData.date).toLocaleString('hu-HU')}</div>
                       )}
                       {emailModalData.type === 'inbox' && emailModalData.from && (
-                        <div className="text-xs text-slate-500 mt-1">
-                          {emailModalData.from?.name ? `${emailModalData.from.name} <${emailModalData.from.email}>` : emailModalData.from?.email}
+                        <div className="text-xs text-[#526b59] mt-1">
+                          Feladó: {emailModalData.from?.name ? `${emailModalData.from.name} <${emailModalData.from.email}>` : emailModalData.from?.email}
                         </div>
                       )}
                     </div>
                     <button
                       type="button"
                       onClick={closeEmailModal}
-                      className="px-3 py-2 rounded-2xl text-xs font-black uppercase tracking-widest bg-slate-100 text-slate-600 hover:bg-slate-200"
+                      className="p-2 rounded-xl text-[#718174] hover:bg-[#ecefe6] hover:text-[#173327] transition border border-transparent hover:border-[#cad6c9] cursor-pointer"
+                      aria-label="Ablak bezárása"
                     >
-                      Bezárás
+                      <X size={18} />
                     </button>
                   </div>
                   <div className="p-6">
                     {emailModalData.type === 'sent' && emailModalData.recipients && (
-                      <div className="text-xs text-slate-500 mb-4">
-                        Címzettek: {emailModalData.recipients.length}
+                      <div className="text-xs font-semibold text-[#526b59] mb-4 bg-[#f3f6ef] p-2.5 rounded-lg border border-[#d9dfd5]">
+                        Címzettek ({emailModalData.recipients.length} fő): {emailModalData.recipients.join(', ')}
                       </div>
                     )}
-                    <div className="text-sm text-slate-700 whitespace-pre-line">
-                      {emailModalData.message || 'Nincs megjelenitheto tartalom.'}
+                    <div className="text-sm text-[#173327] whitespace-pre-line leading-relaxed">
+                      {emailModalData.message || 'Nincs megjeleníthető tartalom.'}
                     </div>
                   </div>
                 </div>
