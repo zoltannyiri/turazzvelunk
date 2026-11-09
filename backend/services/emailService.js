@@ -65,13 +65,14 @@ const sendRegistrationEmail = async ({ to, name }) => {
     });
 };
 
-const sendBookingApprovedEmail = async ({ to, name, tourId, tourTitle, startDate, endDate, totalPrice }) => {
+const sendBookingApprovedEmail = async ({ to, name, tourId, tourTitle, startDate, endDate, totalPrice, userPhone }) => {
     const { subject, text, html } = buildBookingApprovedEmail({
         name,
         tourTitle,
         startDate,
         endDate,
-        totalPrice
+        totalPrice,
+        userPhone
     });
     return sendMail({
         to,
@@ -86,13 +87,14 @@ const sendBookingApprovedEmail = async ({ to, name, tourId, tourTitle, startDate
     });
 };
 
-const sendBookingEmail = async ({ to, name, tourId, tourTitle, startDate, endDate, totalPrice }) => {
+const sendBookingEmail = async ({ to, name, tourId, tourTitle, startDate, endDate, totalPrice, userPhone }) => {
     const { subject, text, html } = buildBookingEmail({
         name,
         tourTitle,
         startDate,
         endDate,
-        totalPrice
+        totalPrice,
+        userPhone
     });
     return sendMail({
         to,
@@ -112,12 +114,13 @@ const sendAdminEmail = async ({ to, subject, message }) => {
     return sendMail({ to, subject, text, html });
 };
 
-const sendBookingCancelledEmail = async ({ to, name, tourId, tourTitle, startDate, endDate }) => {
+const sendBookingCancelledEmail = async ({ to, name, tourId, tourTitle, startDate, endDate, userPhone }) => {
     const { subject, text, html } = buildBookingCancelledEmail({
         name,
         tourTitle,
         startDate,
-        endDate
+        endDate,
+        userPhone
     });
     return sendMail({
         to,
@@ -128,14 +131,15 @@ const sendBookingCancelledEmail = async ({ to, name, tourId, tourTitle, startDat
     });
 };
 
-const sendAdminRemovedBookingEmail = async ({ to, name, tourId, tourTitle, adminName, startDate, endDate, refundAmount }) => {
+const sendAdminRemovedBookingEmail = async ({ to, name, tourId, tourTitle, adminName, startDate, endDate, refundAmount, userPhone }) => {
     const { subject, text, html } = buildAdminRemovedBookingEmail({
         name,
         tourTitle,
         adminName,
         startDate,
         endDate,
-        refundAmount
+        refundAmount,
+        userPhone
     });
     return sendMail({
         to,
@@ -146,11 +150,12 @@ const sendAdminRemovedBookingEmail = async ({ to, name, tourId, tourTitle, admin
     });
 };
 
-const sendAdminRemovedBookingNotificationEmail = async ({ to, adminName, userName, userEmail, tourTitle, startDate, endDate }) => {
+const sendAdminRemovedBookingNotificationEmail = async ({ to, adminName, userName, userEmail, userPhone, tourTitle, startDate, endDate }) => {
     const { subject, text, html } = buildAdminRemovedBookingNotificationEmail({
         adminName,
         userName,
         userEmail,
+        userPhone,
         tourTitle,
         startDate,
         endDate
@@ -158,13 +163,14 @@ const sendAdminRemovedBookingNotificationEmail = async ({ to, adminName, userNam
     return sendMail({ to, subject, text, html });
 };
 
-const sendCancellationRequestEmail = async ({ to, name, tourId, tourTitle, reason, startDate, endDate }) => {
+const sendCancellationRequestEmail = async ({ to, name, tourId, tourTitle, reason, startDate, endDate, userPhone }) => {
     const { subject, text, html } = buildCancellationRequestEmail({
         name,
         tourTitle,
         reason,
         startDate,
-        endDate
+        endDate,
+        userPhone
     });
     return sendMail({
         to,
@@ -175,12 +181,13 @@ const sendCancellationRequestEmail = async ({ to, name, tourId, tourTitle, reaso
     });
 };
 
-const sendCancellationRejectedEmail = async ({ to, name, tourId, tourTitle, startDate, endDate }) => {
+const sendCancellationRejectedEmail = async ({ to, name, tourId, tourTitle, startDate, endDate, userPhone }) => {
     const { subject, text, html } = buildCancellationRejectedEmail({
         name,
         tourTitle,
         startDate,
-        endDate
+        endDate,
+        userPhone
     });
     return sendMail({
         to,
@@ -191,10 +198,11 @@ const sendCancellationRejectedEmail = async ({ to, name, tourId, tourTitle, star
     });
 };
 
-const sendAdminCancellationRequestEmail = async ({ to, userName, userEmail, tourTitle, reason, startDate, endDate }) => {
+const sendAdminCancellationRequestEmail = async ({ to, userName, userEmail, userPhone, tourTitle, reason, startDate, endDate }) => {
     const { subject, text, html } = buildAdminCancellationRequestEmail({
         userName,
         userEmail,
+        userPhone,
         tourTitle,
         reason,
         startDate,
@@ -203,10 +211,11 @@ const sendAdminCancellationRequestEmail = async ({ to, userName, userEmail, tour
     return sendMail({ to, subject, text, html });
 };
 
-const sendAdminCancellationApprovedEmail = async ({ to, userName, userEmail, tourTitle, startDate, endDate }) => {
+const sendAdminCancellationApprovedEmail = async ({ to, userName, userEmail, userPhone, tourTitle, startDate, endDate }) => {
     const { subject, text, html } = buildAdminCancellationApprovedEmail({
         userName,
         userEmail,
+        userPhone,
         tourTitle,
         startDate,
         endDate
@@ -214,7 +223,7 @@ const sendAdminCancellationApprovedEmail = async ({ to, userName, userEmail, tou
     return sendMail({ to, subject, text, html });
 };
 
-const sendPaymentEmail = async ({ to, name, tourId, tourTitle, amount, startDate, endDate, paymentType, totalAmount }) => {
+const sendPaymentEmail = async ({ to, name, tourId, tourTitle, amount, startDate, endDate, paymentType, totalAmount, userPhone }) => {
     const { subject, text, html } = buildPaymentEmail({
         name,
         tourTitle,
@@ -222,7 +231,8 @@ const sendPaymentEmail = async ({ to, name, tourId, tourTitle, amount, startDate
         startDate,
         endDate,
         paymentType,
-        totalAmount
+        totalAmount,
+        userPhone
     });
     const notifTitle = paymentType === 'deposit'
         ? `Sikeres előlegfizetés: ${tourTitle}`
@@ -242,9 +252,11 @@ const sendPaymentEmail = async ({ to, name, tourId, tourTitle, amount, startDate
     });
 };
 
-const sendAdminPaymentEmail = async ({ to, userName, tourTitle, amount, startDate, endDate, paymentType, totalAmount }) => {
+const sendAdminPaymentEmail = async ({ to, userName, userEmail, userPhone, tourTitle, amount, startDate, endDate, paymentType, totalAmount }) => {
     const { subject, text, html } = buildAdminPaymentEmail({
         userName,
+        userEmail,
+        userPhone,
         tourTitle,
         amount,
         startDate,
@@ -292,7 +304,7 @@ const sendAdminNotification = async ({ subject, message, tourId = null, tourTitl
     );
 };
 
-const sendAdminPaymentNotification = async ({ userName, tourTitle, tourId = null, amount, startDate, endDate, paymentType, totalAmount }) => {
+const sendAdminPaymentNotification = async ({ userName, userEmail, userPhone, tourTitle, tourId = null, amount, startDate, endDate, paymentType, totalAmount }) => {
     const adminUsers = await getAdminUsers(tourId);
     if (!adminUsers.length) return;
 
@@ -332,6 +344,8 @@ const sendAdminPaymentNotification = async ({ userName, tourTitle, tourId = null
         adminUsers.map((user) => sendAdminPaymentEmail({
             to: user.email,
             userName,
+            userEmail,
+            userPhone,
             tourTitle,
             amount,
             startDate,
@@ -342,7 +356,7 @@ const sendAdminPaymentNotification = async ({ userName, tourTitle, tourId = null
     );
 };
 
-const sendAdminCancellationRequestNotification = async ({ userName, userEmail, tourTitle, tourId = null, reason, startDate, endDate }) => {
+const sendAdminCancellationRequestNotification = async ({ userName, userEmail, userPhone, tourTitle, tourId = null, reason, startDate, endDate }) => {
     const adminUsers = await getAdminUsers(tourId);
     if (!adminUsers.length) return;
 
@@ -370,6 +384,7 @@ const sendAdminCancellationRequestNotification = async ({ userName, userEmail, t
             to: user.email,
             userName,
             userEmail,
+            userPhone,
             tourTitle,
             reason,
             startDate,
@@ -378,7 +393,7 @@ const sendAdminCancellationRequestNotification = async ({ userName, userEmail, t
     );
 };
 
-const sendAdminCancellationApprovedNotification = async ({ userName, userEmail, tourTitle, tourId = null, startDate, endDate }) => {
+const sendAdminCancellationApprovedNotification = async ({ userName, userEmail, userPhone, tourTitle, tourId = null, startDate, endDate }) => {
     const adminUsers = await getAdminUsers(tourId);
     if (!adminUsers.length) return;
 
@@ -406,6 +421,7 @@ const sendAdminCancellationApprovedNotification = async ({ userName, userEmail, 
             to: user.email,
             userName,
             userEmail,
+            userPhone,
             tourTitle,
             startDate,
             endDate
@@ -413,7 +429,7 @@ const sendAdminCancellationApprovedNotification = async ({ userName, userEmail, 
     );
 };
 
-const sendAdminRemovedBookingNotification = async ({ adminName, userName, userEmail, tourTitle, tourId = null, startDate, endDate }) => {
+const sendAdminRemovedBookingNotification = async ({ adminName, userName, userEmail, userPhone, tourTitle, tourId = null, startDate, endDate }) => {
     const adminUsers = await getAdminUsers(tourId);
     if (!adminUsers.length) return;
 
@@ -442,6 +458,7 @@ const sendAdminRemovedBookingNotification = async ({ adminName, userName, userEm
             adminName,
             userName,
             userEmail,
+            userPhone,
             tourTitle,
             startDate,
             endDate
@@ -450,12 +467,13 @@ const sendAdminRemovedBookingNotification = async ({ adminName, userName, userEm
 };
 
 
-const sendWaitlistJoinedEmail = async ({ to, name, tourId, tourTitle, startDate, endDate }) => {
+const sendWaitlistJoinedEmail = async ({ to, name, tourId, tourTitle, startDate, endDate, userPhone }) => {
     const { subject, text, html } = buildWaitlistJoinedEmail({
         name,
         tourTitle,
         startDate,
-        endDate
+        endDate,
+        userPhone
     });
     return sendMail({
         to,
@@ -466,10 +484,11 @@ const sendWaitlistJoinedEmail = async ({ to, name, tourId, tourTitle, startDate,
     });
 };
 
-const sendAdminWaitlistEmail = async ({ to, userName, userEmail, tourTitle, startDate, endDate }) => {
+const sendAdminWaitlistEmail = async ({ to, userName, userEmail, userPhone, tourTitle, startDate, endDate }) => {
     const { subject, text, html } = buildAdminWaitlistNotificationEmail({
         userName,
         userEmail,
+        userPhone,
         tourTitle,
         startDate,
         endDate
@@ -477,7 +496,7 @@ const sendAdminWaitlistEmail = async ({ to, userName, userEmail, tourTitle, star
     return sendMail({ to, subject, text, html });
 };
 
-const sendAdminWaitlistNotification = async ({ userName, userEmail, tourTitle, tourId = null, startDate, endDate }) => {
+const sendAdminWaitlistNotification = async ({ userName, userEmail, userPhone, tourTitle, tourId = null, startDate, endDate }) => {
     const adminUsers = await getAdminUsers(tourId);
     if (!adminUsers.length) return;
 
@@ -505,6 +524,7 @@ const sendAdminWaitlistNotification = async ({ userName, userEmail, tourTitle, t
             to: user.email,
             userName,
             userEmail,
+            userPhone,
             tourTitle,
             startDate,
             endDate
@@ -512,13 +532,14 @@ const sendAdminWaitlistNotification = async ({ userName, userEmail, tourTitle, t
     );
 };
 
-const sendWaitlistPromotedEmail = async ({ to, name, tourId, tourTitle, startDate, endDate, totalPrice }) => {
+const sendWaitlistPromotedEmail = async ({ to, name, tourId, tourTitle, startDate, endDate, totalPrice, userPhone }) => {
     const { subject, text, html } = buildWaitlistPromotedEmail({
         name,
         tourTitle,
         startDate,
         endDate,
-        totalPrice
+        totalPrice,
+        userPhone
     });
     return sendMail({
         to,

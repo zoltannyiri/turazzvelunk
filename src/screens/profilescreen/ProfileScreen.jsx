@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import { formatPrice } from '../../utils/formatPrice';
 import { formatHungarianDate } from '../../utils/formatDate';
+import { toast } from 'react-toastify';
 
 
 const ProfileScreen = () => {
@@ -20,6 +21,7 @@ const ProfileScreen = () => {
 		const [loading, setLoading] = useState(true);
     const [createdToursLoading, setCreatedToursLoading] = useState(false);
     const [email, setEmail] = useState(user?.email || '');
+    const [phone, setPhone] = useState(user?.phone || '');
     const [currentPassword, setCurrentPassword] = useState('');
     const [newPassword, setNewPassword] = useState('');
     const [avatarFile, setAvatarFile] = useState(null);
@@ -216,21 +218,31 @@ const ProfileScreen = () => {
         window.location.href = data.url;
         return;
       }
-      alert(data.message || data.error || 'Hiba történt.');
+      toast.error(data.message || data.error || 'Hiba történt.');
     } catch (err) {
-      alert('Hiba történt.');
+      toast.error('Hiba történt.');
     }
   };
 
   useEffect(() => {
     setEmail(user?.email || '');
+    setPhone(user?.phone || '');
   }, [user]);
 
   const handleProfileSave = async () => {
+    const trimmedPhone = phone.trim();
+    if (trimmedPhone) {
+      const phoneDigits = trimmedPhone.replace(/\D/g, '');
+      if (!/^\+?[\d\s()-]+$/.test(trimmedPhone) || phoneDigits.length < 7 || phoneDigits.length > 15) {
+        toast.error('Kérlek érvényes telefonszámot adj meg (pl. +36 30 123 4567).');
+        return;
+      }
+    }
     setSaving(true);
     try {
       const formData = new FormData();
       if (email && email !== user?.email) formData.append('email', email);
+      if (phone !== (user?.phone || '')) formData.append('phone', trimmedPhone);
       if (currentPassword) formData.append('currentPassword', currentPassword);
       if (newPassword) formData.append('newPassword', newPassword);
       if (avatarFile) formData.append('avatar', avatarFile);
@@ -246,12 +258,13 @@ const ProfileScreen = () => {
         setCurrentPassword('');
         setNewPassword('');
         setAvatarFile(null);
-        alert('✅ Profil frissítve.');
+        setIsEditOpen(false);
+        toast.success('Profilod sikeresen frissítve!');
       } else {
-        alert(data.message || data.error || 'Hiba történt.');
+        toast.error(data.message || data.error || 'Hiba történt a mentéskor.');
       }
     } catch (err) {
-      alert('Hiba történt a mentéskor.');
+      toast.error('Hiba történt a mentéskor.');
     } finally {
       setSaving(false);
     }
@@ -270,10 +283,10 @@ const ProfileScreen = () => {
         logout();
         navigate('/', { replace: true });
       } else {
-        alert(data.message || data.error || 'Hiba történt.');
+        toast.error(data.message || data.error || 'Hiba történt.');
       }
     } catch (err) {
-      alert('Hiba történt.');
+      toast.error('Hiba történt.');
     }
   };
 
@@ -368,6 +381,12 @@ const ProfileScreen = () => {
                   <span className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#78877c]">Email-cím</span>
                   <span className="mt-1 break-all text-sm font-semibold text-[#173327]">{user?.email}</span>
                 </div>
+                {user?.phone ? (
+                  <div className="flex flex-col border-t border-[#e3e8df] pt-4">
+                    <span className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#78877c]">Telefonszám</span>
+                    <span className="mt-1 break-all text-sm font-semibold text-[#173327]">{user.phone}</span>
+                  </div>
+                ) : null}
                 <div className="flex flex-col border-t border-[#e3e8df] pt-4">
                   <span className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#78877c]">Velünk tartasz ekkortól</span>
                   <span className="mt-1 text-sm font-semibold text-[#173327]">
@@ -599,6 +618,17 @@ const ProfileScreen = () => {
                   className="mt-2 w-full rounded-lg border border-[#d9dfd5] bg-white p-3 text-sm text-[#173327] outline-none transition-colors focus:border-[#477258] focus:ring-2 focus:ring-[#cbdcc8]"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
+                />
+              </div>
+              <div>
+                <label htmlFor="profile-phone" className="text-[11px] font-bold uppercase tracking-[0.12em] text-[#607267]">Telefonszám</label>
+                <input
+                  id="profile-phone"
+                  type="tel"
+                  placeholder="+36 30 123 4567"
+                  className="mt-2 w-full rounded-lg border border-[#d9dfd5] bg-white p-3 text-sm text-[#173327] outline-none transition-colors focus:border-[#477258] focus:ring-2 focus:ring-[#cbdcc8]"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
                 />
               </div>
               <div>

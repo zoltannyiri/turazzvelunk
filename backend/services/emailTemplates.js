@@ -114,11 +114,12 @@ const buildAccountDeletedEmail = ({ name }) => {
 
     return { subject, text, html };
 };
-const buildBookingEmail = ({ name, tourTitle, startDate, endDate, totalPrice }) => {
+const buildBookingEmail = ({ name, tourTitle, startDate, endDate, totalPrice, userPhone }) => {
     const safeName = escapeHtml(name || '');
     const safeTitle = escapeHtml(tourTitle || '');
+    const safePhone = escapeHtml(userPhone || '');
     const subject = `Jelentkezés rögzítve: ${safeTitle}`;
-    const text = `Szia ${safeName}!\n\nA jelentkezésedet rögzítettük a(z) ${safeTitle} túrára.\nIdőpont: ${formatDate(startDate)} - ${formatDate(endDate)}\n\nA jelentkezés jelenleg a túravezető jóváhagyására vár. Amint a túravezető elfogadja a foglalást, azonnal értesítünk emailben, és megnyílik a fizetési lehetőség a fiókodban.\n`;
+    const text = `Szia ${safeName}!\n\nA jelentkezésedet rögzítettük a(z) ${safeTitle} túrára.\nIdőpont: ${formatDate(startDate)} - ${formatDate(endDate)}\n${userPhone ? `Telefonszám: ${userPhone}\n` : ''}\nA jelentkezés jelenleg a túravezető jóváhagyására vár. Amint a túravezető elfogadja a foglalást, azonnal értesítünk emailben, és megnyílik a fizetési lehetőség a fiókodban.\n`;
     const html = `
         <div style="background: #f5f5f0; padding: 32px 16px; font-family: 'Trebuchet MS', 'Segoe UI', Arial, sans-serif; color: #173327;">
             <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width: 640px; margin: 0 auto; border-collapse: collapse;">
@@ -142,6 +143,12 @@ const buildBookingEmail = ({ name, tourTitle, startDate, endDate, totalPrice }) 
 
                         <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="border-collapse: collapse; background: #f7f9f4; border: 1px solid #d9dfd5; border-radius: 12px;">
                             <tr>
+${safePhone ? `
+                            <tr>
+                                <td style="padding: 12px 16px; font-size: 13px; color: #607267;">Telefonszám</td>
+                                <td style="padding: 12px 16px; font-size: 14px; color: #173327; font-weight: 600;"><a href="tel:${safePhone}" style="color: #275940; text-decoration: none;">${safePhone}</a></td>
+                            </tr>` : ''}
+                            <tr>
                                 <td style="padding: 12px 16px; font-size: 13px; color: #607267;">Túra</td>
                                 <td style="padding: 12px 16px; font-size: 14px; color: #173327; font-weight: 600;">${safeTitle}</td>
                             </tr>
@@ -149,6 +156,11 @@ const buildBookingEmail = ({ name, tourTitle, startDate, endDate, totalPrice }) 
                                 <td style="padding: 12px 16px; font-size: 13px; color: #607267;">Időpont</td>
                                 <td style="padding: 12px 16px; font-size: 14px; color: #173327;">${formatDate(startDate)} - ${formatDate(endDate)}</td>
                             </tr>
+                            ${safePhone ? `
+                            <tr>
+                                <td style="padding: 12px 16px; font-size: 13px; color: #607267;">Telefonszám</td>
+                                <td style="padding: 12px 16px; font-size: 14px; color: #173327;">${safePhone}</td>
+                            </tr>` : ''}
                             ${totalPrice ? `
                             <tr>
                                 <td style="padding: 12px 16px; font-size: 13px; color: #607267;">Részvételi díj</td>
@@ -177,11 +189,12 @@ const buildBookingEmail = ({ name, tourTitle, startDate, endDate, totalPrice }) 
     return { subject, text, html };
 };
 
-const buildBookingApprovedEmail = ({ name, tourTitle, startDate, endDate, totalPrice }) => {
+const buildBookingApprovedEmail = ({ name, tourTitle, startDate, endDate, totalPrice, userPhone }) => {
     const safeName = escapeHtml(name || '');
     const safeTitle = escapeHtml(tourTitle || '');
+    const safePhone = escapeHtml(userPhone || '');
     const subject = `Jelentkezésed jóváhagyva: ${safeTitle} - Fizetési információk`;
-    const text = `Szia ${safeName}!\n\nÖrömmel értesítünk, hogy a túravezető elfogadta a jelentkezésedet a(z) ${safeTitle} túrára!\nIdőpont: ${formatDate(startDate)} - ${formatDate(endDate)}\nFizetendő összeg: ${formatPrice(totalPrice)}\n\nMost már kényelmesen kifizetheted a részvételi díjat a profilodban vagy a túra adatlapján.\n`;
+    const text = `Szia ${safeName}!\n\nÖrömmel értesítünk, hogy a túravezető elfogadta a jelentkezésedet a(z) ${safeTitle} túrára!\nIdőpont: ${formatDate(startDate)} - ${formatDate(endDate)}\n${userPhone ? `Telefonszám: ${userPhone}\n` : ''}Fizetendő összeg: ${formatPrice(totalPrice)}\n\nMost már kényelmesen kifizetheted a részvételi díjat a profilodban vagy a túra adatlapján.\n`;
     const html = `
         <div style="background: #f5f5f0; padding: 32px 16px; font-family: 'Trebuchet MS', 'Segoe UI', Arial, sans-serif; color: #173327;">
             <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width: 640px; margin: 0 auto; border-collapse: collapse;">
@@ -202,6 +215,11 @@ const buildBookingApprovedEmail = ({ name, tourTitle, startDate, endDate, totalP
                         </div>
 
                         <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="border-collapse: collapse; background: #f7f9f4; border: 1px solid #d9dfd5; border-radius: 12px;">
+                            ${safePhone ? `
+                            <tr>
+                                <td style="padding: 12px 16px; font-size: 13px; color: #607267;">Telefonszám</td>
+                                <td style="padding: 12px 16px; font-size: 14px; color: #173327; font-weight: 600;"><a href="tel:${safePhone}" style="color: #275940; text-decoration: none;">${safePhone}</a></td>
+                            </tr>` : ''}
                             <tr>
                                 <td style="padding: 12px 16px; font-size: 13px; color: #607267;">Túra</td>
                                 <td style="padding: 12px 16px; font-size: 14px; color: #173327; font-weight: 600;">${safeTitle}</td>
@@ -210,6 +228,11 @@ const buildBookingApprovedEmail = ({ name, tourTitle, startDate, endDate, totalP
                                 <td style="padding: 12px 16px; font-size: 13px; color: #607267;">Időpont</td>
                                 <td style="padding: 12px 16px; font-size: 14px; color: #173327;">${formatDate(startDate)} - ${formatDate(endDate)}</td>
                             </tr>
+                            ${safePhone ? `
+                            <tr>
+                                <td style="padding: 12px 16px; font-size: 13px; color: #607267;">Telefonszám</td>
+                                <td style="padding: 12px 16px; font-size: 14px; color: #173327;">${safePhone}</td>
+                            </tr>` : ''}
                             <tr>
                                 <td style="padding: 12px 16px; font-size: 13px; color: #607267;">Fizetendő összeg</td>
                                 <td style="padding: 12px 16px; font-size: 16px; color: #059669; font-weight: 800;">${formatPrice(totalPrice)}</td>
@@ -240,9 +263,10 @@ const buildBookingApprovedEmail = ({ name, tourTitle, startDate, endDate, totalP
     return { subject, text, html };
 };
 
-const buildBookingCancelledEmail = ({ name, tourTitle, startDate, endDate }) => {
+const buildBookingCancelledEmail = ({ name, tourTitle, startDate, endDate, userPhone }) => {
     const safeName = escapeHtml(name || '');
     const safeTitle = escapeHtml(tourTitle || '');
+    const safePhone = escapeHtml(userPhone || '');
     const dateRange = formatDateRange(startDate, endDate) || '-';
     const subject = `Lejelentkezés visszaigazolás: ${safeTitle}`;
     const text = `Szia ${safeName}!\n\nA jelentkezésed törölve lett.\nTúra: ${safeTitle}\nIdőpont: ${dateRange}\n`;
@@ -264,6 +288,10 @@ const buildBookingCancelledEmail = ({ name, tourTitle, startDate, endDate }) => 
                             <div style="font-size: 15px; font-weight: 700; color: #173327;">${safeTitle}</div>
                             <div style="font-size: 13px; color: #607267; margin-top: 8px;">Időpont</div>
                             <div style="font-size: 14px; color: #173327;">${dateRange}</div>
+                            ${safePhone ? `
+                            <div style="font-size: 13px; color: #607267; margin-top: 8px;">Telefonszám</div>
+                            <div style="font-size: 14px; color: #173327;">${safePhone}</div>
+                            ` : ''}
                         </div>
                     </td>
                 </tr>
@@ -279,9 +307,10 @@ const buildBookingCancelledEmail = ({ name, tourTitle, startDate, endDate }) => 
     return { subject, text, html };
 };
 
-const buildAdminRemovedBookingEmail = ({ name, tourTitle, startDate, endDate, refundAmount = 0 }) => {
+const buildAdminRemovedBookingEmail = ({ name, tourTitle, startDate, endDate, refundAmount = 0, userPhone }) => {
     const safeName = escapeHtml(name || '');
     const safeTitle = escapeHtml(tourTitle || '');
+    const safePhone = escapeHtml(userPhone || '');
     const dateRange = formatDateRange(startDate, endDate) || '-';
     const subject = 'Törlés a túráról!';
     const refundNote = Number(refundAmount) > 0
@@ -306,6 +335,10 @@ const buildAdminRemovedBookingEmail = ({ name, tourTitle, startDate, endDate, re
                             <div style="font-size: 15px; font-weight: 700; color: #173327;">${safeTitle}</div>
                             <div style="font-size: 13px; color: #607267; margin-top: 8px;">Időpont</div>
                             <div style="font-size: 14px; color: #173327;">${dateRange}</div>
+                            ${safePhone ? `
+                            <div style="font-size: 13px; color: #607267; margin-top: 8px;">Telefonszám</div>
+                            <div style="font-size: 14px; color: #173327;">${safePhone}</div>
+                            ` : ''}
                         </div>
                         ${Number(refundAmount) > 0 ? `
                             <div style="margin-top: 16px; background: #fffbeb; border: 1px solid #fde68a; padding: 14px 16px; border-radius: 12px; color: #78350f;">
@@ -326,14 +359,15 @@ const buildAdminRemovedBookingEmail = ({ name, tourTitle, startDate, endDate, re
     return { subject, text, html };
 };
 
-const buildAdminRemovedBookingNotificationEmail = ({ adminName, userName, userEmail, tourTitle, startDate, endDate }) => {
+const buildAdminRemovedBookingNotificationEmail = ({ adminName, userName, userEmail, userPhone, tourTitle, startDate, endDate }) => {
     const safeAdmin = escapeHtml(adminName || 'Admin');
     const safeUser = escapeHtml(userName || '');
     const safeEmail = escapeHtml(userEmail || '');
+    const safePhone = escapeHtml(userPhone || '');
     const safeTitle = escapeHtml(tourTitle || '');
     const dateRange = formatDateRange(startDate, endDate) || '-';
     const subject = `Admin törlés: ${safeTitle}`;
-    const text = `Admin törlés történt.\nAdmin: ${adminName || '-'}\nFelhasználó: ${userName || '-'} (${userEmail || 'n/a'})\nTúra: ${safeTitle}\nIdőpont: ${dateRange}`;
+    const text = `Admin törlés történt.\nAdmin: ${adminName || '-'}\nFelhasználó: ${userName || '-'} (${userEmail || 'n/a'}${userPhone ? `, tel: ${userPhone}` : ''})\nTúra: ${safeTitle}\nIdőpont: ${dateRange}`;
     const html = `
         <div style="background: #f5f5f0; padding: 32px 16px; font-family: 'Trebuchet MS', 'Segoe UI', Arial, sans-serif; color: #173327;">
             <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width: 640px; margin: 0 auto; border-collapse: collapse;">
@@ -346,8 +380,13 @@ const buildAdminRemovedBookingNotificationEmail = ({ adminName, userName, userEm
                 <tr>
                     <td style="background: #fffefa; padding: 28px; border-left: 1px solid #d9dfd5; border-right: 1px solid #d9dfd5;">
                         <h2 style="margin: 0 0 12px; font-size: 22px; color: #173327;">Admin törlés: ${safeTitle}</h2>
-                        <p style="margin: 0 0 16px; color: #415b4d;">${safeAdmin} törölte ${safeUser}${safeEmail ? ` (${safeEmail})` : ''} jelentkezését.</p>
+                        <p style="margin: 0 0 16px; color: #415b4d;">${safeAdmin} törölte ${safeUser}${safeEmail ? ` (${safeEmail})` : ''}${userPhone ? `, tel: ${safePhone}` : ''} jelentkezését.</p>
                         <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="border-collapse: collapse; background: #f7f9f4; border: 1px solid #d9dfd5; border-radius: 12px;">
+                            ${safePhone ? `
+                            <tr>
+                                <td style="padding: 12px 16px; font-size: 13px; color: #607267;">Telefonszám</td>
+                                <td style="padding: 12px 16px; font-size: 14px; color: #173327; font-weight: 600;"><a href="tel:${safePhone}" style="color: #275940; text-decoration: none;">${safePhone}</a></td>
+                            </tr>` : ''}
                             <tr>
                                 <td style="padding: 12px 16px; font-size: 13px; color: #607267;">Túra</td>
                                 <td style="padding: 12px 16px; font-size: 14px; color: #173327; font-weight: 600;">${safeTitle}</td>
@@ -356,6 +395,11 @@ const buildAdminRemovedBookingNotificationEmail = ({ adminName, userName, userEm
                                 <td style="padding: 12px 16px; font-size: 13px; color: #607267;">Időpont</td>
                                 <td style="padding: 12px 16px; font-size: 14px; color: #173327;">${dateRange}</td>
                             </tr>
+                            ${safePhone ? `
+                            <tr>
+                                <td style="padding: 12px 16px; font-size: 13px; color: #607267;">Telefonszám</td>
+                                <td style="padding: 12px 16px; font-size: 14px; color: #173327;">${safePhone}</td>
+                            </tr>` : ''}
                         </table>
                     </td>
                 </tr>
@@ -371,9 +415,10 @@ const buildAdminRemovedBookingNotificationEmail = ({ adminName, userName, userEm
     return { subject, text, html };
 };
 
-const buildCancellationRequestEmail = ({ name, tourTitle, reason, startDate, endDate }) => {
+const buildCancellationRequestEmail = ({ name, tourTitle, reason, startDate, endDate, userPhone }) => {
     const safeName = escapeHtml(name || '');
     const safeTitle = escapeHtml(tourTitle || '');
+    const safePhone = escapeHtml(userPhone || '');
     const safeReason = formatMultiline(reason || '');
     const dateRange = formatDateRange(startDate, endDate) || '-';
     const subject = `Lejelentkezési kérelem rögzítve: ${safeTitle}`;
@@ -400,6 +445,11 @@ const buildCancellationRequestEmail = ({ name, tourTitle, reason, startDate, end
                                 <td style="padding: 12px 16px; font-size: 13px; color: #607267;">Időpont</td>
                                 <td style="padding: 12px 16px; font-size: 14px; color: #173327;">${dateRange}</td>
                             </tr>
+                            ${safePhone ? `
+                            <tr>
+                                <td style="padding: 12px 16px; font-size: 13px; color: #607267;">Telefonszám</td>
+                                <td style="padding: 12px 16px; font-size: 14px; color: #173327;">${safePhone}</td>
+                            </tr>` : ''}
                             <tr>
                                 <td style="padding: 12px 16px; font-size: 13px; color: #607267;">Indok</td>
                                 <td style="padding: 12px 16px; font-size: 14px; color: #173327;">${safeReason || '-'}</td>
@@ -422,9 +472,10 @@ const buildCancellationRequestEmail = ({ name, tourTitle, reason, startDate, end
     return { subject, text, html };
 };
 
-const buildCancellationRejectedEmail = ({ name, tourTitle, startDate, endDate }) => {
+const buildCancellationRejectedEmail = ({ name, tourTitle, startDate, endDate, userPhone }) => {
     const safeName = escapeHtml(name || '');
     const safeTitle = escapeHtml(tourTitle || '');
+    const safePhone = escapeHtml(userPhone || '');
     const dateRange = formatDateRange(startDate, endDate) || '-';
     const subject = `Lejelentkezési kérelem elutasítva: ${safeTitle}`;
     const text = `Szia ${safeName}!\n\nA lejelentkezési kérelmedet elutasítottuk.\nTúra: ${safeTitle}\nIdőpont: ${dateRange}\n\nHa kérdésed van, válaszolj erre az emailre.`;
@@ -450,6 +501,11 @@ const buildCancellationRejectedEmail = ({ name, tourTitle, startDate, endDate })
                                 <td style="padding: 12px 16px; font-size: 13px; color: #607267;">Időpont</td>
                                 <td style="padding: 12px 16px; font-size: 14px; color: #173327;">${dateRange}</td>
                             </tr>
+                            ${safePhone ? `
+                            <tr>
+                                <td style="padding: 12px 16px; font-size: 13px; color: #607267;">Telefonszám</td>
+                                <td style="padding: 12px 16px; font-size: 14px; color: #173327;">${safePhone}</td>
+                            </tr>` : ''}
                         </table>
                         <div style="margin-top: 18px; background: #fef2f2; border: 1px solid #fecaca; color: #991b1b; padding: 12px 16px; border-radius: 10px; font-size: 13px;">
                             Ha kérdésed van, válaszolj erre az emailre.
@@ -468,14 +524,15 @@ const buildCancellationRejectedEmail = ({ name, tourTitle, startDate, endDate })
     return { subject, text, html };
 };
 
-const buildAdminCancellationRequestEmail = ({ userName, userEmail, tourTitle, reason, startDate, endDate }) => {
+const buildAdminCancellationRequestEmail = ({ userName, userEmail, userPhone, tourTitle, reason, startDate, endDate }) => {
     const safeName = escapeHtml(userName || '');
     const safeEmail = escapeHtml(userEmail || '');
+    const safePhone = escapeHtml(userPhone || '');
     const safeTitle = escapeHtml(tourTitle || '');
     const safeReason = formatMultiline(reason || '');
     const dateRange = formatDateRange(startDate, endDate) || '-';
     const subject = `Lejelentkezési kérelem érkezett: ${safeTitle}`;
-    const text = `Lejelentkezési kérelem érkezett.\nFelhasználó: ${userName || '-'} (${userEmail || 'n/a'})\nTúra: ${safeTitle}\nIdőpont: ${dateRange}\nIndok: ${reason || '-'}`;
+    const text = `Lejelentkezési kérelem érkezett.\nFelhasználó: ${userName || '-'} (${userEmail || 'n/a'}${userPhone ? `, tel: ${userPhone}` : ''})\nTúra: ${safeTitle}\nIdőpont: ${dateRange}\nIndok: ${reason || '-'}`;
     const html = `
         <div style="background: #f5f5f0; padding: 32px 16px; font-family: 'Trebuchet MS', 'Segoe UI', Arial, sans-serif; color: #173327;">
             <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width: 640px; margin: 0 auto; border-collapse: collapse;">
@@ -488,7 +545,7 @@ const buildAdminCancellationRequestEmail = ({ userName, userEmail, tourTitle, re
                 <tr>
                     <td style="background: #fffefa; padding: 28px; border-left: 1px solid #d9dfd5; border-right: 1px solid #d9dfd5;">
                         <h2 style="margin: 0 0 12px; font-size: 22px; color: #173327;">Lejelentkezési kérelem érkezett</h2>
-                        <p style="margin: 0 0 16px; color: #415b4d;">Felhasználó: ${safeName}${safeEmail ? ` (${safeEmail})` : ''}</p>
+                        <p style="margin: 0 0 16px; color: #415b4d;">Felhasználó: ${safeName}${safeEmail ? ` (${safeEmail})` : ''}${safePhone ? `, tel: ${safePhone}` : ''}</p>
                         <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="border-collapse: collapse; background: #f7f9f4; border: 1px solid #d9dfd5; border-radius: 12px;">
                             <tr>
                                 <td style="padding: 12px 16px; font-size: 13px; color: #607267;">Túra</td>
@@ -517,13 +574,14 @@ const buildAdminCancellationRequestEmail = ({ userName, userEmail, tourTitle, re
     return { subject, text, html };
 };
 
-const buildAdminCancellationApprovedEmail = ({ userName, userEmail, tourTitle, startDate, endDate }) => {
+const buildAdminCancellationApprovedEmail = ({ userName, userEmail, userPhone, tourTitle, startDate, endDate }) => {
     const safeName = escapeHtml(userName || '');
     const safeEmail = escapeHtml(userEmail || '');
+    const safePhone = escapeHtml(userPhone || '');
     const safeTitle = escapeHtml(tourTitle || '');
     const dateRange = formatDateRange(startDate, endDate) || '-';
     const subject = `Lejelentkezés (jóváhagyva): ${safeTitle}`;
-    const text = `Lejelentkezés jóváhagyva.\nFelhasználó: ${userName || '-'} (${userEmail || 'n/a'})\nTúra: ${safeTitle}\nIdőpont: ${dateRange}`;
+    const text = `Lejelentkezés jóváhagyva.\nFelhasználó: ${userName || '-'} (${userEmail || 'n/a'}${userPhone ? `, tel: ${userPhone}` : ''})\nTúra: ${safeTitle}\nIdőpont: ${dateRange}`;
     const html = `
         <div style="background: #f5f5f0; padding: 32px 16px; font-family: 'Trebuchet MS', 'Segoe UI', Arial, sans-serif; color: #173327;">
             <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width: 640px; margin: 0 auto; border-collapse: collapse;">
@@ -536,7 +594,7 @@ const buildAdminCancellationApprovedEmail = ({ userName, userEmail, tourTitle, s
                 <tr>
                     <td style="background: #fffefa; padding: 28px; border-left: 1px solid #d9dfd5; border-right: 1px solid #d9dfd5;">
                         <h2 style="margin: 0 0 12px; font-size: 22px; color: #173327;">Lejelentkezés (jóváhagyva): ${safeTitle}</h2>
-                        <p style="margin: 0 0 16px; color: #415b4d;">${safeName}${safeEmail ? ` (${safeEmail})` : ''} lejelentkezett a túráról.</p>
+                        <p style="margin: 0 0 16px; color: #415b4d;">${safeName}${safeEmail ? ` (${safeEmail})` : ''}${safePhone ? `, tel: ${safePhone}` : ''} lejelentkezett a túráról.</p>
                         <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="border-collapse: collapse; background: #f7f9f4; border: 1px solid #d9dfd5; border-radius: 12px;">
                             <tr>
                                 <td style="padding: 12px 16px; font-size: 13px; color: #607267;">Túra</td>
@@ -561,9 +619,10 @@ const buildAdminCancellationApprovedEmail = ({ userName, userEmail, tourTitle, s
     return { subject, text, html };
 };
 
-const buildPaymentEmail = ({ name, tourTitle, amount, startDate, endDate, paymentType, totalAmount }) => {
+const buildPaymentEmail = ({ name, tourTitle, amount, startDate, endDate, paymentType, totalAmount, userPhone }) => {
     const safeName = escapeHtml(name || '');
     const safeTitle = escapeHtml(tourTitle || '');
+    const safePhone = escapeHtml(userPhone || '');
     const dateRange = formatDateRange(startDate, endDate) || '-';
     const isDeposit = paymentType === 'deposit';
     const isRemainder = paymentType === 'remainder';
@@ -606,6 +665,11 @@ const buildPaymentEmail = ({ name, tourTitle, amount, startDate, endDate, paymen
                                 <td style="padding: 12px 16px; font-size: 13px; color: #607267;">Időpont</td>
                                 <td style="padding: 12px 16px; font-size: 14px; color: #173327;">${dateRange}</td>
                             </tr>
+                            ${safePhone ? `
+                            <tr>
+                                <td style="padding: 12px 16px; font-size: 13px; color: #607267;">Telefonszám</td>
+                                <td style="padding: 12px 16px; font-size: 14px; color: #173327;">${safePhone}</td>
+                            </tr>` : ''}
                             <tr>
                                 <td style="padding: 12px 16px; font-size: 13px; color: #607267;">Összeg</td>
                                 <td style="padding: 12px 16px; font-size: 14px; color: #173327; font-weight: 600;">${formatPrice(amount)}</td>
@@ -625,8 +689,10 @@ const buildPaymentEmail = ({ name, tourTitle, amount, startDate, endDate, paymen
     return { subject, text, html };
 };
 
-const buildAdminPaymentEmail = ({ userName, tourTitle, amount, startDate, endDate, paymentType, totalAmount }) => {
+const buildAdminPaymentEmail = ({ userName, userEmail, userPhone, tourTitle, amount, startDate, endDate, paymentType, totalAmount }) => {
     const safeName = escapeHtml(userName || '');
+    const safeEmail = escapeHtml(userEmail || '');
+    const safePhone = escapeHtml(userPhone || '');
     const safeTitle = escapeHtml(tourTitle || '');
     const dateRange = formatDateRange(startDate, endDate) || '-';
     const isDeposit = paymentType === 'deposit';
@@ -739,9 +805,10 @@ const buildAdminEmail = ({ subject, message }) => {
 };
 
 
-const buildWaitlistJoinedEmail = ({ name, tourTitle, startDate, endDate }) => {
+const buildWaitlistJoinedEmail = ({ name, tourTitle, startDate, endDate, userPhone }) => {
     const safeName = escapeHtml(name || '');
     const safeTitle = escapeHtml(tourTitle || '');
+    const safePhone = escapeHtml(userPhone || '');
     const dateRange = formatDateRange(startDate, endDate) || '-';
     const subject = `Várólistára kerültél: ${safeTitle}`;
     const text = `Szia ${safeName}!\n\nA(z) ${safeTitle} túra betelt, de sikeresen felkerültél a várólistára!\nIdőpont: ${dateRange}\n\nAmennyiben megüresedik egy hely, a túravezető átmozgathat a résztvevők közé, amiről azonnal email értesítést kapsz.\n`;
@@ -793,13 +860,14 @@ const buildWaitlistJoinedEmail = ({ name, tourTitle, startDate, endDate }) => {
     return { subject, text, html };
 };
 
-const buildAdminWaitlistNotificationEmail = ({ userName, userEmail, tourTitle, startDate, endDate }) => {
+const buildAdminWaitlistNotificationEmail = ({ userName, userEmail, userPhone, tourTitle, startDate, endDate }) => {
     const safeName = escapeHtml(userName || '');
     const safeEmail = escapeHtml(userEmail || '');
+    const safePhone = escapeHtml(userPhone || '');
     const safeTitle = escapeHtml(tourTitle || '');
     const dateRange = formatDateRange(startDate, endDate) || '-';
     const subject = `Új várólistás jelentkezés: ${safeTitle}`;
-    const text = `${safeName} (${safeEmail}) feliratkozott a várólistára.\nTúra: ${safeTitle}\nIdőpont: ${dateRange}\n`;
+    const text = `${safeName} (${safeEmail}${userPhone ? `, tel: ${userPhone}` : ''}) feliratkozott a várólistára.\nTúra: ${safeTitle}\nIdőpont: ${dateRange}\n`;
     const html = `
         <div style="background: #f5f5f0; padding: 32px 16px; font-family: 'Trebuchet MS', 'Segoe UI', Arial, sans-serif; color: #173327;">
             <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width: 640px; margin: 0 auto; border-collapse: collapse;">
@@ -818,6 +886,11 @@ const buildAdminWaitlistNotificationEmail = ({ userName, userEmail, tourTitle, s
                                 <td style="padding: 12px 16px; font-size: 13px; color: #607267;">Felhasználó</td>
                                 <td style="padding: 12px 16px; font-size: 14px; color: #173327; font-weight: 600;">${safeName} (${safeEmail})</td>
                             </tr>
+                            ${safePhone ? `
+                            <tr>
+                                <td style="padding: 12px 16px; font-size: 13px; color: #607267;">Telefonszám</td>
+                                <td style="padding: 12px 16px; font-size: 14px; color: #173327; font-weight: 600;"><a href="tel:${safePhone}" style="color: #275940; text-decoration: none;">${safePhone}</a></td>
+                            </tr>` : ''}
                             <tr>
                                 <td style="padding: 12px 16px; font-size: 13px; color: #607267;">Túra</td>
                                 <td style="padding: 12px 16px; font-size: 14px; color: #173327; font-weight: 600;">${safeTitle}</td>
@@ -841,12 +914,13 @@ const buildAdminWaitlistNotificationEmail = ({ userName, userEmail, tourTitle, s
     return { subject, text, html };
 };
 
-const buildWaitlistPromotedEmail = ({ name, tourTitle, startDate, endDate, totalPrice }) => {
+const buildWaitlistPromotedEmail = ({ name, tourTitle, startDate, endDate, totalPrice, userPhone }) => {
     const safeName = escapeHtml(name || '');
     const safeTitle = escapeHtml(tourTitle || '');
+    const safePhone = escapeHtml(userPhone || '');
     const dateRange = formatDateRange(startDate, endDate) || '-';
     const subject = `🎉 Bekerültél a résztvevők közé! - ${safeTitle}`;
-    const text = `Szia ${safeName}!\n\nNagyszerű hír: felszabadult egy hely, és a túravezető átmozgatott a várólistáról a(z) ${safeTitle} túra résztvevői közé!\nIdőpont: ${dateRange}\nFizetendő összeg: ${formatPrice(totalPrice)}\n\nA helyed biztosításához a profilodban fizetheted be a részvételi díjat.\n`;
+    const text = `Szia ${safeName}!\n\nNagyszerű hír: felszabadult egy hely, és a túravezető átmozgatott a várólistáról a(z) ${safeTitle} túra résztvevői közé!\nIdőpont: ${dateRange}\n${userPhone ? `Telefonszám: ${userPhone}\n` : ''}Fizetendő összeg: ${formatPrice(totalPrice)}\n\nA helyed biztosításához a profilodban fizetheted be a részvételi díjat.\n`;
     const html = `
         <div style="background: #f5f5f0; padding: 32px 16px; font-family: 'Trebuchet MS', 'Segoe UI', Arial, sans-serif; color: #173327;">
             <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width: 640px; margin: 0 auto; border-collapse: collapse;">
@@ -875,6 +949,11 @@ const buildWaitlistPromotedEmail = ({ name, tourTitle, startDate, endDate, total
                                 <td style="padding: 12px 16px; font-size: 13px; color: #607267;">Időpont</td>
                                 <td style="padding: 12px 16px; font-size: 14px; color: #173327;">${dateRange}</td>
                             </tr>
+                            ${safePhone ? `
+                            <tr>
+                                <td style="padding: 12px 16px; font-size: 13px; color: #607267;">Telefonszám</td>
+                                <td style="padding: 12px 16px; font-size: 14px; color: #173327;">${safePhone}</td>
+                            </tr>` : ''}
                             ${totalPrice ? `
                             <tr>
                                 <td style="padding: 12px 16px; font-size: 13px; color: #607267;">Fizetendő összeg</td>

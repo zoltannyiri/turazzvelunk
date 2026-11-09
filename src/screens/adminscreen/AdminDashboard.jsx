@@ -821,7 +821,7 @@ const AdminDashboard = () => {
       });
       const data = await res.json();
       if (res.ok) {
-        toast.success(data.message || "🎉 Felhasználó sikeresen átmozgatva a résztvevők közé!");
+        toast.success(data.message || "Felhasználó sikeresen átmozgatva a résztvevők közé!");
         fetchBookings(true);
         fetchTours(true);
       } else {

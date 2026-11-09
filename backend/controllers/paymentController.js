@@ -27,9 +27,10 @@ const shouldSkipWebhook = async (event) => {
 const finalizePaidBooking = async ({ payment, booking }) => {
     try {
         const [tourRows] = await db.query('SELECT title, start_date, end_date FROM tours WHERE id = ?', [payment.tour_id]);
-        const [userRows] = await db.query('SELECT name, email FROM users WHERE id = ?', [payment.user_id]);
+        const [userRows] = await db.query('SELECT name, email, phone FROM users WHERE id = ?', [payment.user_id]);
         const title = tourRows[0]?.title || 'ismeretlen túra';
         const userName = userRows[0]?.name || 'Ismeretlen felhasználó';
+        const userPhone = userRows[0]?.phone || null;
         const isDeposit = payment.payment_type === 'deposit';
         const isRemainder = payment.payment_type === 'remainder';
         const typeLabel = isDeposit ? ' (Előleg)' : isRemainder ? ' (Hátralék)' : '';
@@ -53,12 +54,15 @@ const finalizePaidBooking = async ({ payment, booking }) => {
                 startDate: tourRows[0]?.start_date,
                 endDate: tourRows[0]?.end_date,
                 paymentType: payment.payment_type,
-                totalAmount
+                totalAmount,
+                userPhone
             });
         }
         await sendAdminPaymentNotification({
             tourId: payment.tour_id,
             userName,
+            userEmail: userRows[0]?.email || '',
+            userPhone,
             tourTitle: title,
             amount: paidAmount,
             startDate: tourRows[0]?.start_date,
@@ -357,9 +361,10 @@ exports.confirmCheckoutSession = async (req, res) => {
                     }
                     try {
                         const [tourRows] = await db.query('SELECT title, start_date, end_date FROM tours WHERE id = ?', [bookingRows[0]?.tour_id]);
-                        const [userRows] = await db.query('SELECT name, email FROM users WHERE id = ?', [user_id]);
+                        const [userRows] = await db.query('SELECT name, email, phone FROM users WHERE id = ?', [user_id]);
                         const title = tourRows[0]?.title || 'ismeretlen túra';
                         const userName = userRows[0]?.name || 'Ismeretlen felhasználó';
+                        const userPhone = userRows[0]?.phone || null;
                         await logActivity({
                             type: 'booking_paid',
                             message: `${userName} befizette a túrát: ${title}`,
@@ -384,12 +389,15 @@ exports.confirmCheckoutSession = async (req, res) => {
                                 startDate: tourRows[0]?.start_date,
                                 endDate: tourRows[0]?.end_date,
                                 paymentType: paymentTypeVal,
-                                totalAmount
+                                totalAmount,
+                                userPhone
                             });
                         }
                         await sendAdminPaymentNotification({
                             tourId: bookingRows[0]?.tour_id,
                             userName,
+                            userEmail: userRows[0]?.email || '',
+                            userPhone,
                             tourTitle: title,
                             amount: confirmedAmount,
                             startDate: tourRows[0]?.start_date,

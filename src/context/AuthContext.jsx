@@ -65,7 +65,8 @@ export const AuthProvider = ({ children }) => {
                             prev.email === data.email &&
                             prev.role === data.role &&
                             prev.name === data.name &&
-                            prev.avatar === data.avatar
+                            prev.avatar === data.avatar &&
+                            prev.phone === data.phone
                         ) {
                             return prev;
                         }

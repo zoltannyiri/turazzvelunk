@@ -128,6 +128,11 @@ const AdminUserProfileScreen = () => {
                 {profile?.name || 'Profil'}
               </h1>
               {isAdmin && <div className="text-emerald-100 font-bold mt-2">{profile?.email}</div>}
+              {isAdmin && profile?.phone && (
+                <div className="text-emerald-200 text-sm font-semibold mt-1">
+                  <a href={`tel:${profile.phone}`} className="hover:underline">{profile.phone}</a>
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -143,6 +148,20 @@ const AdminUserProfileScreen = () => {
                   <div className="flex flex-col">
                     <span className="text-gray-400 text-xs font-bold uppercase">Email</span>
                     <span className="text-emerald-950 font-bold truncate">{profile?.email || '-'}</span>
+                  </div>
+                )}
+                {isAdmin && (
+                  <div className="flex flex-col pt-4 border-t border-gray-50">
+                    <span className="text-gray-400 text-xs font-bold uppercase">Telefonszám</span>
+                    <span className="text-emerald-950 font-bold truncate">
+                      {profile?.phone ? (
+                        <a href={`tel:${profile.phone}`} className="text-emerald-700 hover:underline">
+                          {profile.phone}
+                        </a>
+                      ) : (
+                        '-'
+                      )}
+                    </span>
                   </div>
                 )}
                 <div className="flex flex-col pt-4 border-t border-gray-50">
