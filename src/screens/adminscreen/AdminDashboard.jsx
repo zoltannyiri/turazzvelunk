@@ -1779,6 +1779,7 @@ const AdminDashboard = () => {
                           <td className="py-4 pr-5">
                             <div className="font-bold text-[#173327]">{b.user_name}</div>
                             <div className="text-xs text-[#718174]">{b.email}</div>
+                            <div className="text-xs text-[#718174]">{b.user_phone}</div>
                           </td>
                           <td className="py-4 pr-5">
                             <span className={`inline-flex rounded-full border px-3 py-1.5 text-xs font-semibold ${b.status === 'confirmed' ? 'border-[#cbdcc8] bg-[#edf2e9] text-[#275940]' : b.status === 'pending' ? 'border-amber-200 bg-amber-50 text-amber-800' : b.status === 'cancelled' ? 'border-rose-200 bg-rose-50 text-rose-700' : 'border-[#d9dfd5] bg-[#f5f5f0] text-[#607267]'}`}>{getBookingStatusLabel(b)}</span>
