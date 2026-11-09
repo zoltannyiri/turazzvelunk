@@ -826,7 +826,8 @@ exports.adminDeleteBooking = async (req, res) => {
     const { id } = req.params;
     try {
         const [rows] = await db.query(
-            `SELECT b.id, b.tour_id, b.user_id, t.title AS tour_title, t.start_date, t.end_date,
+            `SELECT b.id, b.tour_id, b.user_id, b.status, b.payment_status, b.deposit_paid,
+                    t.title AS tour_title, t.start_date, t.end_date,
                     u.name AS user_name, u.email AS user_email
              FROM bookings b
              JOIN tours t ON b.tour_id = t.id
@@ -838,6 +839,32 @@ exports.adminDeleteBooking = async (req, res) => {
             return res.status(404).json({ message: "Foglalás nem található." });
         }
         const booking = rows[0];
+        if (booking.status === 'cancelled') {
+            return res.status(409).json({ message: "A jelentkezőt már eltávolították a túráról." });
+        }
+
+        const [paymentRows] = await db.query(
+            `SELECT COALESCE(SUM(amount), 0) AS paid_amount
+             FROM booking_payments
+             WHERE booking_id = ? AND status = 'paid'`,
+            [id]
+        );
+        const refundAmount = Number(paymentRows[0]?.paid_amount || 0);
+
+        await db.query(
+            `UPDATE bookings
+             SET status = 'cancelled',
+                 refund_amount = ?,
+                 refund_status = ?
+             WHERE id = ?`,
+            [refundAmount, refundAmount > 0 ? 'pending' : 'none', id]
+        );
+        await db.query(
+            `UPDATE booking_cancel_requests
+             SET status = 'approved', processed_at = NOW(), admin_id = ?
+             WHERE booking_id = ? AND status = 'pending'`,
+            [req.user.id, id]
+        );
         let adminName = 'Ismeretlen admin';
         try {
             const [adminRows] = await db.query('SELECT name FROM users WHERE id = ?', [req.user.id]);
@@ -852,28 +879,31 @@ exports.adminDeleteBooking = async (req, res) => {
         } catch (logErr) {
             console.error('Tevékenységnapló hiba:', logErr.message);
         }
-        if (booking.user_email) {
-            await sendAdminRemovedBookingEmail({
-                to: booking.user_email,
-                name: booking.user_name,
+        try {
+            if (booking.user_email) {
+                await sendAdminRemovedBookingEmail({
+                    to: booking.user_email,
+                    name: booking.user_name,
+                    tourId: booking.tour_id,
+                    tourTitle: booking.tour_title || 'ismeretlen túra',
+                    adminName,
+                    startDate: booking.start_date,
+                    endDate: booking.end_date,
+                    refundAmount
+                });
+            }
+            await sendAdminRemovedBookingNotification({
                 tourId: booking.tour_id,
-                tourTitle: booking.tour_title || 'ismeretlen túra',
                 adminName,
+                userName: booking.user_name,
+                userEmail: booking.user_email || '',
+                tourTitle: booking.tour_title || 'ismeretlen túra',
                 startDate: booking.start_date,
                 endDate: booking.end_date
             });
+        } catch (notifyErr) {
+            console.error('Eltávolítási értesítés küldési hiba:', notifyErr.message);
         }
-        await sendAdminRemovedBookingNotification({
-            tourId: booking.tour_id,
-            adminName,
-            userName: booking.user_name,
-            userEmail: booking.user_email || '',
-            tourTitle: booking.tour_title || 'ismeretlen túra',
-            startDate: booking.start_date,
-            endDate: booking.end_date
-        });
-        await db.query('DELETE FROM booking_cancel_requests WHERE booking_id = ?', [id]);
-        await db.query('DELETE FROM bookings WHERE id = ?', [id]);
         const io = req.app.get('io');
         if (io) {
             io.to(`tour:${rows[0].tour_id}`).emit('tour-chat-membership', {
@@ -882,7 +912,11 @@ exports.adminDeleteBooking = async (req, res) => {
                 status: 'removed'
             });
         }
-        res.json({ message: "Foglalás törölve." });
+        res.json({
+            message: refundAmount > 0
+                ? "A jelentkező eltávolítva. A befizetés visszatérítésre vár."
+                : "A jelentkező eltávolítva a túráról."
+        });
     } catch (err) {
         res.status(500).json({ error: err.message });
     }

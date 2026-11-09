@@ -128,13 +128,14 @@ const sendBookingCancelledEmail = async ({ to, name, tourId, tourTitle, startDat
     });
 };
 
-const sendAdminRemovedBookingEmail = async ({ to, name, tourId, tourTitle, adminName, startDate, endDate }) => {
+const sendAdminRemovedBookingEmail = async ({ to, name, tourId, tourTitle, adminName, startDate, endDate, refundAmount }) => {
     const { subject, text, html } = buildAdminRemovedBookingEmail({
         name,
         tourTitle,
         adminName,
         startDate,
-        endDate
+        endDate,
+        refundAmount
     });
     return sendMail({
         to,

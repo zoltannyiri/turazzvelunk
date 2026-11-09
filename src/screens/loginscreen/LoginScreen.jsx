@@ -1,43 +1,65 @@
-import React, { useState, useContext } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import React, { useState, useContext, useEffect } from 'react';
+import { Link, useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import { AuthContext } from '../../context/AuthContext';
 import { ArrowRight, Eye, EyeOff, Lock, Mail } from 'lucide-react';
 import { toast } from 'react-toastify';
 import AuthLayout from '../../components/AuthLayout';
+
+const getSafeRedirect = (target) => {
+  if (typeof target === 'string' && target.startsWith('/') && !target.startsWith('//')) {
+    return target;
+  }
+  return '/';
+};
 
 const LoginScreen = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [formError, setFormError] = useState('');
-  const { login } = useContext(AuthContext);
+  const { user, login } = useContext(AuthContext);
   const navigate = useNavigate();
+  const location = useLocation();
+  const [searchParams] = useSearchParams();
+
+  const rawRedirect = searchParams.get('redirect') || location.state?.from;
+  const redirectTarget = getSafeRedirect(rawRedirect);
+
+  useEffect(() => {
+    if (user) {
+      navigate(redirectTarget, { replace: true });
+    }
+  }, [user, navigate, redirectTarget]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-        const res = await fetch(`${import.meta.env.VITE_API_URL}/auth/login`, {
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password }),
-        });
-        const data = await res.json();
-        if (res.ok) {
+      });
+      const data = await res.json();
+      if (res.ok) {
         login(data);
         setFormError('');
-        navigate('/');
-        } else {
+        navigate(redirectTarget, { replace: true });
+      } else {
         const message = data.message || 'Hiba történt.';
         setFormError(message);
         toast.error(message);
-        }
+      }
     } catch (err) {
-        console.error("Bejelentkezési hiba:", err);
-        const message = 'Hiba történt.';
-        setFormError(message);
-        toast.error(message);
+      console.error("Bejelentkezési hiba:", err);
+      const message = 'Hiba történt.';
+      setFormError(message);
+      toast.error(message);
     }
-    };
+  };
+
+  const registerLink = searchParams.get('redirect')
+    ? `/register?redirect=${encodeURIComponent(searchParams.get('redirect'))}`
+    : '/register';
 
   return (
     <AuthLayout eyebrow="Visszatérés" title="Jó újra látni." description="Lépj be, és folytasd ott, ahol az utolsó kalandod véget ért.">
@@ -96,7 +118,7 @@ const LoginScreen = () => {
         </button>
       </form>
       <p className="mt-8 border-t border-[#e3e8df] pt-6 text-center text-sm text-[#607267]">
-        Még nincs fiókod? <Link to="/register" className="font-semibold text-[#275940] underline-offset-4 hover:underline">Regisztrálj</Link>
+        Még nincs fiókod? <Link to={registerLink} className="font-semibold text-[#275940] underline-offset-4 hover:underline">Regisztrálj</Link>
       </p>
     </AuthLayout>
   );

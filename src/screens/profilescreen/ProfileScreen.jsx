@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useContext, useRef } from 'react';
+import React, { useState, useEffect, useContext, useRef, useCallback } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { AuthContext } from '../../context/AuthContext';
 import { 
@@ -27,33 +27,70 @@ const ProfileScreen = () => {
     const [isEditOpen, setIsEditOpen] = useState(false);
     const [paymentProcessing, setPaymentProcessing] = useState(false);
 
-  const fetchMyBookings = () => {
+  const fetchMyBookings = useCallback(() => {
+    const token = localStorage.getItem('token');
+    if (!token) {
+      setBookings([]);
+      setLoading(false);
+      return Promise.resolve();
+    }
     return fetch(`${import.meta.env.VITE_API_URL}/bookings/my-bookings`, {
-      headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+      headers: { 'Authorization': `Bearer ${token}` }
     })
-    .then(res => res.json())
+    .then(res => {
+      if (res.status === 401 || res.status === 403) {
+        logout();
+        const redirectTarget = location.pathname + location.search;
+        navigate(`/login?redirect=${encodeURIComponent(redirectTarget)}`, {
+          replace: true,
+          state: { from: redirectTarget }
+        });
+        return [];
+      }
+      if (!res.ok) {
+        return [];
+      }
+      return res.json();
+    })
     .then(data => {
-      setBookings(data);
+      const safeData = Array.isArray(data) ? data : [];
+      setBookings(safeData);
       setLoading(false);
 
       if (paymentProcessing) {
         const targetId = paymentTargetRef.current;
-        const paid = Array.isArray(data)
-          ? targetId
-            ? data.some((b) => Number(b.id) === Number(targetId) && b.payment_status === 'paid')
-            : data.some((b) => b.payment_status === 'paid')
-          : false;
+        const paid = targetId
+          ? safeData.some((b) => Number(b.id) === Number(targetId) && b.payment_status === 'paid')
+          : safeData.some((b) => b.payment_status === 'paid');
         if (paid) {
           setPaymentProcessing(false);
           paymentTargetRef.current = null;
         }
       }
+    })
+    .catch(() => {
+      setBookings([]);
+      setLoading(false);
     });
-  };
+  }, [location.pathname, location.search, logout, navigate, paymentProcessing]);
 
   useEffect(() => {
-    fetchMyBookings();
-  }, []);
+    const params = new URLSearchParams(location.search);
+    const isPaymentReturn = !!params.get('payment') || paymentProcessing;
+
+    if (!authLoading && !user && !isPaymentReturn) {
+      const redirectTarget = location.pathname + location.search;
+      navigate(`/login?redirect=${encodeURIComponent(redirectTarget)}`, {
+        replace: true,
+        state: { from: redirectTarget }
+      });
+      return;
+    }
+
+    if (user) {
+      fetchMyBookings();
+    }
+  }, [authLoading, user, paymentProcessing, location.pathname, location.search, navigate, fetchMyBookings]);
 
   useEffect(() => {
     if (user?.role !== 'admin') {
@@ -84,15 +121,17 @@ const ProfileScreen = () => {
     };
   }, [user?.role]);
 
-  const createdTourIds = new Set(createdTours.map((tour) => Number(tour.tour_id)));
+  const safeBookings = Array.isArray(bookings) ? bookings : [];
+  const safeCreatedTours = Array.isArray(createdTours) ? createdTours : [];
+  const createdTourIds = new Set(safeCreatedTours.map((tour) => Number(tour.tour_id)));
   const profileTours = [
-    ...bookings.map((booking) => ({
+    ...safeBookings.map((booking) => ({
       ...booking,
       profile_kind: 'booking',
       is_created_by_me: createdTourIds.has(Number(booking.tour_id))
     })),
-    ...createdTours
-      .filter((tour) => !bookings.some((booking) => Number(booking.tour_id) === Number(tour.tour_id)))
+    ...safeCreatedTours
+      .filter((tour) => !safeBookings.some((booking) => Number(booking.tour_id) === Number(tour.tour_id)))
       .map((tour) => ({
         ...tour,
         id: null,
@@ -261,7 +300,7 @@ const ProfileScreen = () => {
   if (!user) {
     return (
       <div className="min-h-[60vh] flex items-center justify-center">
-        <div className="text-slate-500 font-bold">Kérlek jelentkezz be.</div>
+        <div className="animate-spin h-10 w-10 border-4 border-[#275940] border-t-transparent rounded-full" />
       </div>
     );
   }
@@ -351,7 +390,7 @@ const ProfileScreen = () => {
             </div>
             <div className="rounded-xl border border-[#cbdcc8] bg-[#e8eee4] p-6">
               <Mountain className="mb-5 text-[#477258]" size={26} strokeWidth={1.5} />
-              <div className="font-serif text-5xl leading-none">{bookings.filter(b => !['cancelled', 'expired'].includes(b.status)).length}</div>
+              <div className="font-serif text-5xl leading-none">{safeBookings.filter(b => !['cancelled', 'expired'].includes(b.status)).length}</div>
               <div className="mt-2 text-sm font-semibold text-[#477258]">Aktív jelentkezés</div>
             </div>
           </aside>

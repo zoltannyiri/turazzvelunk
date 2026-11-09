@@ -587,13 +587,13 @@ const AdminDashboard = () => {
   }, [toursByCategory]);
 
   const getBookingStatusLabel = (booking) => {
+    if (booking?.status === 'cancelled') return 'Lemondva';
+    if (booking?.status === 'expired') return 'Lejárt';
     if (booking?.payment_status === 'paid') return 'Fizetve';
     if (booking?.deposit_paid) return 'Előleg fizetve';
     if (booking?.status === 'confirmed') return 'Jelentkezve';
     if (booking?.status === 'pending') return 'Jóváhagyásra vár';
     if (booking?.status === 'waitlist') return 'Várólistán';
-    if (booking?.status === 'expired') return 'Lejárt';
-    if (booking?.status === 'cancelled') return 'Lemondva';
     return booking?.status || '';
   };
 
@@ -834,7 +834,7 @@ const AdminDashboard = () => {
 
   const handleAdminRemoveBooking = async (bookingId) => {
     if (deletingBookingIds.includes(bookingId)) return;
-    if (!window.confirm("Biztosan eltávolítod a túráról?")) return;
+    if (!window.confirm("Biztosan eltávolítod a túráról? A jelentkezés és a fizetési előzmények megmaradnak.")) return;
     setDeletingBookingIds(prev => [...prev, bookingId]);
     try {
     const res = await fetch(`${import.meta.env.VITE_API_URL}/bookings/admin/${bookingId}`,
@@ -845,9 +845,9 @@ const AdminDashboard = () => {
     );
     const data = await res.json();
     if (res.ok) {
-      toast.success(data.message || 'Törölve.');
-      setBookings(prev => prev.filter(b => b.id !== bookingId));
-      setCancelRequests(prev => prev.filter(r => r.booking_id !== bookingId));
+      toast.success(data.message || 'A jelentkező eltávolítva a túráról.');
+      setBookings(prev => prev.map(b => b.id === bookingId ? { ...b, status: 'cancelled' } : b));
+      await Promise.all([fetchBookings(true), fetchCancelRequests(true)]);
     } else {
       toast.error(data.message || 'Hiba történt.');
     }
@@ -1104,7 +1104,7 @@ const AdminDashboard = () => {
           equipment_id: Number(item.id),
           price: parsePriceInput(newTour.equipment_prices?.[item.id]),
           quantity: Math.max(1, Number(newTour.equipment_quantities?.[item.id] || 1)),
-          is_full_rental: Boolean(newTour.equipment_full_rental?.[item.id]) ? 1 : 0
+          is_full_rental: newTour.equipment_full_rental?.[item.id] ? 1 : 0
         }))
     };
     delete payload.equipment_quantities;
@@ -1543,7 +1543,8 @@ const AdminDashboard = () => {
                         {isCategoryExpanded && (
                           <div className="grid gap-6 px-2 pb-2">
                             {items.map((tour) => {
-                              const participants = groupedBookings[tour.id]?.participants || [];
+                              const participants = (groupedBookings[tour.id]?.participants || [])
+                                .filter(p => !['cancelled', 'expired'].includes(p.status));
                               const pendingCount = participants.filter(p => p.status === 'pending').length;
                               const confirmedCount = participants.filter(p => p.status === 'confirmed').length;
                               const saturation = tour.max_participants > 0
@@ -1678,18 +1679,10 @@ const AdminDashboard = () => {
                                                         Jóváhagyás
                                                       </button>
                                                     ) : null}
-                                                    {p.status === 'confirmed' ? (
-                                                      <button 
-                                                        onClick={(e) => { e.stopPropagation(); updateStatus(p.id, 'cancelled'); }}
-                                                        className="bg-amber-500 text-white text-[10px] font-black px-4 py-2 rounded-xl hover:bg-amber-600 transition"
-                                                      >
-                                                        Törlés
-                                                      </button>
-                                                    ) : null}
                                                     <button disabled={deletingBookingIds.includes(p.id)} aria-busy={deletingBookingIds.includes(p.id)} 
                                                       onClick={(e) => { e.stopPropagation(); handleAdminRemoveBooking(p.id); }}
                                                       className="disabled:opacity-60 disabled:cursor-wait bg-red-50 text-red-600 text-[10px] font-black px-4 py-2 rounded-xl hover:bg-red-500 hover:text-white transition"
-                                                    >{deletingBookingIds.includes(p.id) ? 'Törlés…' : <> Eltávolítás </>}</button>
+                                                    >{deletingBookingIds.includes(p.id) ? 'Eltávolítás…' : <> Eltávolítás a túráról </>}</button>
                                                   </div>
                                                 </td>
                                               </tr>
@@ -1800,10 +1793,12 @@ const AdminDashboard = () => {
                                   ELFOGADÁS
                                 </button>
                               )}
-                              <button disabled={deletingBookingIds.includes(b.id)} aria-busy={deletingBookingIds.includes(b.id)}
-                                onClick={() => handleAdminRemoveBooking(b.id)}
-                                className="disabled:opacity-60 disabled:cursor-wait bg-red-500/10 text-red-500 text-[10px] font-semibold px-4 py-2 rounded-xl hover:bg-red-500 hover:text-white transition"
-                              >{deletingBookingIds.includes(b.id) ? 'Törlés…' : <> TÖRLÉS </>}</button>
+                              {!['cancelled', 'expired'].includes(b.status) && (
+                                <button disabled={deletingBookingIds.includes(b.id)} aria-busy={deletingBookingIds.includes(b.id)}
+                                  onClick={() => handleAdminRemoveBooking(b.id)}
+                                  className="disabled:opacity-60 disabled:cursor-wait bg-red-500/10 text-red-500 text-[10px] font-semibold px-4 py-2 rounded-xl hover:bg-red-500 hover:text-white transition"
+                                >{deletingBookingIds.includes(b.id) ? 'Eltávolítás…' : <> Eltávolítás a túráról </>}</button>
+                              )}
                             </div>
                           </td>
                         </tr>
@@ -1961,7 +1956,7 @@ const AdminDashboard = () => {
                                           className="disabled:opacity-60 disabled:cursor-wait p-2 bg-rose-50 hover:bg-rose-500 text-rose-600 hover:text-white rounded-lg border border-rose-200 transition cursor-pointer"
                                           title="Eltávolítás a várólistáról"
                                         >
-                                          {deletingBookingIds.includes(w.id) ? '...' : <Trash2 size={14} />}
+                                          {deletingBookingIds.includes(w.id) ? '…' : <Trash2 size={14} />}
                                         </button>
                                       </div>
                                     </div>
@@ -1975,7 +1970,7 @@ const AdminDashboard = () => {
                                   <h4 className="text-xs font-semibold uppercase tracking-wider text-[#275940] flex items-center gap-1.5">
                                     <Users size={14} /> Jelenlegi résztvevők ({t.confirmedOrPending.length} fő)
                                   </h4>
-                                  <span className="text-[10px] text-[#718174] font-medium">Helyfelszabadítás törléssel</span>
+                                  <span className="text-[10px] text-[#718174] font-medium">Eltávolítással hely szabadul fel</span>
                                 </div>
                                 <div className="space-y-2.5 max-h-[360px] overflow-y-auto pr-1">
                                   {t.confirmedOrPending.length === 0 ? (
@@ -2016,10 +2011,10 @@ const AdminDashboard = () => {
                                           className="disabled:opacity-60 disabled:cursor-wait px-2.5 py-1.5 bg-rose-50 hover:bg-rose-500 text-rose-600 hover:text-white rounded-lg text-[11px] font-semibold border border-rose-200 transition flex items-center gap-1 shrink-0 cursor-pointer"
                                           title="Résztvevő törlése a túráról a hely felszabadításához"
                                         >
-                                          {deletingBookingIds.includes(p.id) ? '...' : (
+                                          {deletingBookingIds.includes(p.id) ? 'Eltávolítás…' : (
                                             <>
                                               <UserMinus size={12} />
-                                              Törlés
+                                              Eltávolítás
                                             </>
                                           )}
                                         </button>
@@ -2293,15 +2288,15 @@ const AdminDashboard = () => {
                                             <span className="text-xs font-semibold text-[#526b59] bg-[#e8eee4] px-2.5 py-1 rounded-md border border-[#cbd8c7]">
                                               {getBookingStatusLabel(booking)}
                                             </span>
-                                            <button
+                                            {!['cancelled', 'expired'].includes(booking.status) && <button
                                               type="button"
                                               disabled={deletingBookingIds.includes(booking.id)}
                                               aria-busy={deletingBookingIds.includes(booking.id)}
                                               onClick={() => handleAdminRemoveBooking(booking.id)}
                                               className="disabled:opacity-60 disabled:cursor-wait px-2.5 py-1.5 rounded-lg bg-rose-50 hover:bg-rose-500 text-rose-600 hover:text-white border border-rose-200 text-xs font-semibold uppercase tracking-wider transition cursor-pointer"
                                             >
-                                              {deletingBookingIds.includes(booking.id) ? '...' : 'Törlés a túráról'}
-                                            </button>
+                                              {deletingBookingIds.includes(booking.id) ? 'Eltávolítás…' : 'Eltávolítás a túráról'}
+                                            </button>}
                                           </div>
                                         </div>
                                       ))}

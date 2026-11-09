@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import { ArrowRight, Eye, EyeOff, Lock, Mail, Phone, User } from 'lucide-react';
 import { toast } from 'react-toastify';
 import AuthLayout from '../../components/AuthLayout';
@@ -11,6 +11,10 @@ const RegisterScreen = () => {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [formError, setFormError] = useState('');
   const navigate = useNavigate();
+  const location = useLocation();
+  const [searchParams] = useSearchParams();
+  const rawRedirect = searchParams.get('redirect') || location.state?.from;
+  const redirectTarget = typeof rawRedirect === 'string' && rawRedirect.startsWith('/') && !rawRedirect.startsWith('//') ? rawRedirect : '';
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -49,7 +53,7 @@ const RegisterScreen = () => {
       if (res.ok) {
         setFormError('');
         toast.success('Sikeres regisztráció! Most már bejelentkezhetsz.');
-        navigate('/login');
+        navigate(redirectTarget ? `/login?redirect=${encodeURIComponent(redirectTarget)}` : '/login');
       } else {
         const message = data.message || 'Hiba történt.';
         setFormError(message);
@@ -175,7 +179,7 @@ const RegisterScreen = () => {
         </button>
       </form>
       <p className="mt-7 border-t border-[#e3e8df] pt-5 text-center text-sm text-[#607267]">
-        Már van fiókod? <Link to="/login" className="font-semibold text-[#275940] underline-offset-4 hover:underline">Jelentkezz be</Link>
+        Már van fiókod? <Link to={redirectTarget ? `/login?redirect=${encodeURIComponent(redirectTarget)}` : "/login"} className="font-semibold text-[#275940] underline-offset-4 hover:underline">Jelentkezz be</Link>
       </p>
     </AuthLayout>
   );

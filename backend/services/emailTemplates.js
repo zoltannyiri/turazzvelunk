@@ -279,12 +279,15 @@ const buildBookingCancelledEmail = ({ name, tourTitle, startDate, endDate }) => 
     return { subject, text, html };
 };
 
-const buildAdminRemovedBookingEmail = ({ name, tourTitle, startDate, endDate }) => {
+const buildAdminRemovedBookingEmail = ({ name, tourTitle, startDate, endDate, refundAmount = 0 }) => {
     const safeName = escapeHtml(name || '');
     const safeTitle = escapeHtml(tourTitle || '');
     const dateRange = formatDateRange(startDate, endDate) || '-';
     const subject = 'Törlés a túráról!';
-    const text = `Szia ${safeName}!\n\nTörölve lettél a túráról: ${safeTitle}\nIdőpont: ${dateRange}\n`;
+    const refundNote = Number(refundAmount) > 0
+        ? `\nA befizetett ${formatPrice(refundAmount)} visszatérítése feldolgozásra vár.\n`
+        : '';
+    const text = `Szia ${safeName}!\n\nTörölve lettél a túráról: ${safeTitle}\nIdőpont: ${dateRange}\n${refundNote}`;
     const html = `
         <div style="background: #f5f5f0; padding: 32px 16px; font-family: 'Trebuchet MS', 'Segoe UI', Arial, sans-serif; color: #173327;">
             <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width: 640px; margin: 0 auto; border-collapse: collapse;">
@@ -304,6 +307,11 @@ const buildAdminRemovedBookingEmail = ({ name, tourTitle, startDate, endDate }) 
                             <div style="font-size: 13px; color: #607267; margin-top: 8px;">Időpont</div>
                             <div style="font-size: 14px; color: #173327;">${dateRange}</div>
                         </div>
+                        ${Number(refundAmount) > 0 ? `
+                            <div style="margin-top: 16px; background: #fffbeb; border: 1px solid #fde68a; padding: 14px 16px; border-radius: 12px; color: #78350f;">
+                                A befizetett <strong>${formatPrice(refundAmount)}</strong> visszatérítése feldolgozásra vár.
+                            </div>
+                        ` : ''}
                     </td>
                 </tr>
                 <tr>
