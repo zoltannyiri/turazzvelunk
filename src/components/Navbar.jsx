@@ -22,6 +22,9 @@ const Navbar = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const avatarSrc = user?.avatar_url
+    ? `${import.meta.env.VITE_API_URL?.replace(/\/api\/?$/, '') || ''}${user.avatar_url}`
+    : null;
 
   const handleLogout = () => {
     logout();
@@ -82,7 +85,11 @@ const Navbar = () => {
               <NotificationsBell />
               <Link to="/profile" className="ml-1 flex items-center gap-2 border-l border-[#d9dfd5] py-0.5 pr-2 pl-3 max-[620px]:hidden">
                 <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#dfeadd] font-serif text-sm text-[#275940]">
-                  {user.name?.charAt(0)?.toUpperCase() || '?'}
+                  {avatarSrc ? (
+                    <img src={avatarSrc} alt={`${user.name} profilképe`} className="h-8 w-8 rounded-full object-cover" />
+                  ) : (
+                    user.name?.charAt(0)?.toUpperCase() || '?'
+                  )}
                 </span>
                 <span className="flex max-w-28 flex-col max-[1180px]:hidden">
                   <strong className="truncate text-xs font-bold text-[#21392a]">{user.name}</strong>
@@ -128,7 +135,11 @@ const Navbar = () => {
           {!loading && user && (
             <div className="mt-3 flex items-center justify-between gap-4 border-t border-[#d9dfd5] px-1 pt-4">
               <Link to="/profile" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center gap-2">
-                <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-[#dfeadd] font-serif text-sm text-[#275940]">{user.name?.charAt(0)?.toUpperCase() || '?'}</span>
+                {avatarSrc ? (
+                  <img src={avatarSrc} alt={`${user.name} profilképe`} className="h-8 w-8 rounded-full object-cover" />
+                ) : (
+                  <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-[#dfeadd] font-serif text-sm text-[#275940]">{user.name?.charAt(0)?.toUpperCase() || '?'}</span>
+                )}
                 <span className="flex flex-col"><strong className="text-xs">{user.name}</strong><small className="text-[10px] text-[#78877c]">Profil megnyitása</small></span>
               </Link>
               <button type="button" onClick={handleLogout} className="inline-flex items-center gap-1 text-xs font-bold text-[#8f5145]"><LogOut size={17} /> Kijelentkezés</button>
