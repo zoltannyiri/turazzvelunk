@@ -176,6 +176,19 @@ exports.getMyCreatedTours = async (req, res) => {
     }
 };
 
+exports.getCreatedToursByUser = async (req, res) => {
+    try {
+        const [rows] = await db.query(
+            `SELECT id AS tour_id, title, location, image_url, price, start_date, end_date, category, subcategory
+             FROM tours WHERE created_by = ? ORDER BY start_date DESC, id DESC`,
+            [req.params.userId]
+        );
+        res.json(rows);
+    } catch (err) {
+        res.status(500).json({ message: 'A létrehozott túrák nem tölthetők be.' });
+    }
+};
+
 exports.getTourEquipmentOptions = async (req, res) => {
     const { id } = req.params;
     try {

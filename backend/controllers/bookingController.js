@@ -1025,8 +1025,11 @@ exports.getBookingsByUserId = async (req, res) => {
     const { userId } = req.params;
     try {
         const [rows] = await db.query(
-            `SELECT b.id, b.status, b.payment_status, b.booked_at, b.tour_id,
-                    t.title, t.location, t.start_date, t.end_date
+            `SELECT b.id, b.status, b.payment_status, b.booked_at, b.paid_at, b.tour_id,
+                    b.extra_price, b.total_price, b.refund_amount, b.refund_status,
+                    b.deposit_paid, b.deposit_paid_at,
+                    t.title, t.location, t.start_date, t.end_date, t.image_url, t.price,
+                    t.deposit_amount, t.deposit_deadline
              FROM bookings b
              JOIN tours t ON b.tour_id = t.id
              WHERE b.user_id = ?

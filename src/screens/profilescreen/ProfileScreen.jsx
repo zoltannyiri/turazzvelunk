@@ -143,7 +143,11 @@ const ProfileScreen = () => {
         total_price: tour.price,
         is_created_by_me: true
       }))
-  ];
+  ].sort((a, b) => {
+    const dateA = new Date(a.booked_at || 0).getTime();
+    const dateB = new Date(b.booked_at || 0).getTime();
+    return (Number.isFinite(dateB) ? dateB : 0) - (Number.isFinite(dateA) ? dateA : 0);
+  });
 
   useEffect(() => {
     const params = new URLSearchParams(location.search);
