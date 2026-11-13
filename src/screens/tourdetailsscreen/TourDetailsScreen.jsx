@@ -1991,6 +1991,7 @@ const TourDetailsScreen = () => {
                     ) : (
                       chatMessages.map((msg) => {
                         const isMine = user && msg.user_id === user.id;
+                        const avatarUrl = msg.avatarUrl || (isMine ? user?.avatar_url : null);
                         const initials = msg.user_name
                           ? msg.user_name.split(' ').map((p) => p[0]).slice(0, 2).join('')
                           : '?';
@@ -1999,15 +2000,15 @@ const TourDetailsScreen = () => {
                           <div key={msg.id} className={`flex w-full min-w-0 ${isMine ? 'justify-end' : 'justify-start'}`}>
                             <div className={`flex items-end gap-2.5 min-w-0 max-w-[85%] sm:max-w-[76%] ${isMine ? 'flex-row-reverse' : 'flex-row'}`}>
                               {/* Avatar */}
-                              <div className="w-8 h-8 shrink-0 rounded-full bg-[#c8dcc2] text-[#2a4d38] font-black text-xs flex items-center justify-center overflow-hidden shadow-sm">
-                                {isMine && user?.avatar_url ? (
+                              <div className="relative w-8 h-8 shrink-0 rounded-full bg-[#c8dcc2] text-[#2a4d38] font-black text-xs flex items-center justify-center overflow-hidden shadow-sm">
+                                <span>{initials}</span>
+                                {avatarUrl && (
                                   <img
-                                    src={`${avatarBase}${user.avatar_url}`}
-                                    alt={user?.name || 'avatar'}
-                                    className="w-full h-full object-cover"
+                                    src={/^https?:\/\//i.test(avatarUrl) ? avatarUrl : `${avatarBase}${avatarUrl}`}
+                                    alt={msg.user_name || 'avatar'}
+                                    className="absolute inset-0 w-full h-full object-cover"
+                                    onError={(event) => { event.currentTarget.style.display = 'none'; }}
                                   />
-                                ) : (
-                                  initials
                                 )}
                               </div>
                               {/* Buborék */}

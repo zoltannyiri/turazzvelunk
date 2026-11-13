@@ -21,7 +21,7 @@ exports.getChatMessages = async (req, res) => {
 
         const [rows] = await db.query(
             `SELECT m.id, m.tour_id, m.user_id, m.message, m.created_at,
-                    u.name AS user_name
+                    u.name AS user_name, u.avatar_url AS avatarUrl
              FROM tour_chat_messages m
              JOIN users u ON m.user_id = u.id
              WHERE m.tour_id = ?
@@ -47,6 +47,10 @@ exports.createChatMessage = async (req, res) => {
             return res.status(403).json({ message: 'Nincs jogosultság a csevegéshez.' });
         }
 
+        const [userRows] = await db.query(
+            'SELECT name, avatar_url FROM users WHERE id = ?',
+            [req.user.id]
+        );
         const cleanMessage = message.trim();
         const [result] = await db.query(
             'INSERT INTO tour_chat_messages (tour_id, user_id, message) VALUES (?, ?, ?)',
@@ -57,7 +61,8 @@ exports.createChatMessage = async (req, res) => {
             id: result.insertId,
             tour_id: Number(tourId),
             user_id: req.user.id,
-            user_name: req.user.name,
+            user_name: userRows[0]?.name || req.user.name,
+            avatarUrl: userRows[0]?.avatar_url || null,
             message: cleanMessage,
             created_at: new Date().toISOString()
         };
