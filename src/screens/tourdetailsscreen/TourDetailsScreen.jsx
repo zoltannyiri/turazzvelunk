@@ -433,6 +433,10 @@ const TourDetailsScreen = () => {
     ? equipmentOptions.filter((item) => selectedEquipmentIds.some((equipmentId) => Number(equipmentId) === Number(item.id)))
     : equipmentOptions;
   const avatarBase = (import.meta.env.VITE_API_URL || '').replace(/\/api\/?$/, '');
+  const getAvatarUrl = (url) => {
+    if (!url) return '';
+    return /^https?:\/\//i.test(url) ? url : `${avatarBase}${url}`;
+  };
   const basePrice = Number(tour?.price || 0);
   const extraPrice = selectedEquipmentIds.reduce((sum, equipmentId) => {
     const option = equipmentOptions.find((item) => Number(item.id) === Number(equipmentId));
@@ -1495,17 +1499,17 @@ const TourDetailsScreen = () => {
                                 {/* Top User Bar */}
                                 <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between border-b border-[#eef3ec] pb-4">
                                   <div className="flex items-start gap-3.5">
-                                    {b.avatar_url ? (
-                                      <img
-                                        src={b.avatar_url}
-                                        alt={b.user_name}
-                                        className="h-11 w-11 rounded-full object-cover border border-[#c4dac2]"
-                                      />
-                                    ) : (
-                                      <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[#e8efe7] text-sm font-bold text-[#275940]">
-                                        {b.user_name ? b.user_name.slice(0, 2).toUpperCase() : 'U'}
-                                      </div>
-                                    )}
+                                    <div className="relative h-11 w-11 shrink-0 overflow-hidden rounded-full border border-[#c4dac2] bg-[#e8efe7] flex items-center justify-center text-sm font-bold text-[#275940]">
+                                      <span>{b.user_name ? b.user_name.slice(0, 2).toUpperCase() : 'U'}</span>
+                                      {b.avatar_url && (
+                                        <img
+                                          src={getAvatarUrl(b.avatar_url)}
+                                          alt={b.user_name}
+                                          className="absolute inset-0 h-full w-full object-cover"
+                                          onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                                        />
+                                      )}
+                                    </div>
                                     <div>
                                       <h3 className="font-semibold text-base text-[#173327]">{b.user_name}</h3>
                                       <div className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-[#5e755f]">
@@ -2020,7 +2024,7 @@ const TourDetailsScreen = () => {
                                 <span>{initials}</span>
                                 {avatarUrl && (
                                   <img
-                                    src={/^https?:\/\//i.test(avatarUrl) ? avatarUrl : `${avatarBase}${avatarUrl}`}
+                                    src={getAvatarUrl(avatarUrl)}
                                     alt={msg.user_name || 'avatar'}
                                     className="absolute inset-0 w-full h-full object-cover"
                                     onError={(event) => { event.currentTarget.style.display = 'none'; }}
@@ -3551,15 +3555,15 @@ const TourDetailsScreen = () => {
                         <div className="flex items-center justify-between gap-3 bg-gradient-to-r from-[#eef4ec] to-[#f4f7f2] border-2 border-[#b8cdb1] rounded-2xl p-4 shadow-xs transition group">
                           <div className="flex items-center gap-3.5 min-w-0">
                             <div className="relative shrink-0">
-                              <div className="w-12 h-12 rounded-full bg-[#275940] text-white font-black text-sm flex items-center justify-center overflow-hidden shadow-sm ring-2 ring-[#477258]/30">
-                                {effectiveOrganizer.avatar_url ? (
+                              <div className="relative w-12 h-12 rounded-full bg-[#275940] text-white font-black text-sm flex items-center justify-center overflow-hidden shadow-sm ring-2 ring-[#477258]/30">
+                                <span>{initials}</span>
+                                {effectiveOrganizer.avatar_url && (
                                   <img
-                                    src={`${avatarBase}${effectiveOrganizer.avatar_url}`}
+                                    src={getAvatarUrl(effectiveOrganizer.avatar_url)}
                                     alt={effectiveOrganizer.user_name}
-                                    className="w-full h-full object-cover"
+                                    className="absolute inset-0 w-full h-full object-cover"
+                                    onError={(e) => { e.currentTarget.style.display = 'none'; }}
                                   />
-                                ) : (
-                                  initials
                                 )}
                               </div>
                               <div className="absolute -bottom-1 -right-1 bg-[#173327] text-white p-1 rounded-full shadow-sm" title="Túravezető">
@@ -3628,15 +3632,15 @@ const TourDetailsScreen = () => {
                               className="flex items-center justify-between gap-3 bg-[#f7f9f5] border border-[#dce5d8] hover:border-[#b8cdb1] rounded-2xl p-3.5 transition group"
                             >
                               <div className="flex items-center gap-3 min-w-0">
-                                <div className="w-10 h-10 shrink-0 rounded-full bg-[#c8dcc2] text-[#2a4d38] font-black text-xs flex items-center justify-center overflow-hidden shadow-sm ring-2 ring-white">
-                                  {p.avatar_url ? (
+                                <div className="relative w-10 h-10 shrink-0 rounded-full bg-[#c8dcc2] text-[#2a4d38] font-black text-xs flex items-center justify-center overflow-hidden shadow-sm ring-2 ring-white">
+                                  <span>{initials}</span>
+                                  {p.avatar_url && (
                                     <img
-                                      src={`${avatarBase}${p.avatar_url}`}
+                                      src={getAvatarUrl(p.avatar_url)}
                                       alt={p.user_name}
-                                      className="w-full h-full object-cover"
+                                      className="absolute inset-0 w-full h-full object-cover"
+                                      onError={(e) => { e.currentTarget.style.display = 'none'; }}
                                     />
-                                  ) : (
-                                    initials
                                   )}
                                 </div>
                                 <div className="min-w-0">
