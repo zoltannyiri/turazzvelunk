@@ -1,7 +1,12 @@
 const db = require('../config/db');
 
 const isChatAllowed = async (tourId, user) => {
-    if (user?.role === 'admin') {
+    if (!user) return false;
+    if (user.role === 'admin') {
+        return true;
+    }
+    const [tourRows] = await db.query('SELECT created_by FROM tours WHERE id = ?', [tourId]);
+    if (tourRows.length > 0 && tourRows[0].created_by && Number(tourRows[0].created_by) === Number(user.id)) {
         return true;
     }
     const [rows] = await db.query(

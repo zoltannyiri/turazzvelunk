@@ -110,7 +110,7 @@ exports.getAllTours = async (req, res) => {
             SELECT t.id, t.title, t.location, t.price, t.duration, t.difficulty,
                    t.image_url, t.description, t.start_date, t.end_date,
                    t.max_participants, t.category, t.subcategory,
-                   t.deposit_amount, t.deposit_deadline,
+                   t.deposit_amount, t.deposit_deadline, t.created_by,
                    COALESCE(b.booked_count, 0) AS booked_count,
                    COALESCE(w.waitlist_count, 0) AS waitlist_count
             FROM tours t
@@ -142,10 +142,12 @@ exports.getTourById = async (req, res) => {
             SELECT t.id, t.title, t.location, t.price, t.duration, t.difficulty,
             t.image_url, t.description, t.start_date, t.end_date,
             t.max_participants, t.category, t.subcategory,
-            t.deposit_amount, t.deposit_deadline,
+            t.deposit_amount, t.deposit_deadline, t.created_by,
+            u.name AS creator_name, u.avatar_url AS creator_avatar_url,
             (SELECT COUNT(*) FROM bookings WHERE tour_id = t.id AND status IN ('pending', 'confirmed')) as booked_count,
             (SELECT COUNT(*) FROM bookings WHERE tour_id = t.id AND status = 'waitlist') as waitlist_count
-            FROM tours t 
+            FROM tours t
+            LEFT JOIN users u ON t.created_by = u.id
             WHERE t.id = ?
         `, [req.params.id]);
 

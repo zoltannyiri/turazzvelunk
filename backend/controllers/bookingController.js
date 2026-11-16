@@ -624,11 +624,26 @@ exports.getBookingStatusByTourId = async (req, res) => {
 exports.getTourParticipants = async (req, res) => {
     const { tourId } = req.params;
     try {
+        const [tourRows] = await db.query(
+            `SELECT t.id, t.created_by, u.name AS organizer_name, u.avatar_url AS organizer_avatar_url
+             FROM tours t
+             LEFT JOIN users u ON t.created_by = u.id
+             WHERE t.id = ?`,
+            [tourId]
+        );
+
+        if (tourRows.length === 0) {
+            return res.status(404).json({ message: 'A túra nem található.' });
+        }
+
+        const tour = tourRows[0];
+        const isOrganizer = req.user?.id && tour.created_by && Number(tour.created_by) === Number(req.user.id);
+
         const [allowedRows] = await db.query(
             'SELECT id FROM bookings WHERE tour_id = ? AND user_id = ? AND status = ?',
             [tourId, req.user.id, 'confirmed']
         );
-        if (req.user?.role !== 'admin' && allowedRows.length === 0) {
+        if (req.user?.role !== 'admin' && !isOrganizer && allowedRows.length === 0) {
             return res.status(403).json({ message: 'Nincs jogosultság.' });
         }
 
@@ -640,7 +655,18 @@ exports.getTourParticipants = async (req, res) => {
              ORDER BY u.name ASC`,
             [tourId, 'confirmed']
         );
-        res.json(rows);
+
+        const organizer = tour.created_by ? {
+            user_id: tour.created_by,
+            user_name: tour.organizer_name || 'Túravezető',
+            avatar_url: tour.organizer_avatar_url || null,
+            is_organizer: true
+        } : null;
+
+        res.json({
+            organizer,
+            participants: rows
+        });
     } catch (err) {
         res.status(500).json({ error: err.message });
     }

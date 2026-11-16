@@ -5,7 +5,7 @@ import {
   Plus, Minus, AlertTriangle,
   Clock, MapPin, Calendar, Users, ArrowLeft, 
   Zap, Info, Share2, ShieldCheck, CheckCircle2, UserMinus, ThumbsUp, X, XCircle, Edit3, Trash2, ChevronDown, ChevronUp,
-  Search, Phone, Mail, CreditCard, AlertCircle, RefreshCw, Check, Package
+  Search, Phone, Mail, CreditCard, AlertCircle, RefreshCw, Check, Package, Compass
 } from 'lucide-react';
 import { toast } from 'react-toastify';
 import { io } from 'socket.io-client';
@@ -113,6 +113,7 @@ const TourDetailsScreen = () => {
   const [chatMenuOpen, setChatMenuOpen] = useState(false);
   const [participantsModalOpen, setParticipantsModalOpen] = useState(false);
   const [participants, setParticipants] = useState([]);
+  const [organizer, setOrganizer] = useState(null);
   const [participantsLoading, setParticipantsLoading] = useState(false);
   const [adminBookings, setAdminBookings] = useState([]);
   const [adminBookingsLoading, setAdminBookingsLoading] = useState(false);
@@ -402,7 +403,14 @@ const TourDetailsScreen = () => {
     }
   }, [activeTab, id]);
 
-  const isChatAllowed = user?.role === 'admin' || bookingStatus === 'confirmed';
+  const isTourCreator = Boolean(user?.id && tour?.created_by && Number(user.id) === Number(tour.created_by));
+  const isChatAllowed = Boolean(user?.role === 'admin' || isTourCreator || bookingStatus === 'confirmed');
+  const effectiveOrganizer = organizer || (tour?.created_by ? {
+    user_id: tour.created_by,
+    user_name: tour.creator_name || 'Túravezető',
+    avatar_url: tour.creator_avatar_url || null,
+    is_organizer: true
+  } : null);
   const isTourFull = tour?.max_participants
     ? Number(tour.booked_count || 0) >= Number(tour.max_participants)
     : false;
@@ -816,11 +824,19 @@ const TourDetailsScreen = () => {
       const data = await res.json();
       if (!res.ok) {
         setParticipants([]);
+        setOrganizer(null);
         return;
       }
-      setParticipants(Array.isArray(data) ? data : []);
+      if (Array.isArray(data)) {
+        setParticipants(data);
+        setOrganizer(null);
+      } else {
+        setParticipants(Array.isArray(data.participants) ? data.participants : []);
+        setOrganizer(data.organizer || null);
+      }
     } catch (err) {
       setParticipants([]);
+      setOrganizer(null);
     } finally {
       setParticipantsLoading(false);
     }
@@ -2018,8 +2034,15 @@ const TourDetailsScreen = () => {
                                   : 'bg-white text-[#20382a] rounded-2xl rounded-bl-sm border border-[#dce5d8]'
                               }`}>
                                 {!isMine && (
-                                  <div className="text-[10px] font-black uppercase tracking-widest text-[#477258] mb-1 truncate max-w-full">
-                                    {msg.user_name}
+                                  <div className="flex items-center gap-1.5 mb-1 truncate max-w-full">
+                                    <span className="text-[10px] font-black uppercase tracking-widest text-[#477258] truncate">
+                                      {msg.user_name}
+                                    </span>
+                                    {tour?.created_by && Number(msg.user_id) === Number(tour.created_by) && (
+                                      <span className="shrink-0 text-[9px] font-bold px-1.5 py-0.5 rounded bg-[#e6ece1] text-[#275940] border border-[#cad6c9]">
+                                        Túravezető
+                                      </span>
+                                    )}
                                   </div>
                                 )}
                                 <div className="text-sm leading-relaxed whitespace-pre-wrap break-words [overflow-wrap:anywhere] [word-break:break-word]">{msg.message}</div>
@@ -3485,7 +3508,9 @@ const TourDetailsScreen = () => {
                 <div className="flex items-center gap-2">
                   <span className="w-2 h-2 rounded-full bg-[#477258]" />
                   <span className="text-xs font-semibold uppercase tracking-[0.18em] text-[#648067]">
-                    {participants.length > 0 ? `${participants.length} résztvevő` : 'Résztvevők'}
+                    {effectiveOrganizer
+                      ? `${(effectiveOrganizer ? 1 : 0) + participants.length} fő • Túravezető & Résztvevők`
+                      : (participants.length > 0 ? `${participants.length} résztvevő` : 'Résztvevők')}
                   </span>
                 </div>
                 <h3 className="mt-1 font-serif text-2xl text-[#173327] line-clamp-1">
@@ -3502,75 +3527,154 @@ const TourDetailsScreen = () => {
             </div>
 
             {/* Tartalom */}
-            <div className="p-5 sm:p-6 overflow-y-auto space-y-3 flex-1 bg-white">
+            <div className="p-5 sm:p-6 overflow-y-auto space-y-5 flex-1 bg-white">
               {participantsLoading ? (
                 <div className="flex flex-col items-center justify-center py-12 gap-3 text-[#718174]">
                   <div className="w-8 h-8 border-2 border-[#d8dfd4] border-t-[#275940] rounded-full animate-spin" />
                   <span className="text-xs font-semibold uppercase tracking-widest text-[#879489]">Résztvevők betöltése...</span>
                 </div>
-              ) : participants.length === 0 ? (
-                <div className="flex flex-col items-center justify-center py-12 gap-3 text-center">
-                  <div className="w-12 h-12 rounded-full bg-[#f2f5ef] border border-[#dce5d8] flex items-center justify-center text-[#648067]">
-                    <Users size={22} strokeWidth={1.8} />
-                  </div>
-                  <div>
-                    <p className="text-base font-serif text-[#173327]">Még nincsenek résztvevők</p>
-                    <p className="text-xs text-[#879489] mt-1">Az elfogadott jelentkezők itt fognak megjelenni.</p>
-                  </div>
-                </div>
               ) : (
-                <div className="grid gap-2.5">
-                  {participants.map((p) => {
-                    const initials = p.user_name
-                      ? p.user_name.split(' ').map((part) => part[0]).slice(0, 2).join('')
+                <>
+                  {/* Túravezető szekció */}
+                  {effectiveOrganizer && (() => {
+                    const initials = effectiveOrganizer.user_name
+                      ? effectiveOrganizer.user_name.split(' ').map((part) => part[0]).slice(0, 2).join('')
                       : '?';
                     return (
-                      <div
-                        key={p.user_id}
-                        className="flex items-center justify-between gap-3 bg-[#f7f9f5] border border-[#dce5d8] hover:border-[#b8cdb1] rounded-2xl p-3.5 transition group"
-                      >
-                        <div className="flex items-center gap-3 min-w-0">
-                          <div className="w-10 h-10 shrink-0 rounded-full bg-[#c8dcc2] text-[#2a4d38] font-black text-xs flex items-center justify-center overflow-hidden shadow-sm ring-2 ring-white">
-                            {p.avatar_url ? (
-                              <img
-                                src={`${avatarBase}${p.avatar_url}`}
-                                alt={p.user_name}
-                                className="w-full h-full object-cover"
-                              />
-                            ) : (
-                              initials
-                            )}
-                          </div>
-                          <div className="min-w-0">
-                            <div className="font-bold text-sm text-[#173327] group-hover:text-[#275940] transition truncate">
-                              {p.user_name}
-                            </div>
-                            <div className="text-[11px] text-[#718174] flex items-center gap-1.5 mt-0.5">
-                              <span className="w-1.5 h-1.5 rounded-full bg-[#477258] inline-block" />
-                              Elfogadott jelentkező
-                            </div>
-                          </div>
+                      <div>
+                        <div className="flex items-center gap-1.5 mb-2.5 px-1">
+                          <Compass size={14} className="text-[#275940]" />
+                          <span className="text-[11px] font-bold uppercase tracking-wider text-[#275940]">
+                            Túravezető / Szervező
+                          </span>
                         </div>
-                        <button
-                          onClick={() => {
-                            setParticipantsModalOpen(false);
-                            navigate(`/profile/${p.user_id}`);
-                          }}
-                          className="shrink-0 px-3.5 py-2 rounded-xl bg-white border border-[#cad6c9] text-[#275940] text-xs font-bold hover:bg-[#275940] hover:text-white hover:border-[#275940] transition shadow-xs"
-                        >
-                          Profil
-                        </button>
+                        <div className="flex items-center justify-between gap-3 bg-gradient-to-r from-[#eef4ec] to-[#f4f7f2] border-2 border-[#b8cdb1] rounded-2xl p-4 shadow-xs transition group">
+                          <div className="flex items-center gap-3.5 min-w-0">
+                            <div className="relative shrink-0">
+                              <div className="w-12 h-12 rounded-full bg-[#275940] text-white font-black text-sm flex items-center justify-center overflow-hidden shadow-sm ring-2 ring-[#477258]/30">
+                                {effectiveOrganizer.avatar_url ? (
+                                  <img
+                                    src={`${avatarBase}${effectiveOrganizer.avatar_url}`}
+                                    alt={effectiveOrganizer.user_name}
+                                    className="w-full h-full object-cover"
+                                  />
+                                ) : (
+                                  initials
+                                )}
+                              </div>
+                              <div className="absolute -bottom-1 -right-1 bg-[#173327] text-white p-1 rounded-full shadow-sm" title="Túravezető">
+                                <Compass size={11} />
+                              </div>
+                            </div>
+                            <div className="min-w-0">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <span className="font-bold text-sm text-[#173327] truncate">
+                                  {effectiveOrganizer.user_name}
+                                </span>
+                                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold tracking-wide uppercase bg-[#275940] text-white shadow-xs">
+                                  Túravezető
+                                </span>
+                              </div>
+                              <div className="text-[11px] text-[#526b58] font-medium flex items-center gap-1.5 mt-1">
+                                <span className="w-1.5 h-1.5 rounded-full bg-[#275940] inline-block animate-pulse" />
+                                A túra létrehozója és vezetője
+                              </div>
+                            </div>
+                          </div>
+                          {effectiveOrganizer.user_id && (
+                            <button
+                              onClick={() => {
+                                setParticipantsModalOpen(false);
+                                navigate(`/profile/${effectiveOrganizer.user_id}`);
+                              }}
+                              className="shrink-0 px-3.5 py-2 rounded-xl bg-white border border-[#275940] text-[#275940] text-xs font-bold hover:bg-[#275940] hover:text-white transition shadow-xs"
+                            >
+                              Profil
+                            </button>
+                          )}
+                        </div>
                       </div>
                     );
-                  })}
-                </div>
+                  })()}
+
+                  {/* Résztvevők listája */}
+                  <div>
+                    <div className="flex items-center justify-between gap-2 mb-2.5 px-1">
+                      <span className="text-[11px] font-bold uppercase tracking-wider text-[#648067] flex items-center gap-1.5">
+                        <Users size={13} className="text-[#648067]" />
+                        Elfogadott jelentkezők ({participants.length})
+                      </span>
+                    </div>
+
+                    {participants.length === 0 ? (
+                      <div className="flex flex-col items-center justify-center py-8 px-4 gap-2 text-center bg-[#f9faf8] rounded-2xl border border-dashed border-[#dce5d8]">
+                        <div className="w-10 h-10 rounded-full bg-[#f2f5ef] border border-[#dce5d8] flex items-center justify-center text-[#648067]">
+                          <Users size={18} strokeWidth={1.8} />
+                        </div>
+                        <div>
+                          <p className="text-sm font-semibold text-[#173327]">Még nincsenek elfogadott jelentkezők</p>
+                          <p className="text-xs text-[#879489] mt-0.5">A megerősített résztvevők itt fognak megjelenni.</p>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="grid gap-2.5">
+                        {participants.map((p) => {
+                          const initials = p.user_name
+                            ? p.user_name.split(' ').map((part) => part[0]).slice(0, 2).join('')
+                            : '?';
+                          return (
+                            <div
+                              key={p.user_id}
+                              className="flex items-center justify-between gap-3 bg-[#f7f9f5] border border-[#dce5d8] hover:border-[#b8cdb1] rounded-2xl p-3.5 transition group"
+                            >
+                              <div className="flex items-center gap-3 min-w-0">
+                                <div className="w-10 h-10 shrink-0 rounded-full bg-[#c8dcc2] text-[#2a4d38] font-black text-xs flex items-center justify-center overflow-hidden shadow-sm ring-2 ring-white">
+                                  {p.avatar_url ? (
+                                    <img
+                                      src={`${avatarBase}${p.avatar_url}`}
+                                      alt={p.user_name}
+                                      className="w-full h-full object-cover"
+                                    />
+                                  ) : (
+                                    initials
+                                  )}
+                                </div>
+                                <div className="min-w-0">
+                                  <div className="font-bold text-sm text-[#173327] group-hover:text-[#275940] transition truncate">
+                                    {p.user_name}
+                                  </div>
+                                  <div className="text-[11px] text-[#718174] flex items-center gap-1.5 mt-0.5">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-[#477258] inline-block" />
+                                    Elfogadott jelentkező
+                                  </div>
+                                </div>
+                              </div>
+                              <button
+                                onClick={() => {
+                                  setParticipantsModalOpen(false);
+                                  navigate(`/profile/${p.user_id}`);
+                                }}
+                                className="shrink-0 px-3.5 py-2 rounded-xl bg-white border border-[#cad6c9] text-[#275940] text-xs font-bold hover:bg-[#275940] hover:text-white hover:border-[#275940] transition shadow-xs"
+                              >
+                                Profil
+                              </button>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                </>
               )}
             </div>
 
             {/* Lábléc */}
-            {participants.length > 0 && (
+            {(effectiveOrganizer || participants.length > 0) && (
               <div className="border-t border-[#d8dfd4] bg-[#f7f9f5] px-6 sm:px-7 py-3.5 flex items-center justify-between text-xs text-[#718174] shrink-0">
-                <span>Összesen: <strong className="text-[#173327]">{participants.length} fő</strong></span>
+                <span>
+                  Összesen: <strong className="text-[#173327]">{(effectiveOrganizer ? 1 : 0) + participants.length} fő</strong>
+                  {effectiveOrganizer && ` (1 túravezető${participants.length > 0 ? `, ${participants.length} résztvevő` : ''})`}
+                </span>
                 <button
                   onClick={() => setParticipantsModalOpen(false)}
                   className="text-xs font-semibold text-[#477258] hover:text-[#173327] hover:underline transition"
