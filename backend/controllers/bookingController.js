@@ -775,7 +775,19 @@ exports.updateCancellationRequestStatus = async (req, res) => {
             [status, req.user.id, id]
         );
         if (status === 'approved') {
-            await db.query('UPDATE bookings SET status = ? WHERE id = ?', ['cancelled', rows[0].booking_id]);
+            const [paymentRows] = await db.query(
+                `SELECT COALESCE(SUM(amount), 0) AS paid_amount
+                 FROM booking_payments
+                 WHERE booking_id = ? AND status = 'paid'`,
+                [rows[0].booking_id]
+            );
+            const refundAmount = Number(paymentRows[0]?.paid_amount || 0);
+            await db.query(
+                `UPDATE bookings
+                 SET status = 'cancelled', refund_amount = ?, refund_status = ?
+                 WHERE id = ?`,
+                [refundAmount, refundAmount > 0 ? 'pending' : 'none', rows[0].booking_id]
+            );
             const [bookingRows] = await db.query('SELECT tour_id, user_id FROM bookings WHERE id = ?', [rows[0].booking_id]);
             const io = req.app.get('io');
             if (io && bookingRows.length > 0) {
